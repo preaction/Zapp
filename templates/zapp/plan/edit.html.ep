@@ -1,0 +1,202 @@
+% use Mojo::Loader qw( data_section );
+% my $plan = stash( 'plan' ) // {};
+
+<style>
+    .task-container {
+        padding: 0.4em;
+        border: 1px solid black;
+    }
+    .task-container h2 {
+        margin-top: 0.2em;
+    }
+
+    .task-container [data-task-form] {
+        border-bottom: 1px solid black;
+        margin-bottom: 0.4em;
+        padding-bottom: 0.4em;
+    }
+
+    label {
+        display: block;
+    }
+</style>
+
+%# The form for the main task fields
+% my $task_tmpl = begin
+    % my $task = shift;
+    <input type="hidden" name="task_id" value="<%= $task->{task_id} // '' %>" />
+    <input type="hidden" name="class" value="<%= $task->{class} %>" />
+    <h3 class="task-type"><label for="name"><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %></label>
+        <input type="text" name="name" placeholder="Task Name"
+            value="<%= $task->{name} %>"
+        />
+    </h3>
+    <div>
+        <label for="description">Description</label>
+        <textarea name="description" placeholder="Description"><%= $task->{description} %></textarea>
+    </div>
+    <div data-args-form></div>
+% end
+<template id="task-form">
+    %= $task_tmpl->( {} )
+</template>
+
+% for my $class ( @{ stash 'tasks' } ) {
+    <template data-class="<%= $class %>">
+        %= include inline => data_section( $class, 'args.html.ep' )
+    </template>
+% }
+
+%= form_for 'zapp.save_plan', id => 'plan', begin
+    <div>
+        <label for="name">Plan Name</label>
+        <input id="name" name="name" type="text" placeholder="name" value="<%= $plan->{name} %>">
+    </div>
+    <div>
+        <label for="description">Plan Description</label>
+        <textarea id="description" name="description" placeholder="Description"><%= $plan->{description} %></textarea>
+    </div>
+
+    <div class="task-container">
+        <h2>Tasks</h2>
+        <div id="all-tasks">
+            <% for my $task_num ( 0 .. $#{ $plan->{tasks} } ) { %>
+                <div task-form><%
+                    my $task = $plan->{tasks}[ $task_num ];
+                    my $args_form = include inline => data_section( $task->{class}, 'args.html.ep' ), args => $task->{args};
+                    my $args_dom = Mojo::DOM->new( $args_form );
+                    $args_dom->find( 'input,select,textarea' )->each(
+                        sub {
+                            my ( $el ) = @_;
+                            my $name = $el->attr( 'name' );
+                            my $joiner = $name =~ /^\[/ ? '' : '.';
+                            $el->attr( name => join $joiner, 'args', $name );
+                            $el->attr( id => $el->attr( 'name' ) );
+                        },
+                    );
+                    $args_dom->find( 'label' )->each(
+                        sub {
+                            my ( $el ) = @_;
+                            my $for = $el->attr( 'for' );
+                            my $joiner = $for =~ /^\[/ ? '' : '.';
+                            $el->attr( for => join $joiner, 'args', $for );
+                        },
+                    );
+
+                    my $task_form = $task_tmpl->( $task );
+                    my $task_dom = Mojo::DOM->new( $task_form );
+                    $task_dom->at( '[data-args-form]' )->replace( $args_dom );
+                    $task_dom->find( 'input,select,textarea' )->each(
+                        sub {
+                            my ( $el ) = @_;
+                            $el->attr( name => 'task[' . $task_num . '].' . $el->attr( 'name' ) );
+                            $el->attr( id => $el->attr( 'name' ) );
+                        },
+                    );
+                    $task_dom->find( 'label' )->each(
+                        sub {
+                            my ( $el ) = @_;
+                            $el->attr( for => 'task[' . $task_num . '].' . $el->attr( 'for' ) );
+                        },
+                    );
+                    %><%== $task_dom %></div><%
+            } %>
+        </div>
+
+        <div>
+            <select class="add-task">
+                <option>Add Task...</option>
+                % for my $class ( @{ stash 'tasks' } ) {
+                    %= tag option => ( value => $class ), $class =~ s/Zapp::Task:://r
+                % }
+            </select>
+        </div>
+    </div>
+
+    <button>Save</button>
+% end
+
+%= javascript begin
+function delegateEvent( eventName, elementSelector, handler ) {
+    document.addEventListener(eventName, function(e) {
+        for (var target = e.target; target && target != this; target = target.parentNode) {
+            if (target.matches(elementSelector)) {
+                handler.call(target, e);
+                break;
+            }
+        }
+    }, false);
+}
+
+function addTask( event ) {
+    // XXX: Focus on task name element after adding form
+    var inputSelector = 'input,select,textarea',
+        sel = event.target,
+        opt = sel.options[ sel.selectedIndex ],
+        type = opt.innerText,
+        cls = opt.value,
+        allTasks = document.querySelector( '#all-tasks' ),
+        beforeTask = sel.closest( '[data-task-form]' ),
+        taskIdx = beforeTask ? allTasks.indexOf( beforeTask ) : allTasks.childElementCount,
+        taskTmpl = document.querySelector( '#task-form' ).content.cloneNode(true),
+        taskForm = document.createElement( 'div' ),
+        argsTmpl = document.querySelector( `[data-class="${cls}"]` ).content,
+        argsForm = argsTmpl.cloneNode(true);
+    sel.selectedIndex = 0;
+
+    var argsInputs = argsForm.querySelectorAll( inputSelector );
+    argsInputs.forEach( function ( el ) {
+        var sep = el.name.startsWith( '[' ) ? '' : '.';
+        el.name = `args${sep}${el.name}`;
+        el.id = el.name;
+    } );
+
+    var argsLabels = argsForm.querySelectorAll( 'label' );
+    argsLabels.forEach( function ( el ) {
+        var sep = el.attributes.for.startsWith( '[' ) ? '' : '.';
+        el.attributes.for.value = `args${sep}${el.attributes.for.value}`;
+    } );
+
+    taskForm.dataset.taskForm = true;
+    taskForm.appendChild( taskTmpl );
+    taskForm.querySelector( '[data-args-form]' ).replaceWith( argsForm );
+    var taskTypeLabel = taskForm.querySelector( 'label[for=name]' );
+    taskTypeLabel.innerHTML = type;
+    var taskClassInput = taskForm.querySelector( 'input[name=class]' );
+    taskClassInput.value = cls;
+    var taskInputs = taskForm.querySelectorAll( inputSelector );
+    taskInputs.forEach( function ( el ) {
+        el.name = `task[${taskIdx}].${el.name}`;
+        el.id = el.name;
+    } );
+    var taskLabels = taskForm.querySelectorAll( 'label' );
+    taskLabels.forEach( function ( el ) {
+        el.attributes.for.value = `task[${taskIdx}].${el.attributes.for.value}`;
+    } );
+
+    if ( beforeTask ) {
+        beforeTask.insertAdjacentElement( 'beforebegin', taskForm );
+    }
+    else {
+        allTasks.appendChild( taskForm );
+    }
+
+    if ( beforeTask ) {
+        // XXX: Re-index all subsequent tasks
+    }
+}
+
+function removeTask( event ) {
+}
+
+function moveTask( event ) {
+}
+
+document.addEventListener('DOMContentLoaded', function ( event ) {
+    delegateEvent( 'change', 'select.add-task', addTask );
+});
+
+% end
+
+%= content 'after_form'
+
