@@ -77,6 +77,9 @@ sub save_plan( $self ) {
         $plan_id = $self->yancy->backend->create( zapp_plans => $plan );
     }
 
+    my %tasks_to_delete
+        = map { $_->{task_id} => 1 }
+        $self->yancy->list( zapp_tasks => { plan_id => $plan_id } );
     my $parent_task_id;
     for my $task ( @tasks ) {
         my $task_id = $task->{task_id};
@@ -84,7 +87,9 @@ sub save_plan( $self ) {
         for my $json_field ( qw( args ) ) {
             $task->{ $json_field } = encode_json( $task->{ $json_field } );
         }
+
         if ( $task_id ) {
+            delete $tasks_to_delete{ $task_id };
             $self->yancy->backend->set( zapp_tasks => $task_id, $task );
         }
         else {
@@ -104,6 +109,14 @@ sub save_plan( $self ) {
             });
         }
         $parent_task_id = $task_id;
+    }
+
+    for my $task_id ( keys %tasks_to_delete ) {
+        $self->yancy->delete( zapp_tasks => $task_id );
+        my ( @existing_parents ) = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
+        for my $parent ( @existing_parents ) {
+            $self->yancy->backend->delete( zapp_task_parents => [ $parent->@{qw( task_id parent_id )} ] );
+        }
     }
 
     $self->redirect_to( 'zapp.edit_plan' => { plan_id => $plan_id } );

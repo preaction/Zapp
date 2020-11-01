@@ -514,6 +514,208 @@ subtest 'edit existing plan' => sub {
         };
     };
 
+    subtest 'add task to plan' => sub {
+        $t->post_ok( "/plan/$plan_id",
+            form => {
+                name => 'Save NNY',
+                description => 'Save New New York City',
+                'task[0].task_id' => $task_ids[0],
+                'task[0].class' => 'Zapp::Task::Script',
+                'task[0].name' => 'Build',
+                'task[0].description' => 'Build a bomb',
+                'task[0].args.script' => 'make thebomb',
+                'task[1].class' => 'Zapp::Task::Script',
+                'task[1].name' => 'Transit',
+                'task[1].description' => 'Fly to garbage ball',
+                'task[1].args.script' => 'make flight',
+                'task[2].task_id' => $task_ids[1],
+                'task[2].class' => 'Zapp::Task::Assert',
+                'task[2].name' => 'Verify Bomb',
+                'task[2].description' => 'Make sure this time',
+                'task[2].args[0].expr' => 'bomb.orientation',
+                'task[2].args[0].op' => '!=',
+                'task[2].args[0].value' => 'reverse',
+                'task[2].args[1].expr' => 'bomb.timer',
+                'task[2].args[1].op' => '==',
+                'task[2].args[1].value' => '25:00',
+            },
+        );
+        $t->status_is( 302 );
+        $t->header_is( Location => "/plan/$plan_id" );
+
+        my @got_tasks = $t->app->yancy->list(
+            zapp_tasks => {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => 'task_id',
+            },
+        );
+        is scalar @got_tasks, 3, 'got 3 tasks for plan';
+
+        is_deeply
+            {
+                $got_tasks[0]->%*,
+                args => decode_json( $got_tasks[0]{args} ),
+            },
+            {
+                plan_id => $plan_id,
+                class => 'Zapp::Task::Script',
+                task_id => $task_ids[0],
+                name => 'Build',
+                description => 'Build a bomb',
+                args => {
+                    script => 'make thebomb',
+                },
+            },
+            'task 1 is correct';
+
+        is_deeply
+            {
+                $got_tasks[2]->%*,
+                args => decode_json( $got_tasks[2]{args} ),
+            },
+            {
+                plan_id => $plan_id,
+                class => 'Zapp::Task::Script',
+                task_id => $got_tasks[2]{task_id},
+                name => 'Transit',
+                description => 'Fly to garbage ball',
+                args => {
+                    script => 'make flight',
+                },
+            },
+            'new task is correct';
+
+        is_deeply
+            {
+                $got_tasks[1]->%*,
+                args => decode_json( $got_tasks[1]{args} ),
+            },
+            {
+                plan_id => $plan_id,
+                class => 'Zapp::Task::Assert',
+                task_id => $task_ids[1],
+                name => 'Verify Bomb',
+                description => 'Make sure this time',
+                args => [
+                    {
+                        expr => 'bomb.orientation',
+                        op => '!=',
+                        value => 'reverse',
+                    },
+                    {
+                        expr => 'bomb.timer',
+                        op => '==',
+                        value => '25:00',
+                    },
+                ],
+            },
+            'task 2 is correct';
+
+        my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+            task_id => [ map { $_->{task_id} } @got_tasks ],
+        });
+        is scalar @got_parents, 2, 'got 2 relationships for plan';
+
+        is_deeply $got_parents[0], {
+            task_id => $task_ids[1],
+            parent_id => $got_tasks[2]{task_id},
+        };
+        is_deeply $got_parents[1], {
+            task_id => $got_tasks[2]{task_id},
+            parent_id => $task_ids[0],
+        };
+    };
+
+    subtest 'remove task from plan' => sub {
+        $t->post_ok( "/plan/$plan_id",
+            form => {
+                name => 'Save NNY',
+                description => 'Save New New York City',
+                'task[0].task_id' => $task_ids[0],
+                'task[0].class' => 'Zapp::Task::Script',
+                'task[0].name' => 'Build',
+                'task[0].description' => 'Build a bomb',
+                'task[0].args.script' => 'make thebomb',
+                'task[1].task_id' => $task_ids[1],
+                'task[1].class' => 'Zapp::Task::Assert',
+                'task[1].name' => 'Verify Bomb',
+                'task[1].description' => 'Make sure this time',
+                'task[1].args[0].expr' => 'bomb.orientation',
+                'task[1].args[0].op' => '!=',
+                'task[1].args[0].value' => 'reverse',
+                'task[1].args[1].expr' => 'bomb.timer',
+                'task[1].args[1].op' => '==',
+                'task[1].args[1].value' => '25:00',
+            },
+        );
+        $t->status_is( 302 );
+        $t->header_is( Location => "/plan/$plan_id" );
+
+        my @got_tasks = $t->app->yancy->list(
+            zapp_tasks => {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => 'task_id',
+            },
+        );
+        is scalar @got_tasks, 2, 'got 2 tasks for plan';
+
+        is_deeply
+            {
+                $got_tasks[0]->%*,
+                args => decode_json( $got_tasks[0]{args} ),
+            },
+            {
+                plan_id => $plan_id,
+                class => 'Zapp::Task::Script',
+                task_id => $task_ids[0],
+                name => 'Build',
+                description => 'Build a bomb',
+                args => {
+                    script => 'make thebomb',
+                },
+            },
+            'task 1 is correct';
+
+        is_deeply
+            {
+                $got_tasks[1]->%*,
+                args => decode_json( $got_tasks[1]{args} ),
+            },
+            {
+                plan_id => $plan_id,
+                class => 'Zapp::Task::Assert',
+                task_id => $task_ids[1],
+                name => 'Verify Bomb',
+                description => 'Make sure this time',
+                args => [
+                    {
+                        expr => 'bomb.orientation',
+                        op => '!=',
+                        value => 'reverse',
+                    },
+                    {
+                        expr => 'bomb.timer',
+                        op => '==',
+                        value => '25:00',
+                    },
+                ],
+            },
+            'task 2 is correct';
+
+        my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+            task_id => [ map { $_->{task_id} } @got_tasks ],
+        });
+        is scalar @got_parents, 1, 'got 1 relationship for plan';
+        is_deeply $got_parents[0], {
+            task_id => $task_ids[1],
+            parent_id => $task_ids[0],
+        };
+    };
+
 };
 
 done_testing;
