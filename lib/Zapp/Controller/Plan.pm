@@ -93,6 +93,7 @@ sub save_plan( $self ) {
             $self->yancy->backend->set( zapp_tasks => $task_id, $task );
         }
         else {
+            delete $task->{task_id};
             $task_id = $task->{task_id} = $self->yancy->backend->create( zapp_tasks => {
                 %$task, plan_id => $plan_id,
             } );

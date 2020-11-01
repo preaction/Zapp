@@ -20,7 +20,9 @@ use Yancy::Util qw( load_backend );
 sub startup( $self ) {
 
     # XXX: Allow configurable backends, like Minion
-    $self->plugin( Config => { default => {} } );
+    $self->plugin( Config => { default => {
+        backend => 'sqlite:zapp.db',
+    } } );
 
     # XXX: Add migrate() method to backend base class, varying by
     # backend type
@@ -56,6 +58,30 @@ CREATE TABLE zapp_plans (
 
 CREATE TABLE zapp_tasks (
     task_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    class VARCHAR(255) NOT NULL,
+    args JSON
+);
+
+CREATE TABLE zapp_task_parents (
+    task_id BIGINT REFERENCES zapp_tasks ( task_id ) ON DELETE CASCADE,
+    parent_id BIGINT REFERENCES zapp_tasks ( task_id ) ON DELETE RESTRICT,
+    PRIMARY KEY ( task_id, parent_id )
+);
+
+@@ migrations.sqlite.sql
+
+-- 1 up
+CREATE TABLE zapp_plans (
+    plan_id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE zapp_tasks (
+    task_id INTEGER PRIMARY KEY,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
