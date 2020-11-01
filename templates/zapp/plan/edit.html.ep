@@ -113,7 +113,7 @@
         </div>
     </div>
 
-    <button>Save</button>
+    <button name="save-plan">Save</button>
 % end
 
 %= javascript begin
@@ -153,7 +153,7 @@ function addTask( event ) {
 
     var argsLabels = argsForm.querySelectorAll( 'label' );
     argsLabels.forEach( function ( el ) {
-        var sep = el.attributes.for.startsWith( '[' ) ? '' : '.';
+        var sep = el.attributes.for.value.startsWith( '[' ) ? '' : '.';
         el.attributes.for.value = `args${sep}${el.attributes.for.value}`;
     } );
 

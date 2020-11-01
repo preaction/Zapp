@@ -42,10 +42,10 @@ __DATA__
     <div>
         <input type="text" name="[<%= $i %>].expr" value="<%= $arg->{expr} %>">
         <select name="[<%= $i %>].op">
-            <option <%= $arg->{op} eq '==' ? 'selected' : '' %>>==</option>
-            <option <%= $arg->{op} eq '!=' ? 'selected' : '' %>>!=</option>
-            <option <%= $arg->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
-            <option <%= $arg->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
+            <option value="==" <%= $arg->{op} eq '==' ? 'selected' : '' %>>==</option>
+            <option value="!=" <%= $arg->{op} eq '!=' ? 'selected' : '' %>>!=</option>
+            <option value="&gt;" <%= $arg->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
+            <option value="&lt;" <%= $arg->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
         </select>
         <input type="text" name="[<%= $i %>].value" value="<%= $arg->{value} %>">
         <button type="button" name="assert-remove">-</button>
