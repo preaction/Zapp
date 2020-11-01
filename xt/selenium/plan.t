@@ -80,15 +80,88 @@ subtest 'create a plan' => sub {
       ->click_ok( '[name="task[1].args[0].op"] option[value="=="]' )
       ->send_keys_ok( '[name="task[1].args[0].value"]', '1138' )
 
-      # ->click_ok( 'button[name=assert-add]' )
-      # ->wait_for( '[name="task[1].args[1].expr"]' )
-      # ->send_keys_ok( '[name="task[1].args[1].expr"]', 'volume' )
-      # ->click_ok( '[name="task[1].args[1].op"]' )
-      # ->click_ok( '[name="task[1].args[1].op"] option[value=">="]' )
-      # ->send_keys_ok( '[name="task[1].args[0].value"]', 'loud' )
+      ->click_ok( 'button[name=assert-add]' )
+      ->wait_for( '[name="task[1].args[1].expr"]' )
+      ->send_keys_ok( '[name="task[1].args[1].expr"]', 'volume' )
+      ->click_ok( '[name="task[1].args[1].op"]' )
+      ->click_ok( '[name="task[1].args[1].op"] option[value=">"]' )
+      ->send_keys_ok( '[name="task[1].args[1].value"]', 'loud' )
       ;
 
     # Save the plan
+    $t->click_ok( '[name=save-plan]' )
+        ->wait_until( sub { $_->get_current_url =~ m{plan/(\d+)} } )
+        ;
+
+    # Verify plan saved
+    my ( $plan_id ) = $t->driver->get_current_url =~ m{plan/(\d+)};
+
+    my $got_plan = $t->app->yancy->get( zapp_plans => $plan_id );
+    ok $got_plan, 'found plan';
+    is $got_plan->{name}, 'Capture the Feministas', 'plan name correct';
+    is $got_plan->{description}, 'Stop the femolution!', 'plan description correct';
+
+    my @got_tasks = $t->app->yancy->list(
+        zapp_tasks => {
+            plan_id => $plan_id,
+        },
+        {
+            order_by => 'task_id',
+        },
+    );
+    is scalar @got_tasks, 2, 'got 2 tasks for plan';
+    is_deeply
+        {
+            $got_tasks[0]->%*,
+            args => decode_json( $got_tasks[0]{args} ),
+        },
+        {
+            plan_id => $got_plan->{plan_id},
+            task_id => $got_tasks[0]{task_id},
+            class =>'Zapp::Task::Request',
+            name => 'Find the honeybun hideout',
+            description => 'Somewhere on Mars...',
+            args => {
+                method => 'GET',
+                url => 'http://example.com',
+            },
+        },
+        'task 1 is correct';
+    is_deeply
+        {
+            $got_tasks[1]->%*,
+            args => decode_json( $got_tasks[1]{args} ),
+        },
+        {
+            plan_id => $got_plan->{plan_id},
+            task_id => $got_tasks[1]{task_id},
+            class =>'Zapp::Task::Assert',
+            name => 'Open a hailing channel',
+            description => 'For my victory yodel',
+            args => [
+                {
+                    expr => 'frequency',
+                    op => '==',
+                    value => '1138',
+                },
+                {
+                    expr => 'volume',
+                    op => '>',
+                    value => 'loud',
+                },
+            ],
+        },
+        'task 2 is correct';
+
+    my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+        task_id => [ map { $_->{task_id} } @got_tasks ],
+    });
+    is scalar @got_parents, 1, 'got 1 relationship for plan';
+    is_deeply $got_parents[0], {
+        task_id => $got_tasks[1]{task_id},
+        parent_id => $got_tasks[0]{task_id},
+    };
+
 
 };
 
@@ -175,15 +248,20 @@ subtest 'edit a plan' => sub {
         ;
 
     # Add a new assertion
-    # $t->click_ok( '[name=assert-add]' )
-    #     ->wait_for( '[name="task[1].args[1].expr"]' )
-    #     ->send_keys_ok( '[name="task[1].args[1].expr"]', 'bomb.orientation' )
-    #     ->click_ok( '[name="tasks[1].args[1].op"]' )
-    #     ->click_ok( '[name="tasks[1].args[1].op"] option[value="!="]' )
-    #     ->send_keys_ok( '[name="task[1].args[1].value"]', 'reverse' )
-    #     ;
+    $t->click_ok( '[name=assert-add]' )
+        ->wait_for( '[name="task[1].args[1].expr"]' )
+        ->send_keys_ok( '[name="task[1].args[1].expr"]', 'bomb.timer' )
+        ->click_ok( '[name="task[1].args[1].op"]' )
+        ->click_ok( '[name="task[1].args[1].op"] option[value="=="]' )
+        ->send_keys_ok( '[name="task[1].args[1].value"]', '25:00' )
+        ;
+
+    # Remove the new assertion
+    $t->click_ok( '[name="task[1].args[1].expr"] ~ button[name=assert-remove]' )
+        ;
 
     # XXX: Insert a new task in the middle
+
     # Save
     $t->click_ok( '[name=save-plan]' )
         ;
@@ -236,11 +314,6 @@ subtest 'edit a plan' => sub {
                         op => '!=',
                         value => 'reverse',
                     },
-                    # {
-                    #     expr => 'bomb.timer',
-                    #     op => '==',
-                    #     value => '25:00',
-                    # },
                 ],
             },
             'task 2 is correct';

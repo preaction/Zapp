@@ -37,9 +37,10 @@ __DATA__
 
 @@ args.html.ep
 % my $args = stash( 'args' ) // [ { op => '==' } ];
+<ul class="assertions">
 % for my $i ( 0 .. $#$args ) {
     % my $arg = $args->[ $i ];
-    <div>
+    <li>
         <input type="text" name="[<%= $i %>].expr" value="<%= $arg->{expr} %>">
         <select name="[<%= $i %>].op">
             <option value="==" <%= $arg->{op} eq '==' ? 'selected' : '' %>>==</option>
@@ -49,26 +50,69 @@ __DATA__
         </select>
         <input type="text" name="[<%= $i %>].value" value="<%= $arg->{value} %>">
         <button type="button" name="assert-remove">-</button>
-    </div>
+    </li>
 % }
+</ul>
 <button name="assert-add" type="button">+</button>
 
-%= content_for 'after_form' => begin
-    %= javascript begin
-        function addAssertion( event ) {
-            // Clone the first row
-            // Reset expr, op, value
-            // Append
+@@ args.js.ep
+function addAssertion( event ) {
+    // Clone the first row
+    var button = event.target,
+        list = button.previousElementSibling,
+        row = list.querySelector('li'),
+        newIndex = list.querySelectorAll('li').length,
+        newRow = row.cloneNode(true);
+
+    // Reset expr, op, value
+    newRow.querySelectorAll( 'input,select' ).forEach( function (el) {
+        if ( el.tagName == 'SELECT' ) {
+            el.selectedIndex = 0;
         }
-        function removeAssertion( event ) {
-            // Remove the row
+        else {
+            el.value = '';
         }
-        document.addEventListener('DOMContentLoaded', function ( event ) {
-            delegateEvent( 'click', 'button[name=assert-add]', addAssertion );
-            delegateEvent( 'click', 'button[name=assert-remove]', removeAssertion );
-        });
-    % end
-% end
+        el.name = el.name.replace( /args\[\d+\]/, 'args[' + newIndex + ']' );
+        el.id = el.name;
+    } );
+
+    // Append
+    list.appendChild( newRow );
+}
+
+function removeAssertion( event ) {
+    var button = event.target,
+        row = button.parentElement,
+        list = row.parentElement;
+
+    // If the last row, clear it out
+    if ( list.querySelectorAll( 'li' ).length == 1 ) {
+        // Reset expr, op, value
+        row.querySelectorAll( 'input,select' ).forEach( function (el) {
+            if ( el.tagName == 'SELECT' ) {
+                el.selectedIndex = 0;
+            }
+            else {
+                el.value = '';
+            }
+        } );
+    }
+    // Else remove the row and re-index
+    else {
+        row.parentNode.removeChild( row );
+        // Reset expr, op, value
+        list.querySelectorAll( 'li' ).forEach( function (row, i) {
+            row.querySelectorAll( 'input,select' ).forEach( function (el) {
+                el.name = el.name.replace( /args\[\d+\]/, 'args[' + i + ']' );
+                el.id = el.name;
+            });
+        } );
+    }
+}
+document.addEventListener('DOMContentLoaded', function ( event ) {
+    delegateEvent( 'click', 'button[name=assert-add]', addAssertion );
+    delegateEvent( 'click', 'button[name=assert-remove]', removeAssertion );
+});
 
 @@ result.html.ep
 %= dumper $result

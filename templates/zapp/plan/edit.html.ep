@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'change', 'select.add-task', addTask );
 });
 
+% for my $js ( grep !!$_, map { data_section( $_, 'args.js.ep' ) } @{ stash 'tasks' } ) {
+    %= include inline => $js
+% }
 % end
-
-%= content 'after_form'
-
