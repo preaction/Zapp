@@ -180,41 +180,34 @@ subtest 'create new plan' => sub {
 
 subtest 'edit existing plan' => sub {
 
-    my $plan_id = $t->app->yancy->create( zapp_plans => {
+    my $plan = $t->Test::Zapp::create_plan( {
         name => 'Blow up Garbage Ball',
         description => 'Save New New York from certain, smelly doom.',
+        tasks => [
+            {
+                name => 'Deploy the Bomb',
+                description => 'Deploy the bomb between the Bart Simpson dolls.',
+                class => 'Zapp::Task::Script',
+                args => encode_json({
+                    script => "liftoff;\ndrop the_bomb\n",
+                }),
+            },
+            {
+                name => 'Verify bomb placement',
+                description => q{Let's blow it up already!},
+                class => 'Zapp::Task::Assert',
+                args => encode_json([
+                    {
+                        expr => 'bomb.timer',
+                        op => '==',
+                        value => '25:00',
+                    },
+                ]),
+            },
+        ],
     } );
-
-    my @task_ids = (
-        $t->app->yancy->create( zapp_tasks => {
-            plan_id => $plan_id,
-            name => 'Deploy the Bomb',
-            description => 'Deploy the bomb between the Bart Simpson dolls.',
-            class => 'Zapp::Task::Script',
-            args => encode_json({
-                script => "liftoff;\ndrop the_bomb\n",
-            }),
-        } ),
-
-        $t->app->yancy->create( zapp_tasks => {
-            plan_id => $plan_id,
-            name => 'Verify bomb placement',
-            description => q{Let's blow it up already!},
-            class => 'Zapp::Task::Assert',
-            args => encode_json([
-                {
-                    expr => 'bomb.timer',
-                    op => '==',
-                    value => '25:00',
-                },
-            ]),
-        } ),
-    );
-
-    $t->app->yancy->create( zapp_task_parents => {
-        task_id => $task_ids[1],
-        parent_id => $task_ids[0],
-    });
+    my $plan_id = $plan->{plan_id};
+    my @task_ids = map { $_->{task_id} } @{ $plan->{tasks} };
 
     subtest 'edit plan form' => sub {
         $t->get_ok( "/plan/$plan_id" )->status_is( 200 )
@@ -718,4 +711,87 @@ subtest 'edit existing plan' => sub {
 
 };
 
+subtest 'list plans' => sub {
+    $t->Test::Yancy::clear_backend;
+    my @plans = (
+        $t->Test::Zapp::create_plan({
+            name => 'Deliver a package',
+            description => 'To a dangerous place',
+        }),
+        $t->Test::Zapp::create_plan({
+            name => 'Clean the ship',
+            description => 'Of any remains of the crew',
+        }),
+        $t->Test::Zapp::create_plan({
+            name => 'Find a replacement crew',
+            description => 'After their inevitable deaths',
+        }),
+    );
+
+    $t->get_ok( '/' )->status_is( 200 )
+        ->text_like( 'section:nth-child(1) h2', qr{Deliver a package} )
+        ->text_like( 'section:nth-child(1) .description', qr{To a dangerous place} )
+        ->element_exists( 'section:nth-child(1) a.run', 'run button exists' )
+        ->attr_is( 'section:nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run' )
+        ->element_exists( 'section:nth-child(1) a.edit', 'edit button exists' )
+        ->attr_is( 'section:nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} )
+
+        ->text_like( 'section:nth-child(2) h2', qr{Clean the ship} )
+        ->text_like( 'section:nth-child(2) .description', qr{Of any remains of the crew} )
+        ->element_exists( 'section:nth-child(2) a.run', 'run button exists' )
+        ->attr_is( 'section:nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run' )
+        ->element_exists( 'section:nth-child(2) a.edit', 'edit button exists' )
+        ->attr_is( 'section:nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} )
+
+        ->text_like( 'section:nth-child(3) h2', qr{Find a replacement crew} )
+        ->text_like( 'section:nth-child(3) .description', qr{After their inevitable deaths} )
+        ->element_exists( 'section:nth-child(3) a.run', 'run button exists' )
+        ->attr_is( 'section:nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run' )
+        ->element_exists( 'section:nth-child(3) a.edit', 'edit button exists' )
+        ->attr_is( 'section:nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} )
+        ;
+};
+
 done_testing;
+
+sub Test::Yancy::clear_backend {
+    my ( $self ) = @_;
+    my %tables = (
+        zapp_plans => 'plan_id',
+        zapp_tasks => 'task_id',
+        zapp_task_parents => 'task_id',
+    );
+    for my $table ( keys %tables ) {
+        my $id_field = $tables{ $table };
+        for my $item ( $self->app->yancy->list( $table ) ) {
+            $self->app->yancy->backend->delete( $table => $item->{ $id_field } );
+        }
+    }
+}
+
+sub Test::Zapp::create_plan {
+    my ( $self, $plan ) = @_;
+
+    my @tasks = @{ delete $plan->{tasks} // [] };
+    my $plan_id = $t->app->yancy->create( zapp_plans => $plan );
+
+    my $prev_task_id;
+    for my $task ( @tasks ) {
+        $task->{plan_id} = $plan_id;
+        my $task_id = $t->app->yancy->create( zapp_tasks => $task );
+        if ( $prev_task_id ) {
+            $t->app->yancy->create( zapp_task_parents => {
+                task_id => $task_id,
+                parent_id => $prev_task_id,
+            });
+        }
+        $prev_task_id = $task_id;
+        $task->{ task_id } = $task_id;
+    }
+
+    $plan->{plan_id} = $plan_id;
+    $plan->{tasks} = \@tasks;
+
+    return $plan;
+}
+

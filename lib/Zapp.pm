@@ -43,6 +43,11 @@ sub startup( $self ) {
         ->to( 'plan#edit_plan' )->name( 'zapp.edit_plan' );
     $self->routes->post( '/plan/:plan_id', { plan_id => undef } )
         ->to( 'plan#save_plan' )->name( 'zapp.save_plan' );
+
+    $self->routes->get( '/' )
+        ->to( 'plan#list_plans' )->name( 'zapp.list_plans' );
+    $self->routes->get( '/plan/:plan_id/run' )
+        ->to( 'plan#run_plan' )->name( 'zapp.run_plan' );
 }
 
 1;

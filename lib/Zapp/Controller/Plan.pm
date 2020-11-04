@@ -123,4 +123,9 @@ sub save_plan( $self ) {
     $self->redirect_to( 'zapp.edit_plan' => { plan_id => $plan_id } );
 }
 
+sub list_plans( $self ) {
+    my @plans = $self->yancy->list( zapp_plans => {}, {} );
+    $self->render( 'zapp/plan/list', plans => \@plans );
+}
+
 1;
