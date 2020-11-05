@@ -36,6 +36,12 @@ sub startup( $self ) {
 
     $self->plugin( Yancy =>
         $self->config->%{qw( backend )},
+        schema => {
+            zapp_plan_inputs => {
+                # XXX: Fix read_schema to detect compound primary keys
+                'x-id-field' => [qw( plan_id name )],
+            },
+        },
     );
 
     # Create/edit plans
@@ -76,6 +82,15 @@ CREATE TABLE zapp_task_parents (
     PRIMARY KEY ( task_id, parent_id )
 );
 
+CREATE TABLE zapp_plan_inputs (
+    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    type ENUM( 'string', 'number', 'integer', 'boolean' ) NOT NULL,
+    description TEXT,
+    default_value JSON,
+    PRIMARY KEY ( plan_id, name )
+);
+
 @@ migrations.sqlite.sql
 
 -- 1 up
@@ -98,6 +113,16 @@ CREATE TABLE zapp_task_parents (
     task_id BIGINT REFERENCES zapp_tasks ( task_id ) ON DELETE CASCADE,
     parent_id BIGINT REFERENCES zapp_tasks ( task_id ) ON DELETE RESTRICT,
     PRIMARY KEY ( task_id, parent_id )
+);
+
+CREATE TABLE zapp_plan_inputs (
+    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    -- SQLite lacks ENUM, but we can fake it in a way Yancy can parse
+    type VARCHAR(7) NOT NULL CHECK(type IN ('string', 'number', 'integer', 'boolean')),
+    description TEXT,
+    default_value JSON,
+    PRIMARY KEY ( plan_id, name )
 );
 
 

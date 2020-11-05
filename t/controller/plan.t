@@ -51,6 +51,10 @@ subtest 'create new plan' => sub {
                 'description textarea name is correct',
             )
             ->element_exists(
+                'select.add-input',
+                'add input dropdown exists',
+            )
+            ->element_exists(
                 'select.add-task',
                 'add task dropdown exists',
             )
@@ -98,6 +102,10 @@ subtest 'create new plan' => sub {
             form => {
                 name => 'The Mighty One',
                 description => 'Save the mighty one, save the universe.',
+                'input[0].name' => 'prank_name',
+                'input[0].type' => 'string',
+                'input[0].description' => 'A funny name to demoralize the Mighty One',
+                'input[0].default_value' => 'I.C. Weiner',
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
@@ -174,6 +182,22 @@ subtest 'create new plan' => sub {
             parent_id => $got_tasks[0]{task_id},
         };
 
+        my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
+            {
+                plan_id => $got_plan->{plan_id},
+            },
+            {
+                order_by => 'name',
+            },
+        );
+        is scalar @got_inputs, 1, 'got 1 inputs for plan';
+        is_deeply $got_inputs[0], {
+            plan_id => $plan_id,
+            name => 'prank_name',
+            type => 'string',
+            description => 'A funny name to demoralize the Mighty One',
+            default_value => encode_json( 'I.C. Weiner' ),
+        };
     };
 
 };
@@ -203,6 +227,20 @@ subtest 'edit existing plan' => sub {
                         value => '25:00',
                     },
                 ]),
+            },
+        ],
+        inputs => [
+            {
+                name => 'location',
+                type => 'string',
+                description => 'Where to place the bomb',
+                default_value => encode_json( 'In the center' ),
+            },
+            {
+                name => 'delay',
+                type => 'number',
+                description => 'Time to give crew to survive, in minutes',
+                default_value => encode_json( 25 ),
             },
         ],
     } );
@@ -249,6 +287,10 @@ subtest 'edit existing plan' => sub {
                 'description textarea value is correct',
             )
             ->element_exists(
+                'select.add-input',
+                'add input dropdown exists',
+            )
+            ->element_exists(
                 'select.add-task',
                 'add task dropdown exists',
             )
@@ -288,6 +330,83 @@ subtest 'edit existing plan' => sub {
                 'third task option value is correct',
             )
             ;
+
+        subtest 'inputs form' => sub {
+            $t->element_exists(
+                '[name="input[0].name"]',
+                'first input name input exists',
+            );
+            $t->attr_is(
+                '[name="input[0].name"]',
+                value => 'delay',
+                'first input name input value is correct',
+            );
+            $t->element_exists(
+                '[name="input[0].type"]',
+                'first input type input exists',
+            );
+            $t->attr_is(
+                '[name="input[0].type"]',
+                value => 'number',
+                'first input type input value is correct',
+            );
+            $t->element_exists(
+                '[name="input[0].description"]',
+                'first input description input exists',
+            );
+            $t->text_is(
+                '[name="input[0].description"]',
+                'Time to give crew to survive, in minutes',
+                'first input description input value is correct',
+            );
+            $t->element_exists(
+                '[name="input[0].default_value"]',
+                'first input default input exists',
+            );
+            $t->attr_is(
+                '[name="input[0].default_value"]',
+                value => '25',
+                'first input default value input value is correct',
+            );
+
+            $t->element_exists(
+                '[name="input[1].name"]',
+                'second input name input exists',
+            );
+            $t->attr_is(
+                '[name="input[1].name"]',
+                value => 'location',
+                'second input name input value is correct',
+            );
+            $t->element_exists(
+                '[name="input[1].type"]',
+                'second input type input exists',
+            );
+            $t->attr_is(
+                '[name="input[1].type"]',
+                value => 'string',
+                'second input type input value is correct',
+            );
+            $t->element_exists(
+                '[name="input[1].description"]',
+                'second input description input exists',
+            );
+            $t->text_is(
+                '[name="input[1].description"]',
+                'Where to place the bomb',
+                'second input description input value is correct',
+            );
+            $t->element_exists(
+                '[name="input[1].default_value"]',
+                'second input default input exists',
+            );
+            $t->attr_is(
+                '[name="input[1].default_value"]',
+                value => 'In the center',
+                'second input default value input value is correct',
+            );
+
+        };
 
         subtest 'task 0 form' => sub {
             $t->element_exists(
@@ -421,6 +540,14 @@ subtest 'edit existing plan' => sub {
             form => {
                 name => 'Save NNY',
                 description => 'Save New New York City',
+                'input[0].name' => 'location',
+                'input[0].type' => 'string',
+                'input[0].description' => 'Where to put the bomb',
+                'input[0].default_value' => 'In the center',
+                'input[1].name' => 'delay',
+                'input[1].type' => 'number',
+                'input[1].description' => 'Time to give crew to survive, in hours',
+                'input[1].default_value' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -505,6 +632,30 @@ subtest 'edit existing plan' => sub {
             task_id => $task_ids[1],
             parent_id => $task_ids[0],
         };
+
+        my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
+            {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => 'name',
+            },
+        );
+        is scalar @got_inputs, 2, 'got 2 inputs for plan';
+        is_deeply $got_inputs[0], {
+            plan_id => $plan_id,
+            name => 'delay',
+            type => 'number',
+            description => 'Time to give crew to survive, in hours',
+            default_value => encode_json( '0.4' ),
+        };
+        is_deeply $got_inputs[1], {
+            plan_id => $plan_id,
+            name => 'location',
+            type => 'string',
+            description => 'Where to put the bomb',
+            default_value => encode_json( 'In the center' ),
+        };
     };
 
     subtest 'add task to plan' => sub {
@@ -512,6 +663,14 @@ subtest 'edit existing plan' => sub {
             form => {
                 name => 'Save NNY',
                 description => 'Save New New York City',
+                'input[0].name' => 'location',
+                'input[0].type' => 'string',
+                'input[0].description' => 'Where to put the bomb',
+                'input[0].default_value' => 'In the center',
+                'input[1].name' => 'delay',
+                'input[1].type' => 'number',
+                'input[1].description' => 'Time to give crew to survive, in hours',
+                'input[1].default_value' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -619,6 +778,30 @@ subtest 'edit existing plan' => sub {
             task_id => $got_tasks[2]{task_id},
             parent_id => $task_ids[0],
         };
+
+        my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
+            {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => 'name',
+            },
+        );
+        is scalar @got_inputs, 2, 'got 2 inputs for plan';
+        is_deeply $got_inputs[0], {
+            plan_id => $plan_id,
+            name => 'delay',
+            type => 'number',
+            description => 'Time to give crew to survive, in hours',
+            default_value => encode_json( '0.4' ),
+        };
+        is_deeply $got_inputs[1], {
+            plan_id => $plan_id,
+            name => 'location',
+            type => 'string',
+            description => 'Where to put the bomb',
+            default_value => encode_json( 'In the center' ),
+        };
     };
 
     subtest 'remove task from plan' => sub {
@@ -626,6 +809,14 @@ subtest 'edit existing plan' => sub {
             form => {
                 name => 'Save NNY',
                 description => 'Save New New York City',
+                'input[0].name' => 'prank_name',
+                'input[0].type' => 'string',
+                'input[0].description' => 'A funny name to demoralize the Mighty One',
+                'input[0].default_value' => 'I.C. Weiner',
+                'input[1].name' => 'delay',
+                'input[1].type' => 'number',
+                'input[1].description' => 'Time to give crew to survive, in hours',
+                'input[1].default_value' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -709,6 +900,111 @@ subtest 'edit existing plan' => sub {
         };
     };
 
+    subtest 'remove input from plan' => sub {
+        $t->post_ok( "/plan/$plan_id",
+            form => {
+                name => 'Save NNY',
+                description => 'Save New New York City',
+                'input[0].name' => 'delay',
+                'input[0].type' => 'number',
+                'input[0].description' => 'Time to give crew to survive, in minutes',
+                'input[0].default_value' => '60',
+                'task[0].task_id' => $task_ids[0],
+                'task[0].class' => 'Zapp::Task::Script',
+                'task[0].name' => 'Build',
+                'task[0].description' => 'Build a bomb',
+                'task[0].args.script' => 'make thebomb',
+                'task[1].task_id' => $task_ids[1],
+                'task[1].class' => 'Zapp::Task::Assert',
+                'task[1].name' => 'Verify Bomb',
+                'task[1].description' => 'Make sure this time',
+                'task[1].args[0].expr' => 'bomb.orientation',
+                'task[1].args[0].op' => '!=',
+                'task[1].args[0].value' => 'reverse',
+                'task[1].args[1].expr' => 'bomb.timer',
+                'task[1].args[1].op' => '==',
+                'task[1].args[1].value' => '25:00',
+            },
+        );
+        $t->status_is( 302 );
+        $t->header_is( Location => "/plan/$plan_id" );
+
+        my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
+            {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => 'name',
+            },
+        );
+        is scalar @got_inputs, 1, 'got 1 inputs for plan';
+        is_deeply $got_inputs[0], {
+            plan_id => $plan_id,
+            name => 'delay',
+            type => 'number',
+            description => 'Time to give crew to survive, in minutes',
+            default_value => encode_json( '60' ),
+        };
+    };
+
+    subtest 'add input to plan' => sub {
+        $t->post_ok( "/plan/$plan_id",
+            form => {
+                name => 'Save NNY',
+                description => 'Save New New York City',
+                'input[0].name' => 'delay',
+                'input[0].type' => 'number',
+                'input[0].description' => 'Time to give crew to survive, in minutes',
+                'input[0].default_value' => '60',
+                'input[1].name' => 'location',
+                'input[1].type' => 'string',
+                'input[1].description' => 'Where to place the bomb',
+                'input[1].default_value' => 'In the center',
+                'task[0].task_id' => $task_ids[0],
+                'task[0].class' => 'Zapp::Task::Script',
+                'task[0].name' => 'Build',
+                'task[0].description' => 'Build a bomb',
+                'task[0].args.script' => 'make thebomb',
+                'task[1].task_id' => $task_ids[1],
+                'task[1].class' => 'Zapp::Task::Assert',
+                'task[1].name' => 'Verify Bomb',
+                'task[1].description' => 'Make sure this time',
+                'task[1].args[0].expr' => 'bomb.orientation',
+                'task[1].args[0].op' => '!=',
+                'task[1].args[0].value' => 'reverse',
+                'task[1].args[1].expr' => 'bomb.timer',
+                'task[1].args[1].op' => '==',
+                'task[1].args[1].value' => '25:00',
+            },
+        );
+        $t->status_is( 302 );
+        $t->header_is( Location => "/plan/$plan_id" );
+
+        my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
+            {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => 'name',
+            },
+        );
+        is scalar @got_inputs, 2, 'got 1 inputs for plan';
+        is_deeply $got_inputs[0], {
+            plan_id => $plan_id,
+            name => 'delay',
+            type => 'number',
+            description => 'Time to give crew to survive, in minutes',
+            default_value => encode_json( '60' ),
+        };
+        is_deeply $got_inputs[1], {
+            plan_id => $plan_id,
+            name => 'location',
+            type => 'string',
+            description => 'Where to place the bomb',
+            default_value => encode_json( 'In the center' ),
+        };
+    };
+
 };
 
 subtest 'list plans' => sub {
@@ -758,13 +1054,18 @@ sub Test::Yancy::clear_backend {
     my ( $self ) = @_;
     my %tables = (
         zapp_plans => 'plan_id',
+        zapp_plan_inputs => [ 'plan_id', 'name' ],
         zapp_tasks => 'task_id',
         zapp_task_parents => 'task_id',
     );
     for my $table ( keys %tables ) {
         my $id_field = $tables{ $table };
         for my $item ( $self->app->yancy->list( $table ) ) {
-            $self->app->yancy->backend->delete( $table => $item->{ $id_field } );
+            my $id = ref $id_field eq 'ARRAY'
+                ? { map { $_ => $item->{ $_ } } @$id_field }
+                : $item->{ $id_field }
+                ;
+            $self->app->yancy->backend->delete( $table => $id );
         }
     }
 }
@@ -772,8 +1073,14 @@ sub Test::Yancy::clear_backend {
 sub Test::Zapp::create_plan {
     my ( $self, $plan ) = @_;
 
+    my @inputs = @{ delete $plan->{inputs} // [] };
     my @tasks = @{ delete $plan->{tasks} // [] };
     my $plan_id = $t->app->yancy->create( zapp_plans => $plan );
+
+    for my $input ( @inputs ) {
+        $input->{plan_id} = $plan_id;
+        $t->app->yancy->create( zapp_plan_inputs => $input );
+    }
 
     my $prev_task_id;
     for my $task ( @tasks ) {

@@ -57,6 +57,29 @@
         <textarea id="description" name="description" placeholder="Description"><%= $plan->{description} %></textarea>
     </div>
 
+    <div class="input-container">
+        <h2>Input</h2>
+        <div id="all-inputs">
+            % for my $input_num ( 0 .. $#{ $plan->{inputs} } ) {
+                % my $input = $plan->{inputs}[ $input_num ];
+                <div input-form>
+                    %= text_field "input[$input_num].name", $input->{name}
+                    %= hidden_field "input[$input_num].type", $input->{type}
+                    %= $input->{type}
+                    %= text_field "input[$input_num].default_value", $input->{default_value}
+                    %= text_area "input[$input_num].description", $input->{description}
+                </div>
+            % }
+        </div>
+        <div>
+            <select class="add-input">
+                <option>Add Input...</option>
+                % for my $type ( qw( string number integer boolean ) ) {
+                    %= tag option => ( value => $type ), ucfirst $type
+                % }
+            </select>
+        </div>
+    </div>
     <div class="task-container">
         <h2>Tasks</h2>
         <div id="all-tasks">
