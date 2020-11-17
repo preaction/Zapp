@@ -32,6 +32,9 @@ my $t = Test::Mojo->with_roles('+Selenium')->new( 'Zapp', {
     backend => {
         mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
     },
+    minion => {
+        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
+    },
 } );
 $t->setup_or_skip_all;
 
@@ -102,7 +105,7 @@ subtest 'create a plan' => sub {
     is $got_plan->{description}, 'Stop the femolution!', 'plan description correct';
 
     my @got_tasks = $t->app->yancy->list(
-        zapp_tasks => {
+        zapp_plan_tasks => {
             plan_id => $plan_id,
         },
         {
@@ -159,7 +162,7 @@ subtest 'create a plan' => sub {
     is scalar @got_parents, 1, 'got 1 relationship for plan';
     is_deeply $got_parents[0], {
         task_id => $got_tasks[1]{task_id},
-        parent_id => $got_tasks[0]{task_id},
+        parent_task_id => $got_tasks[0]{task_id},
     };
 
 
@@ -172,7 +175,7 @@ subtest 'edit a plan' => sub {
     } );
 
     my @task_ids = (
-        $t->app->yancy->create( zapp_tasks => {
+        $t->app->yancy->create( zapp_plan_tasks => {
             plan_id => $plan_id,
             name => 'Deploy the Bomb',
             description => 'Deploy the bomb between the Bart Simpson dolls.',
@@ -182,7 +185,7 @@ subtest 'edit a plan' => sub {
             }),
         } ),
 
-        $t->app->yancy->create( zapp_tasks => {
+        $t->app->yancy->create( zapp_plan_tasks => {
             plan_id => $plan_id,
             name => 'Verify bomb placement',
             description => q{Let's blow it up already!},
@@ -199,7 +202,7 @@ subtest 'edit a plan' => sub {
 
     $t->app->yancy->create( zapp_task_parents => {
         task_id => $task_ids[1],
-        parent_id => $task_ids[0],
+        parent_task_id => $task_ids[0],
     });
 
     $t->navigate_ok( '/plan/' . $plan_id )
@@ -273,7 +276,7 @@ subtest 'edit a plan' => sub {
         is $got_plan->{description}, 'Save New New York City', 'plan description correct';
 
         my @got_tasks = $t->app->yancy->list(
-            zapp_tasks => {
+            zapp_plan_tasks => {
                 plan_id => $plan_id,
             },
             {
@@ -324,7 +327,7 @@ subtest 'edit a plan' => sub {
         is scalar @got_parents, 1, 'got 1 relationship for plan';
         is_deeply $got_parents[0], {
             task_id => $task_ids[1],
-            parent_id => $task_ids[0],
+            parent_task_id => $task_ids[0],
         };
     };
 

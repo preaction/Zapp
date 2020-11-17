@@ -1,0 +1,23 @@
+
+%= form_for 'zapp.save_run' => begin
+    <h2>Input</h2>
+    % for my $input ( @{ $plan->{inputs} // [] } ) {
+        % my $field_name = 'input.' . $input->{name};
+        <label><%= $input->{name} %></label>
+        % if ( $input->{type} eq 'boolean' ) {
+            %= check_box $field_name
+        % }
+        % elsif ( $input->{type} eq 'number' ) {
+            %= number_field $field_name
+        % }
+        % elsif ( $input->{type} eq 'integer' ) {
+            %= number_field $field_name, step => 1
+        % }
+        % else {
+            %= text_field $field_name
+        % }
+        <small><%= $input->{description} %></small>
+    % }
+    <button>Run</button>
+% end
+

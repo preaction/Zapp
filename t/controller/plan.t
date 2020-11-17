@@ -11,10 +11,18 @@ use Test::More;
 use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
 
-my $mysqld = Test::mysqld->new or plan skip_all => $Test::mysqld::errstr;
+my $mysqld = Test::mysqld->new(
+    my_cnf => {
+        # Needed for Minion::Backend::mysql
+        log_bin_trust_function_creators => 1,
+    },
+) or plan skip_all => $Test::mysqld::errstr;
 
 my $t = Test::Mojo->new( 'Zapp', {
     backend => {
+        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
+    },
+    minion => {
         mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
     },
 } );
@@ -128,7 +136,7 @@ subtest 'create new plan' => sub {
         is $got_plan->{description}, 'Save the mighty one, save the universe.', 'plan description correct';
 
         my @got_tasks = $t->app->yancy->list(
-            zapp_tasks => {
+            zapp_plan_tasks => {
                 plan_id => $plan_id,
             },
             {
@@ -179,7 +187,7 @@ subtest 'create new plan' => sub {
         is scalar @got_parents, 1, 'got 1 relationship for plan';
         is_deeply $got_parents[0], {
             task_id => $got_tasks[1]{task_id},
-            parent_id => $got_tasks[0]{task_id},
+            parent_task_id => $got_tasks[0]{task_id},
         };
 
         my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
@@ -574,7 +582,7 @@ subtest 'edit existing plan' => sub {
         is $got_plan->{description}, 'Save New New York City', 'plan description correct';
 
         my @got_tasks = $t->app->yancy->list(
-            zapp_tasks => {
+            zapp_plan_tasks => {
                 plan_id => $plan_id,
             },
             {
@@ -630,7 +638,7 @@ subtest 'edit existing plan' => sub {
         is scalar @got_parents, 1, 'got 1 relationship for plan';
         is_deeply $got_parents[0], {
             task_id => $task_ids[1],
-            parent_id => $task_ids[0],
+            parent_task_id => $task_ids[0],
         };
 
         my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
@@ -696,7 +704,7 @@ subtest 'edit existing plan' => sub {
         $t->header_is( Location => "/plan/$plan_id" );
 
         my @got_tasks = $t->app->yancy->list(
-            zapp_tasks => {
+            zapp_plan_tasks => {
                 plan_id => $plan_id,
             },
             {
@@ -772,11 +780,11 @@ subtest 'edit existing plan' => sub {
 
         is_deeply $got_parents[0], {
             task_id => $task_ids[1],
-            parent_id => $got_tasks[2]{task_id},
+            parent_task_id => $got_tasks[2]{task_id},
         };
         is_deeply $got_parents[1], {
             task_id => $got_tasks[2]{task_id},
-            parent_id => $task_ids[0],
+            parent_task_id => $task_ids[0],
         };
 
         my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
@@ -838,7 +846,7 @@ subtest 'edit existing plan' => sub {
         $t->header_is( Location => "/plan/$plan_id" );
 
         my @got_tasks = $t->app->yancy->list(
-            zapp_tasks => {
+            zapp_plan_tasks => {
                 plan_id => $plan_id,
             },
             {
@@ -896,7 +904,7 @@ subtest 'edit existing plan' => sub {
         is scalar @got_parents, 1, 'got 1 relationship for plan';
         is_deeply $got_parents[0], {
             task_id => $task_ids[1],
-            parent_id => $task_ids[0],
+            parent_task_id => $task_ids[0],
         };
     };
 
@@ -1028,24 +1036,110 @@ subtest 'list plans' => sub {
         ->text_like( 'section:nth-child(1) h2', qr{Deliver a package} )
         ->text_like( 'section:nth-child(1) .description', qr{To a dangerous place} )
         ->element_exists( 'section:nth-child(1) a.run', 'run button exists' )
-        ->attr_is( 'section:nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run' )
+        ->attr_is( 'section:nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run/' )
         ->element_exists( 'section:nth-child(1) a.edit', 'edit button exists' )
         ->attr_is( 'section:nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} )
 
         ->text_like( 'section:nth-child(2) h2', qr{Clean the ship} )
         ->text_like( 'section:nth-child(2) .description', qr{Of any remains of the crew} )
         ->element_exists( 'section:nth-child(2) a.run', 'run button exists' )
-        ->attr_is( 'section:nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run' )
+        ->attr_is( 'section:nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run/' )
         ->element_exists( 'section:nth-child(2) a.edit', 'edit button exists' )
         ->attr_is( 'section:nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} )
 
         ->text_like( 'section:nth-child(3) h2', qr{Find a replacement crew} )
         ->text_like( 'section:nth-child(3) .description', qr{After their inevitable deaths} )
         ->element_exists( 'section:nth-child(3) a.run', 'run button exists' )
-        ->attr_is( 'section:nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run' )
+        ->attr_is( 'section:nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run/' )
         ->element_exists( 'section:nth-child(3) a.edit', 'edit button exists' )
         ->attr_is( 'section:nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} )
         ;
+};
+
+subtest 'run a plan' => sub {
+    $t->Test::Yancy::clear_backend;
+    my $plan = $t->Test::Zapp::create_plan({
+        name => 'Deliver a package',
+        description => 'To a dangerous place',
+        tasks => [
+            {
+                name => 'Plan trip',
+                class => 'Zapp::Task::Echo',
+                args => encode_json({
+                    destination => 'Chapek 9',
+                }),
+            },
+            {
+                name => 'Deliver package',
+                class => 'Zapp::Task::Echo',
+                args => encode_json({
+                    delivery_address => 'Certain Doom',
+                }),
+            },
+        ],
+        inputs => [
+            {
+                name => 'destination',
+                type => 'string',
+                description => 'Where to send the crew to their doom',
+                default_value => encode_json( 'Chapek 9' ),
+            },
+        ],
+    });
+    my $plan_id = $plan->{plan_id};
+
+    subtest 'create run form' => sub {
+        $t->get_ok( "/plan/$plan_id/run" )->status_is( 200 )
+            ->element_exists( "form[action=/plan/$plan_id/run", 'form exists' )
+            ->element_exists( '[name=input.destination]', 'input field exists' )
+            ;
+    };
+
+    subtest 'create a new run' => sub {
+        $t->post_ok(
+            "/plan/$plan_id/run",
+            form => {
+                'input.destination' => 'Galaxy of Terror',
+            } )
+            ->status_is( 302 )
+            ->header_like( Location => qr{/plan/$plan_id/run/\d+} )
+            ;
+        my ( $run_id ) = $t->tx->res->headers->location =~ m{/plan/\d+/run/(\d+)};
+
+        # Recorded in Zapp
+        my $run = $t->app->yancy->get( zapp_runs => $run_id );
+        is $run->{plan_id}, $plan_id, 'run plan_id is correct';
+        is_deeply decode_json( $run->{input_values} ), { destination => 'Galaxy of Terror' },
+            'run input is correct';
+
+        # Record all enqueued jobs so we can keep track of which Minion
+        # jobs were triggered by which Zapp run
+        my @jobs = $t->app->yancy->list(
+            zapp_run_jobs => { run_id => $run_id },
+            { order_by => { -asc => 'minion_job_id' } },
+        );
+        is scalar @jobs, 2, 'two run jobs created';
+
+        # Enqueued in Minion
+        my $mjob = $t->app->minion->job( $jobs[0]{minion_job_id} );
+        ok $mjob, 'minion job 1 exists';
+        # XXX: Test job attributes
+
+        $mjob = $t->app->minion->job( $jobs[1]{minion_job_id} );
+        ok $mjob, 'minion job 2 exists';
+        # XXX: Test job attributes
+    };
+
+    subtest 'view run status' => sub {
+        subtest 'before execution' => sub {
+            pass 'todo';
+        };
+
+        subtest 'after execution' => sub {
+            pass 'todo';
+        };
+    };
+
 };
 
 done_testing;
@@ -1055,7 +1149,7 @@ sub Test::Yancy::clear_backend {
     my %tables = (
         zapp_plans => 'plan_id',
         zapp_plan_inputs => [ 'plan_id', 'name' ],
-        zapp_tasks => 'task_id',
+        zapp_plan_tasks => 'task_id',
         zapp_task_parents => 'task_id',
     );
     for my $table ( keys %tables ) {
@@ -1085,11 +1179,11 @@ sub Test::Zapp::create_plan {
     my $prev_task_id;
     for my $task ( @tasks ) {
         $task->{plan_id} = $plan_id;
-        my $task_id = $t->app->yancy->create( zapp_tasks => $task );
+        my $task_id = $t->app->yancy->create( zapp_plan_tasks => $task );
         if ( $prev_task_id ) {
             $t->app->yancy->create( zapp_task_parents => {
                 task_id => $task_id,
-                parent_id => $prev_task_id,
+                parent_task_id => $prev_task_id,
             });
         }
         $prev_task_id = $task_id;

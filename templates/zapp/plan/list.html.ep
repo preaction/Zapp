@@ -3,7 +3,7 @@
     <section data-plan-id="<%= $plan->{plan_id} %>">
         <h2><%= $plan->{name} %></h2>
         <p class="description"><%= $plan->{description} %></p>
-        %= link_to 'Run', 'zapp.run_plan', $plan, class => 'btn btn-primary run'
+        %= link_to 'Run', 'zapp.edit_run', $plan, class => 'btn btn-primary run'
         %= link_to 'Edit', 'zapp.edit_plan', $plan, class => 'btn edit'
     </section>
 % }
