@@ -180,66 +180,21 @@ sub edit_run( $self ) {
 
 sub save_run( $self ) {
     my $plan_id = $self->stash( 'plan_id' );
-    my $queue = 'zapp'; # XXX: Allow choosing queue
     my $plan = $self->_get_plan( $plan_id );
 
     my $input = $self->build_data_from_params( 'input' );
-    $self->log->debug( 'Got input: ' . $self->dumper( $input ) );
-    my $run = {
-        plan_id => $plan->{plan_id},
-        # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        input_values => encode_json( $input ),
-    };
-
     my $run_id = $self->stash( 'run_id' );
     if ( !$run_id ) {
-        $run_id = $self->yancy->create( zapp_runs => $run );
+        my $run = $self->app->enqueue( $plan_id, $input );
+        $run_id = $run->{run_id};
     }
     else {
+        my $run = {
+            plan_id => $plan_id,
+            # XXX: Auto-encode/-decode JSON fields in Yancy schema
+            input_values => encode_json( $input ),
+        };
         $self->yancy->set( zapp_runs => $run_id, $run );
-    }
-
-    # Create Minion jobs for this run
-    my @tasks = $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
-    my %task_parents;
-    for my $task_id ( map $_->{task_id}, @tasks ) {
-        my @parents = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
-        $task_parents{ $task_id } = [ map $_->{parent_task_id}, @parents ];
-    }
-
-    my %task_jobs;
-    # Loop over tasks, making the job if the task's parents are made.
-    # Stop the loop once all tasks have jobs.
-    my $loops = @tasks * @tasks;
-    while ( @tasks != keys %task_jobs ) {
-        # Loop over any tasks that aren't made yet
-        for my $task ( grep !$task_jobs{ $_->{task_id} }, @tasks ) {
-            my $task_id = $task->{task_id};
-            # Skip if we haven't created all parents
-            next if $task_parents{ $task_id } && grep { !$task_jobs{ $_ } } $task_parents{ $task_id }->@*;
-
-            # XXX: Expose more Minion job configuration
-            my %job_opts;
-            if ( my @parents = $task_parents{ $task_id } ) {
-                $job_opts{ parents } = [ map $task_jobs{ $_ }, @parents ];
-            }
-
-            my $job_id = $self->minion->enqueue(
-                $queue => [], # \@args here is handled in Zapp::Task
-                \%job_opts,
-            );
-            $task_jobs{ $task_id } = $job_id;
-
-            $self->yancy->create( zapp_run_jobs => {
-                run_id => $run_id,
-                task_id => $task_id,
-                minion_job_id => $job_id,
-            } );
-        }
-        last if !$loops--;
-    }
-    if ( @tasks != keys %task_jobs ) {
-        $self->log->error( 'Could not create jobs: Infinite loop' );
     }
 
     $self->redirect_to( 'zapp.edit_run' => { run_id => $run_id } );

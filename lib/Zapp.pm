@@ -16,6 +16,7 @@ use v5.28;
 use Mojo::Base 'Mojolicious', -signatures;
 use Scalar::Util qw( blessed );
 use Yancy::Util qw( load_backend );
+use Mojo::JSON qw( encode_json );
 
 sub startup( $self ) {
 
@@ -66,6 +67,108 @@ sub startup( $self ) {
     $self->routes->get( '/plan/:plan_id/run/:run_id' )
         ->to( 'plan#get_run' )->name( 'zapp.get_run' );
 
+}
+
+=method create_plan
+
+Create a new plan and all related data.
+
+=cut
+
+# XXX: Make Yancy automatically handle relationships like this
+sub create_plan( $self, $plan ) {
+    my @inputs = @{ delete $plan->{inputs} // [] };
+    my @tasks = @{ delete $plan->{tasks} // [] };
+    my $plan_id = $self->yancy->create( zapp_plans => $plan );
+
+    for my $input ( @inputs ) {
+        $input->{plan_id} = $plan_id;
+        $self->yancy->create( zapp_plan_inputs => $input );
+    }
+
+    my $prev_task_id;
+    for my $task ( @tasks ) {
+        $task->{plan_id} = $plan_id;
+        my $task_id = $self->yancy->create( zapp_plan_tasks => $task );
+        if ( $prev_task_id ) {
+            $self->yancy->create( zapp_task_parents => {
+                task_id => $task_id,
+                parent_task_id => $prev_task_id,
+            });
+        }
+        $prev_task_id = $task_id;
+        $task->{ task_id } = $task_id;
+    }
+
+    $plan->{plan_id} = $plan_id;
+    $plan->{tasks} = \@tasks;
+
+    return $plan;
+}
+
+=method enqueue
+
+Enqueue a plan.
+
+=cut
+
+sub enqueue( $self, $plan_id, $input, %opt ) {
+    $opt{queue} ||= 'zapp';
+
+    my $run = {
+        plan_id => $plan_id,
+        # XXX: Auto-encode/-decode JSON fields in Yancy schema
+        input_values => encode_json( $input ),
+    };
+
+    my $run_id = $run->{run_id} = $self->yancy->create( zapp_runs => $run );
+
+    # Create Minion jobs for this run
+    my @tasks = $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
+    my %task_parents;
+    for my $task_id ( map $_->{task_id}, @tasks ) {
+        my @parents = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
+        $task_parents{ $task_id } = [ map $_->{parent_task_id}, @parents ];
+    }
+
+    my %task_jobs;
+    # Loop over tasks, making the job if the task's parents are made.
+    # Stop the loop once all tasks have jobs.
+    my $loops = @tasks * @tasks;
+    while ( @tasks != keys %task_jobs ) {
+        # Loop over any tasks that aren't made yet
+        for my $task ( grep !$task_jobs{ $_->{task_id} }, @tasks ) {
+            my $task_id = $task->{task_id};
+            # Skip if we haven't created all parents
+            next if $task_parents{ $task_id } && grep { !$task_jobs{ $_ } } $task_parents{ $task_id }->@*;
+
+            # XXX: Expose more Minion job configuration
+            my %job_opts;
+            if ( my @parents = $task_parents{ $task_id } ) {
+                $job_opts{ parents } = [ map $task_jobs{ $_ }, @parents ];
+            }
+
+            my $job_id = $self->minion->enqueue(
+                $opt{queue} => [], # \@args here is handled in Zapp::Task
+                \%job_opts,
+            );
+            $task_jobs{ $task_id } = $job_id;
+
+            push $run->{jobs}->@*,
+                $self->yancy->create( zapp_run_jobs => {
+                    run_id => $run_id,
+                    task_id => $task_id,
+                    minion_job_id => $job_id,
+                } );
+        }
+        last if !$loops--;
+    }
+    if ( @tasks != keys %task_jobs ) {
+        $self->log->error( 'Could not create jobs: Infinite loop' );
+        return undef;
+    }
+
+    return $run;
 }
 
 1;

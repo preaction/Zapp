@@ -27,10 +27,17 @@ my $t = Test::Mojo->new( 'Zapp', {
     },
 } );
 
+my $dump_debug = sub( $t ) {
+    diag $t->tx->res->dom->find(
+        '#error,#context,#insight,#trace,#log',
+    )->map('to_string')->each;
+};
+
 subtest 'create new plan' => sub {
 
     subtest 'new plan form' => sub {
         $t->get_ok( '/plan' )->status_is( 200 )
+            ->or( $dump_debug )
             ->element_exists( 'form#plan', 'form exists' )
             ->element_exists(
                 'label[for=name]',
@@ -212,7 +219,7 @@ subtest 'create new plan' => sub {
 
 subtest 'edit existing plan' => sub {
 
-    my $plan = $t->Test::Zapp::create_plan( {
+    my $plan = $t->app->create_plan( {
         name => 'Blow up Garbage Ball',
         description => 'Save New New York from certain, smelly doom.',
         tasks => [
@@ -1018,15 +1025,15 @@ subtest 'edit existing plan' => sub {
 subtest 'list plans' => sub {
     $t->Test::Yancy::clear_backend;
     my @plans = (
-        $t->Test::Zapp::create_plan({
+        $t->app->create_plan({
             name => 'Deliver a package',
             description => 'To a dangerous place',
         }),
-        $t->Test::Zapp::create_plan({
+        $t->app->create_plan({
             name => 'Clean the ship',
             description => 'Of any remains of the crew',
         }),
-        $t->Test::Zapp::create_plan({
+        $t->app->create_plan({
             name => 'Find a replacement crew',
             description => 'After their inevitable deaths',
         }),
@@ -1058,7 +1065,7 @@ subtest 'list plans' => sub {
 
 subtest 'run a plan' => sub {
     $t->Test::Yancy::clear_backend;
-    my $plan = $t->Test::Zapp::create_plan({
+    my $plan = $t->app->create_plan({
         name => 'Deliver a package',
         description => 'To a dangerous place',
         tasks => [
@@ -1101,7 +1108,7 @@ subtest 'run a plan' => sub {
             form => {
                 'input.destination' => 'Galaxy of Terror',
             } )
-            ->status_is( 302 )
+            ->status_is( 302 )->or( $dump_debug )
             ->header_like( Location => qr{/plan/$plan_id/run/\d+} )
             ;
         my ( $run_id ) = $t->tx->res->headers->location =~ m{/plan/\d+/run/(\d+)};
@@ -1162,37 +1169,5 @@ sub Test::Yancy::clear_backend {
             $self->app->yancy->backend->delete( $table => $id );
         }
     }
-}
-
-sub Test::Zapp::create_plan {
-    my ( $self, $plan ) = @_;
-
-    my @inputs = @{ delete $plan->{inputs} // [] };
-    my @tasks = @{ delete $plan->{tasks} // [] };
-    my $plan_id = $t->app->yancy->create( zapp_plans => $plan );
-
-    for my $input ( @inputs ) {
-        $input->{plan_id} = $plan_id;
-        $t->app->yancy->create( zapp_plan_inputs => $input );
-    }
-
-    my $prev_task_id;
-    for my $task ( @tasks ) {
-        $task->{plan_id} = $plan_id;
-        my $task_id = $t->app->yancy->create( zapp_plan_tasks => $task );
-        if ( $prev_task_id ) {
-            $t->app->yancy->create( zapp_task_parents => {
-                task_id => $task_id,
-                parent_task_id => $prev_task_id,
-            });
-        }
-        $prev_task_id = $task_id;
-        $task->{ task_id } = $task_id;
-    }
-
-    $plan->{plan_id} = $plan_id;
-    $plan->{tasks} = \@tasks;
-
-    return $plan;
 }
 
