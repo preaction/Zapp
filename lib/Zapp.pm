@@ -16,7 +16,8 @@ use v5.28;
 use Mojo::Base 'Mojolicious', -signatures;
 use Scalar::Util qw( blessed );
 use Yancy::Util qw( load_backend );
-use Mojo::JSON qw( encode_json );
+use Mojo::JSON qw( encode_json decode_json );
+use Mojo::Loader qw( find_modules load_class );
 
 sub startup( $self ) {
 
@@ -39,6 +40,18 @@ sub startup( $self ) {
         ->migrate;
 
     $self->plugin( Minion => $self->config->{ minion }->%* );
+
+    # XXX: Allow additional task namespaces
+    for my $class ( find_modules 'Zapp::Task' ) {
+        next if $class eq 'Zapp::Task';
+        if ( my $e = load_class( $class ) ) {
+            $self->log->error( sprintf "Could not load task class %s: %s", $class, $e );
+            next;
+        }
+        ; say "Adding task class: $class";
+        $self->minion->add_task( $class, $class );
+    }
+
     $self->plugin( Yancy =>
         $self->config->%{qw( backend )},
         schema => {
@@ -148,8 +161,14 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
                 $job_opts{ parents } = [ map $task_jobs{ $_ }, @parents ];
             }
 
+            my $args = decode_json( $task->{args} );
+            if ( ref $args ne 'ARRAY' ) {
+                $args = [ $args ];
+            }
+
+            $self->log->debug( sprintf 'Enqueuing task %s', $task->{class} );
             my $job_id = $self->minion->enqueue(
-                $opt{queue} => [], # \@args here is handled in Zapp::Task
+                $task->{class} => $args,
                 \%job_opts,
             );
             $task_jobs{ $task_id } = $job_id;
@@ -214,10 +233,10 @@ CREATE TABLE zapp_runs (
 );
 
 CREATE TABLE zapp_run_jobs (
-    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     minion_job_id BIGINT NOT NULL,
+    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
-    PRIMARY KEY ( run_id, minion_job_id )
+    PRIMARY KEY ( minion_job_id )
 );
 
 @@ migrations.sqlite.sql
@@ -262,10 +281,10 @@ CREATE TABLE zapp_runs (
 );
 
 CREATE TABLE zapp_run_jobs (
-    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     minion_job_id BIGINT NOT NULL,
+    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
-    PRIMARY KEY ( run_id, minion_job_id )
+    PRIMARY KEY ( minion_job_id )
 );
 
 

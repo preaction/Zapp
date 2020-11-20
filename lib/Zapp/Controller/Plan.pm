@@ -26,23 +26,14 @@ sub _get_plan( $self, $plan_id ) {
 }
 
 sub edit_plan( $self ) {
-
-    #***********************************************
-    use Zapp::Task::Request;
-    use Zapp::Task::Assert;
-    use Zapp::Task::Script;
-
-    #***********************************************
-
+    my @tasks =
+        sort grep { !ref $_ && eval { $_->isa('Zapp::Task') } }
+        values $self->minion->tasks->%*;
     my $plan = $self->_get_plan( $self->stash( 'plan_id' ) );
     return $self->render(
         'zapp/plan/edit',
         plan => $plan,
-        tasks => [
-            qw( Zapp::Task::Assert ),
-            qw( Zapp::Task::Request ),
-            qw( Zapp::Task::Script ),
-        ],
+        tasks => \@tasks,
     );
 }
 
