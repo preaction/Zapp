@@ -80,41 +80,31 @@ subtest 'create new plan' => sub {
             )
             ->text_is(
                 'select.add-task option:nth-child(2)',
-                'Assert',
-                'first task option text is correct',
-            )
-            ->attr_is(
-                'select.add-task option:nth-child(2)',
-                value => 'Zapp::Task::Assert',
-                'first task option value is correct',
-            )
-            ->text_is(
-                'select.add-task option:nth-child(3)',
                 'Echo',
                 'second task option text is correct',
             )
             ->attr_is(
-                'select.add-task option:nth-child(3)',
+                'select.add-task option:nth-child(2)',
                 value => 'Zapp::Task::Echo',
                 'second task option value is correct',
             )
             ->text_is(
-                'select.add-task option:nth-child(4)',
+                'select.add-task option:nth-child(3)',
                 'Request',
                 'third task option text is correct',
             )
             ->attr_is(
-                'select.add-task option:nth-child(4)',
+                'select.add-task option:nth-child(3)',
                 value => 'Zapp::Task::Request',
                 'third task option value is correct',
             )
             ->text_is(
-                'select.add-task option:nth-child(5)',
+                'select.add-task option:nth-child(4)',
                 'Script',
                 'fourth task option text is correct',
             )
             ->attr_is(
-                'select.add-task option:nth-child(5)',
+                'select.add-task option:nth-child(4)',
                 value => 'Zapp::Task::Script',
                 'fourth task option value is correct',
             )
@@ -373,41 +363,31 @@ subtest 'edit existing plan' => sub {
             )
             ->text_is(
                 'select.add-task option:nth-child(2)',
-                'Assert',
-                'first task option text is correct',
-            )
-            ->attr_is(
-                'select.add-task option:nth-child(2)',
-                value => 'Zapp::Task::Assert',
-                'first task option value is correct',
-            )
-            ->text_is(
-                'select.add-task option:nth-child(3)',
                 'Echo',
                 'second task option text is correct',
             )
             ->attr_is(
-                'select.add-task option:nth-child(3)',
+                'select.add-task option:nth-child(2)',
                 value => 'Zapp::Task::Echo',
                 'second task option value is correct',
             )
             ->text_is(
-                'select.add-task option:nth-child(4)',
+                'select.add-task option:nth-child(3)',
                 'Request',
                 'third task option text is correct',
             )
             ->attr_is(
-                'select.add-task option:nth-child(4)',
+                'select.add-task option:nth-child(3)',
                 value => 'Zapp::Task::Request',
                 'third task option value is correct',
             )
             ->text_is(
-                'select.add-task option:nth-child(5)',
+                'select.add-task option:nth-child(4)',
                 'Script',
                 'fourth task option text is correct',
             )
             ->attr_is(
-                'select.add-task option:nth-child(5)',
+                'select.add-task option:nth-child(4)',
                 value => 'Zapp::Task::Script',
                 'fourth task option value is correct',
             )
