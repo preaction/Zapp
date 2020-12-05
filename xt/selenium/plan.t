@@ -66,29 +66,40 @@ subtest 'create a plan' => sub {
       ->send_keys_ok( '[name="task[0].args.url"]', 'http://example.com' )
       ;
 
-    # Add an Assertion
-    $t->click_ok( 'select.add-task' )
-      ->click_ok( 'select.add-task option[value="Zapp::Task::Assert"]' )
-      ->wait_for( '[name="task[1].name"]' )
+    # Add a test
+    $t->click_ok( '#all-tasks :nth-child(1) button.test-add' )
+      ->wait_for( '[name="task[0].tests[0].expr"]' )
+      ->send_keys_ok( '[name="task[0].tests[0].expr"]', 'frequency' )
+      ->click_ok( '[name="task[0].tests[0].op"]' )
+      ->click_ok( '[name="task[0].tests[0].op"] option[value="=="]' )
+      ->send_keys_ok( '[name="task[0].tests[0].value"]', '1138' )
+      ;
 
-      ->live_element_exists(
-          '[name="task[1].args[0].expr"] ~ [name="task[1].args[0].op"] ~ [name="task[1].args[0].value"]',
-          'First, empty assertion row exists',
-        )
+    # Add a Request
+    $t->click_ok( 'select.add-task' )
+      ->click_ok( 'select.add-task option[value="Zapp::Task::Request"]' )
+      ->wait_for( '[name="task[1].name"]' )
 
       ->send_keys_ok( '[name="task[1].name"]', 'Open a hailing channel' )
       ->send_keys_ok( '[name="task[1].description"]', 'For my victory yodel' )
-      ->send_keys_ok( '[name="task[1].args[0].expr"]', 'frequency' )
-      ->click_ok( '[name="task[1].args[0].op"]' )
-      ->click_ok( '[name="task[1].args[0].op"] option[value="=="]' )
-      ->send_keys_ok( '[name="task[1].args[0].value"]', '1138' )
+      ->send_keys_ok( '[name="task[1].args.url"]', 'http://example.com' )
+      ;
 
-      ->click_ok( 'button[name=assert-add]' )
-      ->wait_for( '[name="task[1].args[1].expr"]' )
-      ->send_keys_ok( '[name="task[1].args[1].expr"]', 'volume' )
-      ->click_ok( '[name="task[1].args[1].op"]' )
-      ->click_ok( '[name="task[1].args[1].op"] option[value=">"]' )
-      ->send_keys_ok( '[name="task[1].args[1].value"]', 'loud' )
+    # Add a test
+    $t->click_ok( '#all-tasks :nth-child(2) button.test-add' )
+      ->wait_for( '[name="task[1].tests[0].expr"]' )
+      ->send_keys_ok( '[name="task[1].tests[0].expr"]', 'frequency' )
+      ->click_ok( '[name="task[1].tests[0].op"]' )
+      ->click_ok( '[name="task[1].tests[0].op"] option[value="=="]' )
+      ->send_keys_ok( '[name="task[1].tests[0].value"]', '1138' )
+      ;
+
+    $t->click_ok( '#all-tasks :nth-child(2) button.test-add' )
+      ->wait_for( '[name="task[1].tests[1].expr"]' )
+      ->send_keys_ok( '[name="task[1].tests[1].expr"]', 'volume' )
+      ->click_ok( '[name="task[1].tests[1].op"]' )
+      ->click_ok( '[name="task[1].tests[1].op"] option[value=">"]' )
+      ->send_keys_ok( '[name="task[1].tests[1].value"]', 'loud' )
       ;
 
     # Save the plan
@@ -138,21 +149,13 @@ subtest 'create a plan' => sub {
         {
             plan_id => $got_plan->{plan_id},
             task_id => $got_tasks[1]{task_id},
-            class =>'Zapp::Task::Assert',
+            class =>'Zapp::Task::Request',
             name => 'Open a hailing channel',
             description => 'For my victory yodel',
-            args => [
-                {
-                    expr => 'frequency',
-                    op => '==',
-                    value => '1138',
-                },
-                {
-                    expr => 'volume',
-                    op => '>',
-                    value => 'loud',
-                },
-            ],
+            args => {
+                method => 'GET',
+                url => 'http://example.com',
+            },
         },
         'task 2 is correct';
 
@@ -165,6 +168,45 @@ subtest 'create a plan' => sub {
         parent_task_id => $got_tasks[0]{task_id},
     };
 
+    my @got_tests = $t->app->yancy->list(
+        zapp_plan_tests => {
+            plan_id => $plan_id,
+        },
+        {
+            order_by => [ qw( test_id task_id ) ],
+        },
+    );
+    is scalar @got_tests, 3, 'got 3 tests for plan';
+    is_deeply $got_tests[0],
+        {
+            test_id => $got_tests[0]{test_id},
+            plan_id => $plan_id,
+            task_id => $got_tasks[0]{task_id},
+            expr => 'frequency',
+            op => '==',
+            value => '1138',
+        },
+        'task 1 test 1 is correct';
+    is_deeply $got_tests[1],
+        {
+            test_id => $got_tests[1]{test_id},
+            plan_id => $plan_id,
+            task_id => $got_tasks[1]{task_id},
+            expr => 'frequency',
+            op => '==',
+            value => '1138',
+        },
+        'task 2 test 1 is correct';
+    is_deeply $got_tests[2],
+        {
+            test_id => $got_tests[2]{test_id},
+            plan_id => $plan_id,
+            task_id => $got_tasks[1]{task_id},
+            expr => 'volume',
+            op => '>',
+            value => 'loud',
+        },
+        'task 2 test 2 is correct';
 
 };
 
@@ -189,14 +231,34 @@ subtest 'edit a plan' => sub {
             plan_id => $plan_id,
             name => 'Verify bomb placement',
             description => q{Let's blow it up already!},
-            class => 'Zapp::Task::Assert',
-            args => encode_json([
-                {
-                    expr => 'bomb.timer',
-                    op => '==',
-                    value => '25:00',
-                },
-            ]),
+            class => 'Zapp::Task::Script',
+            args => encode_json({
+                script => 'make check',
+            }),
+        } ),
+    );
+
+    my @test_ids = (
+        $t->app->yancy->create( zapp_plan_tests => {
+            plan_id => $plan_id,
+            task_id => $task_ids[0],
+            expr => 'exit',
+            op => '==',
+            value => '0',
+        } ),
+        $t->app->yancy->create( zapp_plan_tests => {
+            plan_id => $plan_id,
+            task_id => $task_ids[1],
+            expr => 'bomb.timer',
+            op => '==',
+            value => '25:00',
+        } ),
+        $t->app->yancy->create( zapp_plan_tests => {
+            plan_id => $plan_id,
+            task_id => $task_ids[1],
+            expr => 'bomb.rotation',
+            op => '==',
+            value => '180',
         } ),
     );
 
@@ -218,13 +280,22 @@ subtest 'edit a plan' => sub {
         ->live_value_is( '[name="task[0].name"]', 'Deploy the Bomb' )
         ->live_value_is( '[name="task[0].description"]', 'Deploy the bomb between the Bart Simpson dolls.' )
         ->live_value_is( '[name="task[0].args.script"]', "liftoff;\ndrop the_bomb\n" )
-        ->live_value_is( '[name="task[1].class"]', 'Zapp::Task::Assert' )
+        ->live_value_is( '[name="task[0].tests[0].test_id"]', $test_ids[0] )
+        ->live_value_is( '[name="task[0].tests[0].expr"]', 'exit' )
+        ->live_value_is( '[name="task[0].tests[0].op"]', '==' )
+        ->live_value_is( '[name="task[0].tests[0].value"]', '0' )
+        ->live_value_is( '[name="task[1].class"]', 'Zapp::Task::Script' )
         ->live_value_is( '[name="task[1].task_id"]', $task_ids[1] )
         ->live_value_is( '[name="task[1].name"]', 'Verify bomb placement' )
         ->live_value_is( '[name="task[1].description"]', q{Let's blow it up already!} )
-        ->live_value_is( '[name="task[1].args[0].expr"]', 'bomb.timer' )
-        ->live_value_is( '[name="task[1].args[0].op"]', '==' )
-        ->live_value_is( '[name="task[1].args[0].value"]', '25:00' )
+        ->live_value_is( '[name="task[1].tests[0].test_id"]', $test_ids[1] )
+        ->live_value_is( '[name="task[1].tests[0].expr"]', 'bomb.timer' )
+        ->live_value_is( '[name="task[1].tests[0].op"]', '==' )
+        ->live_value_is( '[name="task[1].tests[0].value"]', '25:00' )
+        ->live_value_is( '[name="task[1].tests[1].test_id"]', $test_ids[2] )
+        ->live_value_is( '[name="task[1].tests[1].expr"]', 'bomb.rotation' )
+        ->live_value_is( '[name="task[1].tests[1].op"]', '==' )
+        ->live_value_is( '[name="task[1].tests[1].value"]', '180' )
         ;
 
     # Update existing task information
@@ -242,25 +313,25 @@ subtest 'edit a plan' => sub {
         ->send_keys_ok( '[name="task[1].name"]', 'Verify Bomb' )
         ->main::clear_ok( '[name="task[1].description"]' )
         ->send_keys_ok( '[name="task[1].description"]', 'Make sure this time' )
-        ->main::clear_ok( '[name="task[1].args[0].expr"]' )
-        ->send_keys_ok( '[name="task[1].args[0].expr"]', 'bomb.orientation' )
-        ->click_ok( '[name="task[1].args[0].op"]' )
-        ->click_ok( '[name="task[1].args[0].op"] option[value="!="]' )
-        ->main::clear_ok( '[name="task[1].args[0].value"]' )
-        ->send_keys_ok( '[name="task[1].args[0].value"]', 'reverse' )
+        ->main::clear_ok( '[name="task[1].tests[0].expr"]' )
+        ->send_keys_ok( '[name="task[1].tests[0].expr"]', 'bomb.orientation' )
+        ->click_ok( '[name="task[1].tests[0].op"]' )
+        ->click_ok( '[name="task[1].tests[0].op"] option[value="!="]' )
+        ->main::clear_ok( '[name="task[1].tests[0].value"]' )
+        ->send_keys_ok( '[name="task[1].tests[0].value"]', 'reverse' )
         ;
 
-    # Add a new assertion
-    $t->click_ok( '[name=assert-add]' )
-        ->wait_for( '[name="task[1].args[1].expr"]' )
-        ->send_keys_ok( '[name="task[1].args[1].expr"]', 'bomb.timer' )
-        ->click_ok( '[name="task[1].args[1].op"]' )
-        ->click_ok( '[name="task[1].args[1].op"] option[value="=="]' )
-        ->send_keys_ok( '[name="task[1].args[1].value"]', '25:00' )
+    # Add a new test
+    $t->click_ok( '#all-tasks :nth-child(1) button.test-add' )
+        ->wait_for( '[name="task[0].tests[1].expr"]' )
+        ->send_keys_ok( '[name="task[0].tests[1].expr"]', 'bomb.timer' )
+        ->click_ok( '[name="task[0].tests[1].op"]' )
+        ->click_ok( '[name="task[0].tests[1].op"] option[value="=="]' )
+        ->send_keys_ok( '[name="task[0].tests[1].value"]', '25:00' )
         ;
 
-    # Remove the new assertion
-    $t->click_ok( '[name="task[1].args[1].expr"] ~ button[name=assert-remove]' )
+    # Remove the new test
+    $t->click_ok( '[name="task[0].tests[1].expr"] ~ button.test-remove' )
         ;
 
     # XXX: Insert a new task in the middle
@@ -307,17 +378,13 @@ subtest 'edit a plan' => sub {
             },
             {
                 plan_id => $plan_id,
-                class => 'Zapp::Task::Assert',
+                class => 'Zapp::Task::Script',
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => [
-                    {
-                        expr => 'bomb.orientation',
-                        op => '!=',
-                        value => 'reverse',
-                    },
-                ],
+                args => {
+                    script => 'make check',
+                },
             },
             'task 2 is correct';
 
@@ -329,6 +396,47 @@ subtest 'edit a plan' => sub {
             task_id => $task_ids[1],
             parent_task_id => $task_ids[0],
         };
+
+        my @got_tests = $t->app->yancy->list(
+            zapp_plan_tests => {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => [ qw( test_id task_id ) ],
+            },
+        );
+        is scalar @got_tests, 3, 'got 3 tests for plan';
+        is_deeply $got_tests[0],
+            {
+                plan_id => $plan_id,
+                task_id => $got_tasks[0]{task_id},
+                test_id => $got_tests[0]{test_id},
+                expr => 'exit',
+                op => '==',
+                value => '0',
+            },
+            'task 1 test 1 is correct';
+        is_deeply $got_tests[1],
+            {
+                plan_id => $plan_id,
+                task_id => $got_tasks[1]{task_id},
+                test_id => $got_tests[1]{test_id},
+                expr => 'bomb.orientation',
+                op => '!=',
+                value => 'reverse',
+            },
+            'task 2 test 1 is correct';
+        is_deeply $got_tests[2],
+            {
+                plan_id => $plan_id,
+                task_id => $got_tasks[1]{task_id},
+                test_id => $got_tests[2]{test_id},
+                expr => 'bomb.rotation',
+                op => '==',
+                value => '180',
+            },
+            'task 2 test 2 is correct';
+
     };
 
     # XXX: Remove a task from the middle

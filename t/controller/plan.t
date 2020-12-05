@@ -135,12 +135,16 @@ subtest 'create new plan' => sub {
                 'task[0].name' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
                 'task[0].args.script' => 'make order',
-                'task[1].class' => 'Zapp::Task::Assert',
+                'task[0].tests[0].expr' => 'exit',
+                'task[0].tests[0].op' => '==',
+                'task[0].tests[0].value' => '0',
+                'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify',
                 'task[1].description' => 'Verify freezer',
-                'task[1].args[0].expr' => 'timer',
-                'task[1].args[0].op' => '>=',
-                'task[1].args[0].value' => '1000 years',
+                'task[1].args.script' => 'make test',
+                'task[1].tests[0].expr' => 'exit',
+                'task[1].tests[0].op' => '!=',
+                'task[1].tests[0].value' => '1',
             },
         );
         $t->status_is( 302 )->or( sub( $t ) { diag $t->tx->res->dom->find( '#error,#context,#trace,#log' )->each } );
@@ -185,16 +189,12 @@ subtest 'create new plan' => sub {
             {
                 plan_id => $got_plan->{plan_id},
                 task_id => $got_tasks[1]{task_id},
-                class =>'Zapp::Task::Assert',
+                class =>'Zapp::Task::Script',
                 name => 'Verify',
                 description => 'Verify freezer',
-                args => [
-                    {
-                        expr => 'timer',
-                        op => '>=',
-                        value => '1000 years',
-                    },
-                ],
+                args => {
+                    script => 'make test',
+                },
             },
             'task 2 is correct';
 
@@ -223,6 +223,37 @@ subtest 'create new plan' => sub {
             description => 'A funny name to demoralize the Mighty One',
             default_value => encode_json( 'I.C. Weiner' ),
         };
+
+        my @got_tests = $t->app->yancy->list(
+            zapp_plan_tests => {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => [ qw( test_id task_id ) ],
+            },
+        );
+        is scalar @got_tests, 2, 'got 2 tests for plan';
+        is_deeply $got_tests[0],
+            {
+                test_id => $got_tests[0]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[0]{task_id},
+                expr => 'exit',
+                op => '==',
+                value => '0',
+            },
+            'test 1 is correct';
+        is_deeply $got_tests[1],
+            {
+                test_id => $got_tests[1]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[1]{task_id},
+                expr => 'exit',
+                op => '!=',
+                value => '1',
+            },
+            'test 2 is correct';
+
     };
 
 };
@@ -240,18 +271,33 @@ subtest 'edit existing plan' => sub {
                 args => encode_json({
                     script => "liftoff;\ndrop the_bomb\n",
                 }),
+                tests => [
+                    {
+                        expr => 'exit',
+                        op => '==',
+                        value => '0',
+                    },
+                ],
             },
             {
-                name => 'Verify bomb placement',
+                name => 'Activate the Bomb',
                 description => q{Let's blow it up already!},
-                class => 'Zapp::Task::Assert',
-                args => encode_json([
+                class => 'Zapp::Task::Script',
+                args => encode_json({
+                    script => "make explosion",
+                }),
+                tests => [
                     {
                         expr => 'bomb.timer',
                         op => '==',
                         value => '25:00',
                     },
-                ]),
+                    {
+                        expr => 'bomb.rotation',
+                        op => '!=',
+                        value => '180',
+                    },
+                ],
             },
         ],
         inputs => [
@@ -274,6 +320,7 @@ subtest 'edit existing plan' => sub {
 
     subtest 'edit plan form' => sub {
         $t->get_ok( "/plan/$plan_id" )->status_is( 200 )
+            ->or( $dump_debug )
             ->element_exists( 'form#plan', 'form exists' )
             ->element_exists(
                 'label[for=name]',
@@ -494,6 +541,60 @@ subtest 'edit existing plan' => sub {
                 'first plan task description textarea value correct',
             );
 
+            subtest 'tests' => sub {
+                subtest 'test 1' => sub {
+                    $t->element_exists(
+                        'input[name="task[0].tests[0].test_id"]',
+                        'task 1 test 1 test_id field exists',
+                    )->or( sub {
+                        diag join "\n", $t->tx->res->dom( '[name^="task[0].test"]' )->each;
+                    } );
+                    $t->attr_is(
+                        'input[name="task[0].tests[0].test_id"]',
+                        value => $plan->{tasks}[0]{tests}[0]{test_id},
+                        'task 1 test 1 test_id value is correct',
+                    );
+                    $t->element_exists(
+                        'input[name="task[0].tests[0].expr"]',
+                        'task 1 test 1 expr input exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[0].tests[0].expr"]',
+                        value => 'exit',
+                        'task 1 test 1 expr value is correct',
+                    );
+                    $t->element_exists(
+                        '[name="task[0].tests[0].op"]',
+                        'task 1 test 1 op field exists',
+                    );
+                    $t->attr_is(
+                        '[name="task[0].tests[0].op"] option[selected]',
+                        value => '==',
+                        'task 1 test 1 op value is correct',
+                    );
+                    $t->element_exists(
+                        'input[name="task[0].tests[0].value"]',
+                        'task 1 test 1 value field exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[0].tests[0].value"]',
+                        value => '0',
+                        'task 1 test 1 value value is correct',
+                    );
+                    $t->element_exists(
+                        '#all-tasks :nth-child(1) .tests :nth-child(1) button.test-remove',
+                        'task 1 test 1 remove button exists',
+                    );
+                    $t->element_exists(
+                        '#all-tasks :nth-child(1) .tests :nth-child(1) button.test-remove',
+                        'task 1 test 1 remove button exists',
+                    );
+                };
+                $t->element_exists(
+                    '#all-tasks :nth-child(1) button.test-add',
+                    'task 1 add test button exists',
+                );
+            };
         };
 
         subtest 'task 1 form' => sub {
@@ -503,7 +604,7 @@ subtest 'edit existing plan' => sub {
             );
             $t->attr_is(
                 'input[name="task[1].class"]',
-                value => 'Zapp::Task::Assert',
+                value => 'Zapp::Task::Script',
                 'second plan task class input value correct',
             );
 
@@ -523,7 +624,7 @@ subtest 'edit existing plan' => sub {
             );
             $t->attr_is(
                 'input[name="task[1].name"]',
-                value => 'Verify bomb placement',
+                value => 'Activate the Bomb',
                 'second plan task name input value correct',
             );
 
@@ -538,34 +639,113 @@ subtest 'edit existing plan' => sub {
             );
 
             $t->element_exists(
-                'input[name="task[1].args[0].expr"]',
-                'second plan task first arg expr input exists',
-            );
-            $t->attr_is(
-                'input[name="task[1].args[0].expr"]',
-                value => 'bomb.timer',
-                'second plan task first arg expr input value correct',
-            );
-
-            $t->element_exists(
-                'select[name="task[1].args[0].op"]',
-                'second plan task first arg op select exists',
+                '[name="task[1].args.script"]',
+                'second plan task script arg exists',
             );
             $t->text_is(
-                'select[name="task[1].args[0].op"] [selected]',
-                '==',
-                'second plan task first arg op select value correct',
+                '[name="task[1].args.script"]',
+                'make explosion',
+                'second plan task script arg value correct',
             );
 
-            $t->element_exists(
-                'input[name="task[1].args[0].value"]',
-                'second plan task first arg value input exists',
-            );
-            $t->attr_is(
-                'input[name="task[1].args[0].value"]',
-                value => '25:00',
-                'second plan task first arg value input value correct',
-            );
+            subtest 'tests' => sub {
+                subtest 'test 1' => sub {
+                    $t->element_exists(
+                        'input[name="task[1].tests[0].test_id"]',
+                        'task 2 test 1 test_id exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[1].tests[0].test_id"]',
+                        value => $plan->{tasks}[1]{tests}[0]{test_id},
+                        'task 2 test 1 test_id value is correct',
+                    );
+                    $t->element_exists(
+                        'input[name="task[1].tests[0].expr"]',
+                        'task 2 test 1 expr input exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[1].tests[0].expr"]',
+                        value => 'bomb.timer',
+                        'task 2 test 1 expr value is correct',
+                    );
+                    $t->element_exists(
+                        '[name="task[1].tests[0].op"]',
+                        'task 2 test 1 op field exists',
+                    );
+                    $t->attr_is(
+                        '[name="task[1].tests[0].op"] option[selected]',
+                        value => '==',
+                        'task 2 test 1 op value is correct',
+                    );
+                    $t->element_exists(
+                        'input[name="task[1].tests[0].value"]',
+                        'task 2 test 1 value field exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[1].tests[0].value"]',
+                        value => '25:00',
+                        'task 2 test 1 value value is correct',
+                    );
+                    $t->element_exists(
+                        '#all-tasks :nth-child(2) .tests :nth-child(1) button.test-remove',
+                        'task 2 test 1 remove button exists',
+                    );
+                    $t->element_exists(
+                        '#all-tasks :nth-child(2) .tests :nth-child(1) button.test-remove',
+                        'task 2 test 1 remove button exists',
+                    );
+                };
+                subtest 'test 2' => sub {
+                    $t->element_exists(
+                        'input[name="task[1].tests[1].test_id"]',
+                        'task 2 test 2 test_id exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[1].tests[1].test_id"]',
+                        value => $plan->{tasks}[1]{tests}[1]{test_id},
+                        'task 2 test 2 test_id value is correct',
+                    );
+                    $t->element_exists(
+                        'input[name="task[1].tests[1].expr"]',
+                        'task 2 test 2 expr input exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[1].tests[1].expr"]',
+                        value => 'bomb.rotation',
+                        'task 2 test 2 expr value is correct',
+                    );
+                    $t->element_exists(
+                        '[name="task[1].tests[1].op"]',
+                        'task 2 test 2 op field exists',
+                    );
+                    $t->attr_is(
+                        '[name="task[1].tests[1].op"] option[selected]',
+                        value => '!=',
+                        'task 2 test 2 op value is correct',
+                    );
+                    $t->element_exists(
+                        'input[name="task[1].tests[1].value"]',
+                        'task 2 test 2 value field exists',
+                    );
+                    $t->attr_is(
+                        'input[name="task[1].tests[1].value"]',
+                        value => '180',
+                        'task 2 test 2 value value is correct',
+                    );
+                    $t->element_exists(
+                        '#all-tasks :nth-child(2) .tests :nth-child(2) button.test-remove',
+                        'task 2 test 2 remove button exists',
+                    );
+                    $t->element_exists(
+                        '#all-tasks :nth-child(2) .tests :nth-child(2) button.test-remove',
+                        'task 2 test 2 remove button exists',
+                    );
+                };
+                $t->element_exists(
+                    '#all-tasks :nth-child(2) button.test-add',
+                    'task 2 add test button exists',
+                );
+            };
         };
 
     };
@@ -588,16 +768,17 @@ subtest 'edit existing plan' => sub {
                 'task[0].name' => 'Build',
                 'task[0].description' => 'Build a bomb',
                 'task[0].args.script' => 'make thebomb',
+                'task[0].tests[0].expr' => 'bomb.timer',
+                'task[0].tests[0].op' => '==',
+                'task[0].tests[0].value' => '25:00',
                 'task[1].task_id' => $task_ids[1],
-                'task[1].class' => 'Zapp::Task::Assert',
+                'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args[0].expr' => 'bomb.orientation',
-                'task[1].args[0].op' => '!=',
-                'task[1].args[0].value' => 'reverse',
-                'task[1].args[1].expr' => 'bomb.timer',
-                'task[1].args[1].op' => '==',
-                'task[1].args[1].value' => '25:00',
+                'task[1].args.script' => 'make check',
+                'task[1].tests[0].expr' => 'bomb.orientation',
+                'task[1].tests[0].op' => '!=',
+                'task[1].tests[0].value' => 'reverse',
             },
         );
         $t->status_is( 302 );
@@ -640,22 +821,13 @@ subtest 'edit existing plan' => sub {
             },
             {
                 plan_id => $plan_id,
-                class => 'Zapp::Task::Assert',
+                class => 'Zapp::Task::Script',
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => [
-                    {
-                        expr => 'bomb.orientation',
-                        op => '!=',
-                        value => 'reverse',
-                    },
-                    {
-                        expr => 'bomb.timer',
-                        op => '==',
-                        value => '25:00',
-                    },
-                ],
+                args => {
+                    script => 'make check',
+                },
             },
             'task 2 is correct';
 
@@ -691,6 +863,36 @@ subtest 'edit existing plan' => sub {
             description => 'Where to put the bomb',
             default_value => encode_json( 'In the center' ),
         };
+
+        my @got_tests = $t->app->yancy->list(
+            zapp_plan_tests => {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => [ qw( test_id task_id ) ],
+            },
+        );
+        is scalar @got_tests, 2, 'got 2 tests for plan';
+        is_deeply $got_tests[0],
+            {
+                test_id => $got_tests[0]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[0]{task_id},
+                expr => 'bomb.timer',
+                op => '==',
+                value => '25:00',
+            },
+            'task 1 test 1 is correct';
+        is_deeply $got_tests[1],
+            {
+                test_id => $got_tests[1]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[1]{task_id},
+                expr => 'bomb.orientation',
+                op => '!=',
+                value => 'reverse',
+            },
+            'task 2 test 1 is correct';
     };
 
     subtest 'add task to plan' => sub {
@@ -716,15 +918,13 @@ subtest 'edit existing plan' => sub {
                 'task[1].description' => 'Fly to garbage ball',
                 'task[1].args.script' => 'make flight',
                 'task[2].task_id' => $task_ids[1],
-                'task[2].class' => 'Zapp::Task::Assert',
+                'task[2].class' => 'Zapp::Task::Script',
                 'task[2].name' => 'Verify Bomb',
                 'task[2].description' => 'Make sure this time',
-                'task[2].args[0].expr' => 'bomb.orientation',
-                'task[2].args[0].op' => '!=',
-                'task[2].args[0].value' => 'reverse',
-                'task[2].args[1].expr' => 'bomb.timer',
-                'task[2].args[1].op' => '==',
-                'task[2].args[1].value' => '25:00',
+                'task[2].args.script' => 'make check',
+                'task[2].tests[0].expr' => 'bomb.orientation',
+                'task[2].tests[0].op' => '!=',
+                'task[2].tests[0].value' => 'reverse',
             },
         );
         $t->status_is( 302 );
@@ -781,22 +981,13 @@ subtest 'edit existing plan' => sub {
             },
             {
                 plan_id => $plan_id,
-                class => 'Zapp::Task::Assert',
+                class => 'Zapp::Task::Script',
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => [
-                    {
-                        expr => 'bomb.orientation',
-                        op => '!=',
-                        value => 'reverse',
-                    },
-                    {
-                        expr => 'bomb.timer',
-                        op => '==',
-                        value => '25:00',
-                    },
-                ],
+                args => {
+                    script => 'make check',
+                },
             },
             'task 2 is correct';
 
@@ -837,6 +1028,36 @@ subtest 'edit existing plan' => sub {
             description => 'Where to put the bomb',
             default_value => encode_json( 'In the center' ),
         };
+
+        my @got_tests = $t->app->yancy->list(
+            zapp_plan_tests => {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => [ qw( test_id task_id ) ],
+            },
+        );
+        is scalar @got_tests, 2, 'got 2 tests for plan';
+        is_deeply $got_tests[0],
+            {
+                test_id => $got_tests[0]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[0]{task_id},
+                expr => 'bomb.timer',
+                op => '==',
+                value => '25:00',
+            },
+            'task 1 test 1 is correct';
+        is_deeply $got_tests[1],
+            {
+                test_id => $got_tests[1]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[1]{task_id},
+                expr => 'bomb.orientation',
+                op => '!=',
+                value => 'reverse',
+            },
+            'task 2 test 1 is correct';
     };
 
     subtest 'remove task from plan' => sub {
@@ -858,15 +1079,13 @@ subtest 'edit existing plan' => sub {
                 'task[0].description' => 'Build a bomb',
                 'task[0].args.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
-                'task[1].class' => 'Zapp::Task::Assert',
+                'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args[0].expr' => 'bomb.orientation',
-                'task[1].args[0].op' => '!=',
-                'task[1].args[0].value' => 'reverse',
-                'task[1].args[1].expr' => 'bomb.timer',
-                'task[1].args[1].op' => '==',
-                'task[1].args[1].value' => '25:00',
+                'task[1].args.script' => 'make check',
+                'task[1].tests[0].expr' => 'bomb.orientation',
+                'task[1].tests[0].op' => '!=',
+                'task[1].tests[0].value' => 'reverse',
             },
         );
         $t->status_is( 302 );
@@ -906,22 +1125,13 @@ subtest 'edit existing plan' => sub {
             },
             {
                 plan_id => $plan_id,
-                class => 'Zapp::Task::Assert',
+                class => 'Zapp::Task::Script',
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => [
-                    {
-                        expr => 'bomb.orientation',
-                        op => '!=',
-                        value => 'reverse',
-                    },
-                    {
-                        expr => 'bomb.timer',
-                        op => '==',
-                        value => '25:00',
-                    },
-                ],
+                args => {
+                    script => 'make check',
+                },
             },
             'task 2 is correct';
 
@@ -933,6 +1143,36 @@ subtest 'edit existing plan' => sub {
             task_id => $task_ids[1],
             parent_task_id => $task_ids[0],
         };
+
+        my @got_tests = $t->app->yancy->list(
+            zapp_plan_tests => {
+                plan_id => $plan_id,
+            },
+            {
+                order_by => [ qw( test_id task_id ) ],
+            },
+        );
+        is scalar @got_tests, 2, 'got 2 tests for plan';
+        is_deeply $got_tests[0],
+            {
+                test_id => $got_tests[0]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[0]{task_id},
+                expr => 'bomb.timer',
+                op => '==',
+                value => '25:00',
+            },
+            'task 1 test 1 is correct';
+        is_deeply $got_tests[1],
+            {
+                test_id => $got_tests[1]{test_id},
+                plan_id => $plan_id,
+                task_id => $got_tasks[1]{task_id},
+                expr => 'bomb.orientation',
+                op => '!=',
+                value => 'reverse',
+            },
+            'task 2 test 1 is correct';
     };
 
     subtest 'remove input from plan' => sub {
@@ -950,15 +1190,13 @@ subtest 'edit existing plan' => sub {
                 'task[0].description' => 'Build a bomb',
                 'task[0].args.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
-                'task[1].class' => 'Zapp::Task::Assert',
+                'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args[0].expr' => 'bomb.orientation',
-                'task[1].args[0].op' => '!=',
-                'task[1].args[0].value' => 'reverse',
-                'task[1].args[1].expr' => 'bomb.timer',
-                'task[1].args[1].op' => '==',
-                'task[1].args[1].value' => '25:00',
+                'task[1].args.script' => 'make check',
+                'task[1].tests[0].expr' => 'bomb.orientation',
+                'task[1].tests[0].op' => '!=',
+                'task[1].tests[0].value' => 'reverse',
             },
         );
         $t->status_is( 302 );
@@ -1001,15 +1239,13 @@ subtest 'edit existing plan' => sub {
                 'task[0].description' => 'Build a bomb',
                 'task[0].args.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
-                'task[1].class' => 'Zapp::Task::Assert',
+                'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args[0].expr' => 'bomb.orientation',
-                'task[1].args[0].op' => '!=',
-                'task[1].args[0].value' => 'reverse',
-                'task[1].args[1].expr' => 'bomb.timer',
-                'task[1].args[1].op' => '==',
-                'task[1].args[1].value' => '25:00',
+                'task[1].args.script' => 'make check',
+                'task[1].tests[0].expr' => 'bomb.orientation',
+                'task[1].tests[0].op' => '!=',
+                'task[1].tests[0].value' => 'reverse',
             },
         );
         $t->status_is( 302 );
@@ -1117,7 +1353,7 @@ subtest 'run a plan' => sub {
 
     subtest 'create run form' => sub {
         $t->get_ok( "/plan/$plan_id/run" )->status_is( 200 )
-            ->element_exists( "form[action=/plan/$plan_id/run", 'form exists' )
+            ->element_exists( "form[action=/plan/$plan_id/run/]", 'form exists' )
             ->element_exists( '[name=input.destination]', 'input field exists' )
             ;
     };

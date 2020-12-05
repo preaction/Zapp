@@ -102,6 +102,7 @@ sub create_plan( $self, $plan ) {
     my $prev_task_id;
     for my $task ( @tasks ) {
         $task->{plan_id} = $plan_id;
+        my $tests = $task->{tests} ? delete $task->{tests} : [];
         my $task_id = $self->yancy->create( zapp_plan_tasks => $task );
         if ( $prev_task_id ) {
             $self->yancy->create( zapp_task_parents => {
@@ -109,8 +110,16 @@ sub create_plan( $self, $plan ) {
                 parent_task_id => $prev_task_id,
             });
         }
+        if ( $tests && @$tests ) {
+            for my $test ( @$tests ) {
+                $test->{ task_id } = $task_id;
+                $test->{ plan_id } = $plan_id;
+                $test->{ test_id } = $self->yancy->create( zapp_plan_tests => $test );
+            }
+        }
         $prev_task_id = $task_id;
         $task->{ task_id } = $task_id;
+        $task->{ tests } = $tests;
     }
 
     $plan->{plan_id} = $plan_id;
@@ -239,6 +248,15 @@ CREATE TABLE zapp_run_jobs (
     PRIMARY KEY ( minion_job_id )
 );
 
+CREATE TABLE zapp_plan_tests (
+    test_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
+    expr VARCHAR(255) NOT NULL,
+    op VARCHAR(255) NOT NULL,
+    value VARCHAR(255) NOT NULL
+);
+
 @@ migrations.sqlite.sql
 
 -- 1 up
@@ -285,6 +303,15 @@ CREATE TABLE zapp_run_jobs (
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
     PRIMARY KEY ( minion_job_id )
+);
+
+CREATE TABLE zapp_plan_tests (
+    test_id BIGINT AUTOINCREMENT PRIMARY KEY,
+    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
+    expr VARCHAR(255) NOT NULL,
+    op VARCHAR(255) NOT NULL,
+    value VARCHAR(255) NOT NULL
 );
 
 

@@ -16,7 +16,8 @@ sub execute( $self, @args ) {
 }
 
 sub finish( $self, @args ) {
-    # XXX: Save result to database
+    # XXX: Verify assertions
+    # XXX: Save assignments to input
 
     return $self->SUPER::finish( @args );
 }

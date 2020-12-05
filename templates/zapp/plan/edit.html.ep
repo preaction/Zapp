@@ -21,6 +21,21 @@
     }
 </style>
 
+%# Form for a single test
+% my $test_tmpl = begin
+    % my ( $i, $test ) = @_;
+    <input type="hidden" name="tests[<%= $i %>].test_id" value="<%= $test->{test_id} // '' %>" />
+    <input type="text" name="tests[<%= $i %>].expr" value="<%= $test->{expr} %>">
+    <select name="tests[<%= $i %>].op">
+        <option value="==" <%= $test->{op} eq '==' ? 'selected' : '' %>>==</option>
+        <option value="!=" <%= $test->{op} eq '!=' ? 'selected' : '' %>>!=</option>
+        <option value="&gt;" <%= $test->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
+        <option value="&lt;" <%= $test->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
+    </select>
+    <input type="text" name="tests[<%= $i %>].value" value="<%= $test->{value} %>">
+    <button type="button" class="test-remove">-</button>
+% end
+
 %# The form for the main task fields
 % my $task_tmpl = begin
     % my $task = shift;
@@ -35,10 +50,21 @@
         <label for="description">Description</label>
         <textarea name="description" placeholder="Description"><%= $task->{description} %></textarea>
     </div>
+
     <div data-args-form></div>
+
+    <ul class="tests">
+    % for my $i ( 0 .. $#{$task->{tests}} ) {
+        <li><%= $test_tmpl->( $i, $task->{tests}[ $i ] ) %></li>
+    % }
+    </ul>
+    <button class="test-add" type="button">+</button>
 % end
 <template id="task-form">
     %= $task_tmpl->( {} )
+</template>
+<template id="test-form">
+    %= $test_tmpl->( 0, { op => '=='} )
 </template>
 
 % for my $class ( @{ stash 'tasks' } ) {
@@ -215,8 +241,53 @@ function removeTask( event ) {
 function moveTask( event ) {
 }
 
+function addTest( event ) {
+    // Clone the blank row from the template
+    var button = event.target,
+        list = button.previousElementSibling,
+        task = button.parentNode,
+        nameAttr = task.querySelector( 'input' ).attributes.getNamedItem( 'name' ).value,
+        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') ),
+        newTest = document.querySelector( '#test-form' ).content.cloneNode(true),
+        newIndex = list.querySelectorAll('li').length;
+
+    // Reset expr, op, value
+    newTest.querySelectorAll( 'input,select' ).forEach( function (el) {
+        if ( el.tagName == 'SELECT' ) {
+            el.selectedIndex = 0;
+        }
+        else {
+            el.value = '';
+        }
+        el.name = el.name.replace( /tests\[\d+\]/, 'task[' + taskIndex + '].tests[' + newIndex + ']' );
+        el.id = el.name;
+    } );
+
+    // Append
+    var newRow = document.createElement( 'li' );
+    newRow.appendChild( newTest );
+    list.appendChild( newRow );
+}
+
+function removeTest( event ) {
+    var button = event.target,
+        row = button.parentElement,
+        list = row.parentElement;
+
+    row.parentNode.removeChild( row );
+    // Reset indexes in remaining test rows
+    list.querySelectorAll( 'li' ).forEach( function (row, i) {
+        row.querySelectorAll( 'input,select' ).forEach( function (el) {
+            el.name = el.name.replace( /tests\[\d+\]/, 'tests[' + i + ']' );
+            el.id = el.name;
+        });
+    } );
+}
+
 document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'change', 'select.add-task', addTask );
+    delegateEvent( 'click', 'button.test-add', addTest );
+    delegateEvent( 'click', 'button.test-remove', removeTest );
 });
 
 % for my $js ( grep !!$_, map { data_section( $_, 'args.js.ep' ) } @{ stash 'tasks' } ) {

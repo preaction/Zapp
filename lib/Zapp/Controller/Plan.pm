@@ -13,6 +13,17 @@ sub _get_plan( $self, $plan_id ) {
         ];
         for my $task ( @$tasks ) {
             $task->{args} = decode_json( $task->{args} );
+            $task->{tests} = [
+                $self->yancy->list(
+                    zapp_plan_tests =>
+                    {
+                        task_id => $task->{task_id},
+                    },
+                    {
+                        order_by => 'test_id',
+                    },
+                )
+            ];
         }
 
         my $inputs = $plan->{inputs} = [
@@ -92,6 +103,8 @@ sub save_plan( $self ) {
     my $parent_task_id;
     for my $task ( @$tasks ) {
         my $task_id = $task->{task_id};
+        my $tests = $task->{tests} ? delete $task->{tests} : [];
+
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         for my $json_field ( qw( args ) ) {
             $task->{ $json_field } = encode_json( $task->{ $json_field } );
@@ -119,6 +132,31 @@ sub save_plan( $self ) {
             });
         }
         $parent_task_id = $task_id;
+
+        if ( @$tests ) {
+            my %tests_to_delete
+                = map { $_->{test_id} => 1 }
+                $self->yancy->list( zapp_plan_tests => { plan_id => $plan_id, task_id => $task_id } );
+
+            for my $test ( @$tests ) {
+                my $test_id = $test->{test_id};
+                if ( $test_id ) {
+                    delete $tests_to_delete{ $test_id };
+                    $self->yancy->backend->set( zapp_plan_tests => $test_id, $test );
+                }
+                else {
+                    delete $test->{test_id};
+                    $test_id = $test->{test_id} = $self->yancy->backend->create( zapp_plan_tests => {
+                        %$test, plan_id => $plan_id, task_id => $task_id,
+                    } );
+                }
+            }
+
+            for my $test_id ( keys %tests_to_delete ) {
+                $self->yancy->delete( zapp_plan_tests => $test_id );
+            }
+
+        }
     }
 
     for my $task_id ( keys %tasks_to_delete ) {
