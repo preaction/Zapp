@@ -149,6 +149,14 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
     my @tasks = $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
     my %task_parents;
     for my $task_id ( map $_->{task_id}, @tasks ) {
+        # Copy tests for the run
+        my @tests = $self->yancy->list( zapp_plan_tests => { task_id => $task_id }, { order_by => 'test_id' } );
+        for my $test ( @tests ) {
+            $self->yancy->create( zapp_run_tests => {
+                run_id => $run_id,
+                $test->%{qw( task_id test_id expr op value )},
+            } );
+        }
         my @parents = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
         $task_parents{ $task_id } = [ map $_->{parent_task_id}, @parents ];
     }
@@ -257,6 +265,18 @@ CREATE TABLE zapp_plan_tests (
     value VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE zapp_run_tests (
+    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
+    test_id BIGINT REFERENCES zapp_plan_tests ( test_id ),
+    expr VARCHAR(255) NOT NULL,
+    op VARCHAR(255) NOT NULL,
+    value VARCHAR(255) NOT NULL,
+    expr_value VARCHAR(255) DEFAULT NULL,
+    pass BOOLEAN DEFAULT NULL,
+    PRIMARY KEY ( run_id, test_id )
+);
+
 @@ migrations.sqlite.sql
 
 -- 1 up
@@ -314,4 +334,14 @@ CREATE TABLE zapp_plan_tests (
     value VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE zapp_run_tests (
+    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    test_id BIGINT REFERENCES zapp_plan_tests ( test_id ),
+    expr VARCHAR(255) NOT NULL,
+    op VARCHAR(255) NOT NULL,
+    value VARCHAR(255) NOT NULL,
+    expr_value VARCHAR(255) DEFAULT NULL,
+    pass BOOLEAN DEFAULT NULL,
+    PRIMARY KEY ( run_id, test_id )
+);
 

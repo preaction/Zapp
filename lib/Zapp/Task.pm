@@ -16,6 +16,7 @@ sub execute( $self, @args ) {
 }
 
 sub finish( $self, @args ) {
+    my $run_id = $self->app->yancy->get( zapp_run_jobs => $self->id )->{run_id};
     # XXX: Verify assertions
     # XXX: Save assignments to input
 

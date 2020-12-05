@@ -38,6 +38,13 @@ subtest 'execute' => sub {
                 args => encode_json({
                     destination => '{destination}',
                 }),
+                tests => [
+                    {
+                        expr => 'destination',
+                        op => '!=',
+                        value => '',
+                    },
+                ],
             },
             {
                 name => 'Deliver package',
