@@ -59,6 +59,10 @@ sub startup( $self ) {
                 # XXX: Fix read_schema to detect compound primary keys
                 'x-id-field' => [qw( plan_id name )],
             },
+            zapp_run_tests => {
+                # XXX: Fix read_schema to detect compound primary keys
+                'x-id-field' => [qw( run_id test_id )],
+            },
         },
     );
 
@@ -174,8 +178,8 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
 
             # XXX: Expose more Minion job configuration
             my %job_opts;
-            if ( my @parents = $task_parents{ $task_id } ) {
-                $job_opts{ parents } = [ map $task_jobs{ $_ }, @parents ];
+            if ( my $parents = $task_parents{ $task_id } ) {
+                $job_opts{ parents } = [ map $task_jobs{ $_ }, @$parents ];
             }
 
             my $args = decode_json( $task->{args} );
@@ -267,8 +271,8 @@ CREATE TABLE zapp_plan_tests (
 
 CREATE TABLE zapp_run_tests (
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
     test_id BIGINT REFERENCES zapp_plan_tests ( test_id ),
+    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
     value VARCHAR(255) NOT NULL,
@@ -337,6 +341,7 @@ CREATE TABLE zapp_plan_tests (
 CREATE TABLE zapp_run_tests (
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     test_id BIGINT REFERENCES zapp_plan_tests ( test_id ),
+    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
     value VARCHAR(255) NOT NULL,

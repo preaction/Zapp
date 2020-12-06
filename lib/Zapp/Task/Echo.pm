@@ -2,7 +2,7 @@ package Zapp::Task::Echo;
 use Mojo::Base 'Zapp::Task', -signatures;
 
 sub run( $self, @args ) {
-    $self->finish({ args => \@args });
+    $self->finish(@args);
 }
 
 1;

@@ -50,8 +50,21 @@ subtest 'execute' => sub {
                 name => 'Deliver package',
                 class => 'Zapp::Task::Echo',
                 args => encode_json({
+                    destination => '{destination}',
                     delivery_address => 'Certain Doom on {destination}',
                 }),
+                tests => [
+                    {
+                        expr => 'destination',
+                        op => '!=',
+                        value => '',
+                    },
+                    {
+                        expr => 'delivery_address',
+                        op => '!=',
+                        value => '',
+                    },
+                ],
             },
         ],
         inputs => [
@@ -64,31 +77,139 @@ subtest 'execute' => sub {
         ],
     });
 
-    my $input = {
-        destination => 'Nude Beach Planet',
+    subtest 'tests pass' => sub {
+        my $input = {
+            destination => 'Nude Beach Planet',
+        };
+
+        my $run = $t->app->enqueue( $plan->{plan_id}, $input );
+
+        # Check job results
+        my $worker = $t->app->minion->worker->register;
+        my $job = $worker->dequeue;
+        my $e = $job->execute;
+        ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
+        is_deeply $job->args,
+            [
+                {
+                    destination => 'Nude Beach Planet',
+                },
+            ],
+            'job args are interpolated with input';
+
+        $job = $worker->dequeue;
+        $e = $job->execute;
+        ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
+        is_deeply $job->args,
+            [
+                {
+                    destination => 'Nude Beach Planet',
+                    delivery_address => 'Certain Doom on Nude Beach Planet',
+                },
+            ],
+            'job args are interpolated with input';
+
+        # Check test results
+        my @tests = $t->app->yancy->list( zapp_run_tests => { run_id => $run->{run_id} }, { order_by => 'test_id' } );
+        is scalar @tests, 3, '3 tests found for run';
+        is_deeply $tests[0],
+            {
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[0]{task_id},
+                test_id => $plan->{tasks}[0]{tests}[0]{test_id},
+                expr => 'destination',
+                op => '!=',
+                value => '',
+                expr_value => 'Nude Beach Planet',
+                pass => 1,
+            },
+            'task 1 test 1 result correct'
+                or diag explain $tests[0];
+        is_deeply $tests[1],
+            {
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[1]{task_id},
+                test_id => $plan->{tasks}[1]{tests}[0]{test_id},
+                expr => 'destination',
+                op => '!=',
+                value => '',
+                expr_value => 'Nude Beach Planet',
+                pass => 1,
+            },
+            'task 2 test 1 result correct'
+                or diag explain $tests[1];
+        is_deeply $tests[2],
+            {
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[1]{task_id},
+                test_id => $plan->{tasks}[1]{tests}[1]{test_id},
+                expr => 'delivery_address',
+                op => '!=',
+                value => '',
+                expr_value => 'Certain Doom on Nude Beach Planet',
+                pass => 1,
+            },
+            'task 2 test 2 result correct'
+                or diag explain $tests[2];
     };
 
-    my $run = $t->app->enqueue( $plan->{plan_id}, $input );
+    subtest 'tests fail' => sub {
+        my $input = {
+            destination => '',
+        };
 
-    # Check job results
-    my $job = $t->app->minion->job( $run->{jobs}[0] );
-    my $e = $job->execute;
-    ok !$e, 'job executed successfully' or diag "Job error: $e";
-    is_deeply $job->args,
-        [ {
-            destination => 'Nude Beach Planet',
-        } ],
-        'job args are interpolated with input';
+        my $run = $t->app->enqueue( $plan->{plan_id}, $input );
 
-    $job = $t->app->minion->job( $run->{jobs}[1] );
-    $e = $job->execute;
-    ok !$e, 'job executed successfully' or diag "Job error: $e";
-    is_deeply $job->args,
-        [ {
-            delivery_address => 'Certain Doom on Nude Beach Planet',
-        } ],
-        'job args are interpolated with input';
+        # Check job results
+        my $worker = $t->app->minion->worker->register;
+        my $job = $worker->dequeue;
+        my $e = $job->execute;
+        ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
+        is $job->info->{state}, 'failed', 'job failed';
 
+        # Check test results
+        my @tests = $t->app->yancy->list( zapp_run_tests => { run_id => $run->{run_id} }, { order_by => 'test_id' } );
+        is scalar @tests, 3, '3 tests found for run';
+        is_deeply $tests[0],
+            {
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[0]{task_id},
+                test_id => $plan->{tasks}[0]{tests}[0]{test_id},
+                expr => 'destination',
+                op => '!=',
+                value => '',
+                expr_value => '',
+                pass => 0,
+            },
+            'task 1 test 1 result correct'
+                or diag explain $tests[0];
+        is_deeply $tests[1],
+            {
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[1]{task_id},
+                test_id => $plan->{tasks}[1]{tests}[0]{test_id},
+                expr => 'destination',
+                op => '!=',
+                value => '',
+                expr_value => undef,
+                pass => undef,
+            },
+            'task 2 test 1 result correct'
+                or diag explain $tests[1];
+        is_deeply $tests[2],
+            {
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[1]{task_id},
+                test_id => $plan->{tasks}[1]{tests}[1]{test_id},
+                expr => 'delivery_address',
+                op => '!=',
+                value => '',
+                expr_value => undef,
+                pass => undef,
+            },
+            'task 2 test 2 result correct'
+                or diag explain $tests[2];
+    };
 };
 
 done_testing;

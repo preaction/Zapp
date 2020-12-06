@@ -15,12 +15,50 @@ sub execute( $self, @args ) {
     return $self->SUPER::execute( @args );
 }
 
-sub finish( $self, @args ) {
-    my $run_id = $self->app->yancy->get( zapp_run_jobs => $self->id )->{run_id};
-    # XXX: Verify assertions
-    # XXX: Save assignments to input
+sub finish( $self, $result ) {
+    my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
+    my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
-    return $self->SUPER::finish( @args );
+    # Verify tests
+    my @tests = $self->app->yancy->list( zapp_run_tests => { run_id => $run_id, task_id => $task_id }, { order_by => 'test_id' } );
+    for my $test ( @tests ) {
+        my $expr_value = $test->{ expr_value } = $result->{ $test->{expr} }; # XXX Support ./[0] syntax (or JSONPath instead?)
+        my $pass;
+        if ( $test->{op} eq '==' ) {
+            $pass = ( $expr_value eq $test->{value} );
+        }
+        elsif ( $test->{op} eq '!=' ) {
+            $pass = ( $expr_value ne $test->{value} );
+        }
+        elsif ( $test->{op} eq '>' ) {
+            $pass = ( $expr_value gt $test->{value} );
+        }
+        elsif ( $test->{op} eq '<' ) {
+            $pass = ( $expr_value lt $test->{value} );
+        }
+        elsif ( $test->{op} eq '>=' ) {
+            $pass = ( $expr_value ge $test->{value} );
+        }
+        elsif ( $test->{op} eq '<=' ) {
+            $pass = ( $expr_value le $test->{value} );
+        }
+        $test->{pass} = $pass;
+
+        my $rows = $self->app->yancy->backend->set(
+            zapp_run_tests =>
+            { $test->%{qw( run_id test_id )} },
+            {
+                expr_value => $test->{expr_value},
+                pass => $test->{pass},
+            },
+        );
+        if ( !$pass ) {
+            return $self->fail( $result );
+        }
+    }
+
+    # XXX: Save assignments to input
+    return $self->SUPER::finish( $result );
 }
 
 sub schema( $class ) {
