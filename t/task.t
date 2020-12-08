@@ -45,6 +45,9 @@ subtest 'execute' => sub {
                         value => '',
                     },
                 ],
+                results => encode_json([
+                    { name => 'initial_destination', expr => 'destination' },
+                ]),
             },
             {
                 name => 'Deliver package',
@@ -65,6 +68,10 @@ subtest 'execute' => sub {
                         value => '',
                     },
                 ],
+                results => encode_json([
+                    { name => 'final_destination', expr => 'destination' },
+                    { name => 'final_address', expr => 'delivery_address' },
+                ]),
             },
         ],
         inputs => [
@@ -80,34 +87,135 @@ subtest 'execute' => sub {
     subtest 'tests pass' => sub {
         my $input = {
             destination => 'Nude Beach Planet',
+            unused_value => 'Should be passed through',
         };
 
         my $run = $t->app->enqueue( $plan->{plan_id}, $input );
 
-        # Check job results
-        my $worker = $t->app->minion->worker->register;
-        my $job = $worker->dequeue;
-        my $e = $job->execute;
-        ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
-        is_deeply $job->args,
-            [
-                {
+        # Check jobs created correctly
+        my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
+        is_deeply
+            {
+                $got_jobs[0]->%*,
+                context => decode_json( $got_jobs[0]{context} ),
+            },
+            {
+                minion_job_id => $got_jobs[0]{minion_job_id},
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[0]{task_id},
+                context => {
                     destination => 'Nude Beach Planet',
+                    unused_value => 'Should be passed through',
                 },
-            ],
-            'job args are interpolated with input';
+            },
+            'first job run entry is correct';
+        is_deeply
+            {
+                $got_jobs[1]->%*,
+                context => decode_json( $got_jobs[1]{context} ),
+            },
+            {
+                minion_job_id => $got_jobs[1]{minion_job_id},
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[1]{task_id},
+                context => {},
+            },
+            'second job run entry is correct';
 
-        $job = $worker->dequeue;
-        $e = $job->execute;
-        ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
-        is_deeply $job->args,
-            [
+        subtest 'run first job' => sub {
+            my $worker = $t->app->minion->worker->register;
+            my $job = $worker->dequeue;
+            my $e = $job->execute;
+            ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
+            is_deeply $job->args,
+                [
+                    {
+                        destination => 'Nude Beach Planet',
+                    },
+                ],
+                'job args are interpolated with input';
+
+            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
+            is_deeply
                 {
-                    destination => 'Nude Beach Planet',
-                    delivery_address => 'Certain Doom on Nude Beach Planet',
+                    $got_jobs[0]->%*,
+                    context => decode_json( $got_jobs[0]{context} ),
                 },
-            ],
-            'job args are interpolated with input';
+                {
+                    minion_job_id => $got_jobs[0]{minion_job_id},
+                    run_id => $run->{run_id},
+                    task_id => $plan->{tasks}[0]{task_id},
+                    context => {
+                        destination => 'Nude Beach Planet',
+                        unused_value => 'Should be passed through',
+                    },
+                },
+                'first job run entry is correct';
+            is_deeply
+                {
+                    $got_jobs[1]->%*,
+                    context => decode_json( $got_jobs[1]{context} ),
+                },
+                {
+                    minion_job_id => $got_jobs[1]{minion_job_id},
+                    run_id => $run->{run_id},
+                    task_id => $plan->{tasks}[1]{task_id},
+                    context => {
+                        destination => 'Nude Beach Planet',
+                        unused_value => 'Should be passed through',
+                        initial_destination => 'Nude Beach Planet',
+                    },
+                },
+                'second job run entry is correct';
+        };
+
+        subtest 'run second job' => sub {
+            my $worker = $t->app->minion->worker->register;
+            my $job = $worker->dequeue;
+            my $e = $job->execute;
+            ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
+            is_deeply $job->args,
+                [
+                    {
+                        destination => 'Nude Beach Planet',
+                        delivery_address => 'Certain Doom on Nude Beach Planet',
+                    },
+                ],
+                'job args are interpolated with input';
+
+            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
+            is_deeply
+                {
+                    $got_jobs[0]->%*,
+                    context => decode_json( $got_jobs[0]{context} ),
+                },
+                {
+                    minion_job_id => $got_jobs[0]{minion_job_id},
+                    run_id => $run->{run_id},
+                    task_id => $plan->{tasks}[0]{task_id},
+                    context => {
+                        destination => 'Nude Beach Planet',
+                        unused_value => 'Should be passed through',
+                    },
+                },
+                'first job run entry is correct';
+            is_deeply
+                {
+                    $got_jobs[1]->%*,
+                    context => decode_json( $got_jobs[1]{context} ),
+                },
+                {
+                    minion_job_id => $got_jobs[1]{minion_job_id},
+                    run_id => $run->{run_id},
+                    task_id => $plan->{tasks}[1]{task_id},
+                    context => {
+                        destination => 'Nude Beach Planet',
+                        unused_value => 'Should be passed through',
+                        initial_destination => 'Nude Beach Planet',
+                    },
+                },
+                'second job run entry is correct';
+        };
 
         # Check test results
         my @tests = $t->app->yancy->list( zapp_run_tests => { run_id => $run->{run_id} }, { order_by => 'test_id' } );

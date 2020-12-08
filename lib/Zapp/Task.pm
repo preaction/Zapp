@@ -1,16 +1,15 @@
 package Zapp::Task;
 use Mojo::Base 'Minion::Job', -signatures;
 use Yancy::Util qw( fill_brackets );
-use Mojo::JSON qw( decode_json );
+use Mojo::JSON qw( decode_json encode_json );
 
 sub execute( $self, @args ) {
-    my $run_id = $self->app->yancy->get( zapp_run_jobs => $self->id )->{run_id};
-    my $run = $self->app->yancy->get( zapp_runs => $run_id );
-    my $input = decode_json( $run->{input_values} );
+    my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
+    my $context = decode_json( $run_job->{context} );
 
     # Interpolate arguments
     # XXX: Does this mean we can't work with existing Minion tasks?
-    $self->args( $self->_interpolate_args( $self->args, $input ) );
+    $self->args( $self->_interpolate_args( $self->args, $context ) );
 
     return $self->SUPER::execute( @args );
 }
@@ -57,7 +56,21 @@ sub finish( $self, $result ) {
         }
     }
 
-    # XXX: Save assignments to input
+    # Save assignments to child contexts
+    my $task = $self->app->yancy->get( zapp_plan_tasks => $task_id );
+    my $result_saves = decode_json( $task->{results} );
+    my $context = decode_json( $run_job->{context} );
+    for my $save ( @$result_saves ) {
+        $context->{ $save->{name} } = $result->{ $save->{expr} };
+    }
+    for my $minion_job_id ( @{ $self->info->{children} } ) {
+        $self->app->yancy->backend->set(
+            zapp_run_jobs => $minion_job_id => {
+                context => encode_json( $context ),
+            },
+        );
+    }
+
     return $self->SUPER::finish( $result );
 }
 

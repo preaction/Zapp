@@ -162,6 +162,7 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
             } );
         }
         my @parents = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
+        next unless @parents;
         $task_parents{ $task_id } = [ map $_->{parent_task_id}, @parents ];
     }
 
@@ -199,6 +200,11 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
                     run_id => $run_id,
                     task_id => $task_id,
                     minion_job_id => $job_id,
+                    # All jobs with no parents must have the initial context. Other jobs
+                    # will get their context filled in by their parent.
+                    context => encode_json(
+                        !$task_parents{ $task_id } ? $input : {}
+                    ),
                 } );
         }
         last if !$loops--;
@@ -258,6 +264,7 @@ CREATE TABLE zapp_run_jobs (
     minion_job_id BIGINT NOT NULL,
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
+    context JSON,
     PRIMARY KEY ( minion_job_id )
 );
 
@@ -327,6 +334,7 @@ CREATE TABLE zapp_run_jobs (
     minion_job_id BIGINT NOT NULL,
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
+    context JSON,
     PRIMARY KEY ( minion_job_id )
 );
 
