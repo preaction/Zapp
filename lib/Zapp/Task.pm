@@ -58,8 +58,8 @@ sub finish( $self, $result ) {
 
     # Save assignments to child contexts
     my $task = $self->app->yancy->get( zapp_plan_tasks => $task_id );
-    my $result_saves = decode_json( $task->{results} );
-    my $context = decode_json( $run_job->{context} );
+    my $result_saves = decode_json( $task->{results} // '[]' );
+    my $context = decode_json( $run_job->{context} // '{}' );
     for my $save ( @$result_saves ) {
         $context->{ $save->{name} } = $result->{ $save->{expr} };
     }
