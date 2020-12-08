@@ -228,7 +228,8 @@ CREATE TABLE zapp_plan_tasks (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     class VARCHAR(255) NOT NULL,
-    args JSON
+    args JSON,
+    results JSON
 );
 
 CREATE TABLE zapp_task_parents (

@@ -36,6 +36,15 @@
     <button type="button" class="test-remove">-</button>
 % end
 
+%# Form for saving results
+% my $result_tmpl = begin
+    % my ( $i, $result ) = @_;
+    <input type="text" name="results[<%= $i %>].name" value="<%= $result->{name} %>">
+    =
+    <input type="text" name="results[<%= $i %>].expr" value="<%= $result->{expr} %>">
+    <button type="button" class="result-remove">-</button>
+% end
+
 %# The form for the main task fields
 % my $task_tmpl = begin
     % my $task = shift;
@@ -59,12 +68,22 @@
     % }
     </ul>
     <button class="test-add" type="button">+</button>
+
+    <ul class="results">
+    % for my $i ( 0 .. $#{$task->{results}} ) {
+        <li><%= $result_tmpl->( $i, $task->{results}[ $i ] ) %></li>
+    % }
+    </ul>
+    <button class="result-add" type="button">+</button>
 % end
 <template id="task-form">
     %= $task_tmpl->( {} )
 </template>
 <template id="test-form">
     %= $test_tmpl->( 0, { op => '=='} )
+</template>
+<template id="result-form">
+    %= $result_tmpl->( 0, {} )
 </template>
 
 % for my $class ( @{ stash 'tasks' } ) {
@@ -284,10 +303,55 @@ function removeTest( event ) {
     } );
 }
 
+function addResult( event ) {
+    // Clone the blank row from the template
+    var button = event.target,
+        list = button.previousElementSibling,
+        task = button.parentNode,
+        nameAttr = task.querySelector( 'input' ).attributes.getNamedItem( 'name' ).value,
+        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') ),
+        newResult = document.querySelector( '#result-form' ).content.cloneNode(true),
+        newIndex = list.querySelectorAll('li').length;
+
+    // Reset expr, op, value
+    newResult.querySelectorAll( 'input,select' ).forEach( function (el) {
+        if ( el.tagName == 'SELECT' ) {
+            el.selectedIndex = 0;
+        }
+        else {
+            el.value = '';
+        }
+        el.name = el.name.replace( /results\[\d+\]/, 'task[' + taskIndex + '].results[' + newIndex + ']' );
+        el.id = el.name;
+    } );
+
+    // Append
+    var newRow = document.createElement( 'li' );
+    newRow.appendChild( newResult );
+    list.appendChild( newRow );
+}
+
+function removeResult( event ) {
+    var button = event.target,
+        row = button.parentElement,
+        list = row.parentElement;
+
+    row.parentNode.removeChild( row );
+    // Reset indexes in remaining test rows
+    list.querySelectorAll( 'li' ).forEach( function (row, i) {
+        row.querySelectorAll( 'input,select' ).forEach( function (el) {
+            el.name = el.name.replace( /results\[\d+\]/, 'results[' + i + ']' );
+            el.id = el.name;
+        });
+    } );
+}
+
 document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'change', 'select.add-task', addTask );
     delegateEvent( 'click', 'button.test-add', addTest );
     delegateEvent( 'click', 'button.test-remove', removeTest );
+    delegateEvent( 'click', 'button.result-add', addResult );
+    delegateEvent( 'click', 'button.result-remove', removeResult );
 });
 
 % for my $js ( grep !!$_, map { data_section( $_, 'args.js.ep' ) } @{ stash 'tasks' } ) {
