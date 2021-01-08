@@ -78,35 +78,32 @@ subtest 'create new plan' => sub {
                 'Add Task...',
                 'placeholder for add task dropdown is correct',
             )
+            ->element_exists(
+                'select.add-task option[value=Zapp::Task::Echo]',
+                'Echo task appears in task list',
+            )
             ->text_is(
-                'select.add-task option:nth-child(2)',
+                'select.add-task option[value=Zapp::Task::Echo]',
                 'Echo',
-                'second task option text is correct',
+                'Echo task option text is correct',
             )
-            ->attr_is(
-                'select.add-task option:nth-child(2)',
-                value => 'Zapp::Task::Echo',
-                'second task option value is correct',
+            ->element_exists(
+                'select.add-task option[value=Zapp::Task::Request]',
+                'Request task appears in task list',
             )
             ->text_is(
-                'select.add-task option:nth-child(3)',
+                'select.add-task option[value=Zapp::Task::Request]',
                 'Request',
-                'third task option text is correct',
+                'Request task option text is correct',
             )
-            ->attr_is(
-                'select.add-task option:nth-child(3)',
-                value => 'Zapp::Task::Request',
-                'third task option value is correct',
+            ->element_exists(
+                'select.add-task option[value=Zapp::Task::Script]',
+                'Script task appears in task list',
             )
             ->text_is(
-                'select.add-task option:nth-child(4)',
+                'select.add-task option[value=Zapp::Task::Script]',
                 'Script',
-                'fourth task option text is correct',
-            )
-            ->attr_is(
-                'select.add-task option:nth-child(4)',
-                value => 'Zapp::Task::Script',
-                'fourth task option value is correct',
+                'Script task option text is correct',
             )
             ;
 
@@ -379,35 +376,32 @@ subtest 'edit existing plan' => sub {
                 'Add Task...',
                 'placeholder for add task dropdown is correct',
             )
+            ->element_exists(
+                'select.add-task option[value=Zapp::Task::Echo]',
+                'Echo task appears in task list',
+            )
             ->text_is(
-                'select.add-task option:nth-child(2)',
+                'select.add-task option[value=Zapp::Task::Echo]',
                 'Echo',
-                'second task option text is correct',
+                'Echo task option text is correct',
             )
-            ->attr_is(
-                'select.add-task option:nth-child(2)',
-                value => 'Zapp::Task::Echo',
-                'second task option value is correct',
+            ->element_exists(
+                'select.add-task option[value=Zapp::Task::Request]',
+                'Request task appears in task list',
             )
             ->text_is(
-                'select.add-task option:nth-child(3)',
+                'select.add-task option[value=Zapp::Task::Request]',
                 'Request',
-                'third task option text is correct',
+                'Request task option text is correct',
             )
-            ->attr_is(
-                'select.add-task option:nth-child(3)',
-                value => 'Zapp::Task::Request',
-                'third task option value is correct',
+            ->element_exists(
+                'select.add-task option[value=Zapp::Task::Script]',
+                'Script task appears in task list',
             )
             ->text_is(
-                'select.add-task option:nth-child(4)',
+                'select.add-task option[value=Zapp::Task::Script]',
                 'Script',
-                'fourth task option text is correct',
-            )
-            ->attr_is(
-                'select.add-task option:nth-child(4)',
-                value => 'Zapp::Task::Script',
-                'fourth task option value is correct',
+                'Script task option text is correct',
             )
             ;
 
