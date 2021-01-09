@@ -16,6 +16,19 @@ sub schema( $class ) {
                     enum => [qw( GET POST PUT DELETE PATCH OPTIONS PROPFIND )],
                     default => 'GET',
                 },
+                auth => {
+                    type => 'object',
+                    properties => {
+                        type => {
+                            type => 'string',
+                            enum => [ '', qw( bearer )],
+                        },
+                        token => {
+                            type => 'string',
+                        },
+                    },
+                    additionalProperties => false,
+                },
                 # XXX: Query params / Form params
                 # XXX: Request headers
                 # XXX: Cookies (must be easily passed between requests,
@@ -65,8 +78,13 @@ sub schema( $class ) {
 
 sub run( $self, $args ) {
     my $method = lc $args->{method};
-    my $tx = $self->app->ua->$method( $args->{url} );
-    $self->finish({
+    my %headers;
+    if ( $args->{auth} && $args->{auth}{type} eq 'bearer' ) {
+        $headers{ Authorization } = join ' ', 'Bearer', $args->{auth}{token};
+    }
+    my $tx = $self->app->ua->$method( $args->{url}, \%headers );
+    my $method = $tx->res->is_success ? 'finish' : 'fail';
+    $self->$method({
         res => {
             (
                 map { $_ => $tx->res->$_ }
