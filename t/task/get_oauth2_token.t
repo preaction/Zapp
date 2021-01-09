@@ -6,7 +6,7 @@ This tests the Zapp::Task::GetOAuth2Token class.
 =cut
 
 use Mojo::Base -strict, -signatures;
-use Test::Mojo;
+use Test::Zapp;
 use Test::More;
 use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json false true );
@@ -19,7 +19,7 @@ my $mysqld = Test::mysqld->new(
     },
 ) or plan skip_all => $Test::mysqld::errstr;
 
-my $t = Test::Mojo->new( 'Zapp', {
+my $t = Test::Zapp->new( {
     backend => {
         mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
     },
@@ -60,40 +60,24 @@ $t->app->routes->post( '/test/failure' )
 
 subtest 'run' => sub {
     subtest 'success' => sub {
-        my $plan = $t->app->create_plan({
-            name => 'Test: Success',
-            tasks => [
-                {
-                    name => '',
-                    class => 'Zapp::Task::GetOAuth2Token',
-                    args => encode_json({
-                        endpoint => $t->ua->server->url->path( '/test/success' )->to_abs,
-                        scope => 'create',
-                        client_id => '<client_id>',
-                        client_secret => '<client_secret>',
-                    }),
-                },
-            ],
-        });
-        my $run = $t->app->enqueue( $plan->{plan_id}, {} );
-
-        my $worker = $t->app->minion->worker->register;
-        my $job = $worker->dequeue;
-        my $e = $job->execute;
-        ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
-
-        is $job->info->{state}, 'finished', 'job finished';
-        is_deeply $job->info->{result},
-            {
-                is_success => true,
-                access_token => 'TESTACCESSTOKEN',
-                token_type => 'bearer',
-                expires_in => 3600,
+        $t->run_task(
+            'Zapp::Task::GetOAuth2Token' => {
+                endpoint => $t->ua->server->url->path( '/test/success' )->to_abs,
                 scope => 'create',
-                refresh_token => undef,
+                client_id => '<client_id>',
+                client_secret => '<client_secret>',
             },
-            'result data is correct'
-                or diag explain $job->info->{result};
+            'Test: Success',
+        );
+        $t->task_info_is( state => 'finished', 'job finished' );
+        $t->task_result_is( {
+            is_success => true,
+            access_token => 'TESTACCESSTOKEN',
+            token_type => 'bearer',
+            expires_in => 3600,
+            scope => 'create',
+            refresh_token => undef,
+        });
 
         ok $last_request, 'mock token request handler called';
         is $last_request->param( 'scope' ), 'create',
@@ -110,38 +94,22 @@ subtest 'run' => sub {
     };
 
     subtest 'failure' => sub {
-        my $plan = $t->app->create_plan({
-            name => 'Test: Failure',
-            tasks => [
-                {
-                    name => '',
-                    class => 'Zapp::Task::GetOAuth2Token',
-                    args => encode_json({
-                        endpoint => $t->ua->server->url->path( '/test/failure' ),
-                        scope => 'create',
-                        client_id => '<client_id>',
-                        client_secret => '<client_secret>',
-                    }),
-                },
-            ],
-        });
-        my $run = $t->app->enqueue( $plan->{plan_id}, {} );
-
-        my $worker = $t->app->minion->worker->register;
-        my $job = $worker->dequeue;
-        my $e = $job->execute;
-        ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
-
-        is $job->info->{state}, 'failed', 'job failed';
-        is_deeply $job->info->{result},
-            {
-                is_success => false,
-                error => 'invalid_scope',
-                error_description => 'You gave an invalid scope.',
-                error_uri => undef,
+        $t->run_task(
+            'Zapp::Task::GetOAuth2Token' => {
+                endpoint => $t->ua->server->url->path( '/test/failure' )->to_abs,
+                scope => 'create',
+                client_id => '<client_id>',
+                client_secret => '<client_secret>',
             },
-            'result data is correct'
-                or diag explain $job->info->{result};
+            'Test: Failure',
+        );
+        $t->task_info_is( state => 'failed', 'job failed' );
+        $t->task_result_is( {
+            is_success => false,
+            error => 'invalid_scope',
+            error_description => 'You gave an invalid scope.',
+            error_uri => undef,
+        });
 
         ok $last_request, 'mock token request handler called';
         is $last_request->param( 'scope' ), 'create',

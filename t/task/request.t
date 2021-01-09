@@ -6,7 +6,7 @@ This tests the Zapp::Task::Request class.
 =cut
 
 use Mojo::Base -strict, -signatures;
-use Test::Mojo;
+use Test::Zapp;
 use Test::More;
 use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
@@ -18,7 +18,7 @@ my $mysqld = Test::mysqld->new(
     },
 ) or plan skip_all => $Test::mysqld::errstr;
 
-my $t = Test::Mojo->new( 'Zapp', {
+my $t = Test::Zapp->new( {
     backend => {
         mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
     },
@@ -36,41 +36,25 @@ $t->app->routes->get( '/test/success' )
   } );
 
 subtest 'run' => sub {
-    my $plan = $t->app->create_plan({
-        name => 'Test: Success',
-        tasks => [
-            {
-                name => '',
-                class => 'Zapp::Task::Request',
-                args => encode_json({
-                    method => 'GET',
-                    url => $t->ua->server->url->path( '/test/success' ),
-                }),
-            },
-        ],
-    });
-    my $run = $t->app->enqueue( $plan->{plan_id}, {} );
-
-    my $worker = $t->app->minion->worker->register;
-    my $job = $worker->dequeue;
-    my $e = $job->execute;
-    ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
-
-    is $job->info->{state}, 'finished', 'job finished';
-    is_deeply $job->info->{result},
-        {
-            res => {
-                is_success => 1,
-                code => 200,
-                message => 'OK',
-                body => 'Success',
-                headers => {
-                    content_type => 'text/plain',
-                },
+    $t->run_task(
+        'Zapp::Task::Request' => {
+            method => 'GET',
+            url => $t->ua->server->url->path( '/test/success' ),
+        },
+        'Request: Success',
+    );
+    $t->task_info_is( state => 'finished' );
+    $t->task_result_is({
+        res => {
+            is_success => 1,
+            code => 200,
+            message => 'OK',
+            body => 'Success',
+            headers => {
+                content_type => 'text/plain',
             },
         },
-        'result data is correct'
-            or diag explain $job->info->{result};
+    });
 };
 
 done_testing;
