@@ -77,12 +77,13 @@ sub schema( $class ) {
 }
 
 sub run( $self, $args ) {
-    my $method = lc $args->{method};
+    my $ua = $self->app->ua;
     my %headers;
     if ( $args->{auth} && $args->{auth}{type} eq 'bearer' ) {
         $headers{ Authorization } = join ' ', 'Bearer', $args->{auth}{token};
     }
-    my $tx = $self->app->ua->$method( $args->{url}, \%headers );
+    my $tx = $ua->build_tx( $args->{method}, $args->{url}, \%headers );
+    $ua->start( $tx );
     my $method = $tx->res->is_success ? 'finish' : 'fail';
     $self->$method({
         res => {
@@ -102,7 +103,12 @@ sub run( $self, $args ) {
 __DATA__
 
 @@ args.html.ep
-% my $args = stash( 'args' ) // { method => 'GET' };
+<%
+    my $args = stash( 'args' ) // { method => 'GET' };
+    $args->{method} //= 'GET';
+    $args->{auth} //= { type => '' };
+%>
+
 <div>
     <label for="url">URL</label>
     %= url_field 'url', value => $args->{url}
@@ -110,6 +116,14 @@ __DATA__
 <div>
     <label for="method">Method</label>
     %= select_field method => [ map { $args->{method} eq $_ ? [ $_, $_, selected => 'selected' ] : $_ } qw( GET POST PUT DELETE PATCH ) ]
+</div>
+<div>
+    <label for="auth.type">Auth Type</label>
+    %= select_field 'auth.type' => [ [ 'None' => '' ], [ 'Bearer Token' => 'bearer', $args->{auth}{type} eq 'bearer' ? ( selected => 'selected' ) : () ] ]
+    <div data-zapp-if="auth.type eq 'bearer'">
+        <label for="auth.token">Bearer Token</label>
+        %= text_field 'auth.token', value => $args->{auth}{token}
+    </div>
 </div>
 
 @@ result.html.ep

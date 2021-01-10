@@ -339,7 +339,7 @@ CREATE TABLE zapp_run_jobs (
 );
 
 CREATE TABLE zapp_plan_tests (
-    test_id BIGINT AUTOINCREMENT PRIMARY KEY,
+    test_id INTEGER PRIMARY KEY,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
     expr VARCHAR(255) NOT NULL,

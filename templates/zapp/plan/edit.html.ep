@@ -1,5 +1,9 @@
-% use Mojo::Loader qw( data_section );
-% my $plan = stash( 'plan' ) // {};
+<%
+    use Mojo::Loader qw( data_section );
+    use Zapp::Util qw( get_path_from_data );
+    use Text::Balanced qw( extract_delimited );
+    my $plan = stash( 'plan' ) // {};
+%>
 
 <style>
     .task-container {
@@ -19,6 +23,14 @@
     label {
         display: block;
     }
+
+    [data-zapp-if] {
+        display: none;
+    }
+    [data-zapp-if].zapp-visible {
+        display: block;
+    }
+
 </style>
 
 %# Form for a single test
@@ -129,10 +141,51 @@
         <h2>Tasks</h2>
         <div id="all-tasks">
             <% for my $task_num ( 0 .. $#{ $plan->{tasks} } ) { %>
-                <div task-form><%
+                <div data-task-form><%
                     my $task = $plan->{tasks}[ $task_num ];
                     my $args_form = include inline => data_section( $task->{class}, 'args.html.ep' ), args => $task->{args};
                     my $args_dom = Mojo::DOM->new( $args_form );
+                    $args_dom->find( '[data-zapp-if]' )->each(
+                        sub {
+                            my ( $el ) = @_;
+                            my ( $lhs, $op, $rhs ) = split /\s*(==|!=|>|<|>=|<=|eq|ne|gt|lt|ge|le)\s*/, $el->attr( 'data-zapp-if' ), 3;
+                            #; say "Expr: " . $el->attr( 'data-zapp-if' );
+                            #; say "LHS: $lhs; OP: $op; RHS: $rhs";
+                            if ( !$op ) {
+                                # Boolean LHS
+                                my ( $false, $path ) = $lhs =~ /^(!)?\s*(\S+)/;
+                                my $value = get_path_from_data( $path, $task->{args} );
+                                if ( ( !$false && $value ) || ( $false && !$value ) ) {
+                                    #; say "False: $false; Value: $value";
+                                    $el->attr( class => join ' ', $el->attr( 'class' ), 'zapp-visible' );
+                                }
+                            }
+                            else {
+                                my ( $lhs_value, $rhs_value );
+                                if ( $lhs_value = extract_delimited( $lhs ) ) {
+                                    $lhs_value =~ s/^['"`]|['"`]$//g;
+                                }
+                                else {
+                                    $lhs_value = get_path_from_data( $lhs, $task->{args} );
+                                }
+                                if ( $rhs_value = extract_delimited( $rhs ) ) {
+                                    $rhs_value =~ s/^['"`]|['"`]$//g;
+                                }
+                                else {
+                                    $rhs_value = get_path_from_data( $rhs, $task->{args} );
+                                }
+
+                                my %ops = (
+                                    map { $_ => eval "sub { shift $_ shift }" } qw( == != > < >= <= eq ne gt lt ge le ),
+                                );
+                                #; say "LHS: $lhs_value ($lhs); OP: $op; RHS: $rhs_value ($rhs)";
+                                if ( $ops{ $op } && $ops{ $op }->( $lhs_value, $rhs_value ) ) {
+                                    $el->attr( class => join ' ', $el->attr( 'class' )//(), 'zapp-visible' );
+                                }
+                            }
+                        },
+                    );
+
                     $args_dom->find( 'input,select,textarea' )->each(
                         sub {
                             my ( $el ) = @_;
@@ -346,12 +399,84 @@ function removeResult( event ) {
     } );
 }
 
+function checkZappExpressions( event ) {
+    var match = event.target.name.match( /task\[\d+\]\.args\./ );
+    if ( !match ) return;
+    var task = event.target.closest( '[data-task-form]' ),
+        args = {};
+    task.querySelectorAll( '[name^="' + match[0] + '"]').forEach( function ( el ) {
+        var name = el.name, key = name.replace( match[0], '' );
+        args[ key ] = el.value;
+    } );
+
+    // Find all data-zapp-if
+    task.querySelectorAll( '[data-zapp-if]' ).forEach( function ( el ) {
+        var expr = el.dataset.zappIf,
+            exprMatch = expr.match( /\s*(.+?)\s*(==|!=|>|<|>=|<=|eq|ne|gt|lt|ge|le)\s*(.+)/ );
+        if ( exprMatch ) {
+            var lhs = exprMatch[1],
+                op = exprMatch[2],
+                rhs = exprMatch[3];
+
+            if ( lhs.match( /^['"]/ ) ) {
+                lhs = lhs.substring( 1, lhs.length-1 );
+            }
+            else if ( !lhs.match( /^\d/ ) ) {
+                lhs = args[ lhs ];
+            }
+
+            if ( rhs.match( /^['"]/ ) ) {
+                rhs = rhs.substring( 1, rhs.length-1 );
+            }
+            else if ( !rhs.match( /^\d/ ) ) {
+                rhs = args[ rhs ];
+            }
+
+            var opFunc = {},
+                ops = [
+                    '==', '!=', '>', '<', '>=', '<=',
+                    'eq', 'ne', 'gt', 'lt', 'ge', 'le'
+                ],
+                opMap = {
+                    eq: '==', ne: '!=',
+                    gt: '>', lt: '<',
+                    ge: '>=', le: '<='
+                };
+            ops.forEach( function ( op ) {
+                eval( "opFunc[ op ] = function ( lhs, rhs ) { return lhs " + ( opMap[op] || op ) + " rhs; }" );
+            } );
+            if ( opFunc[ op ] && opFunc[ op ]( lhs, rhs ) ) {
+                el.classList.add( 'zapp-visible' );
+            }
+            else {
+                el.classList.remove( 'zapp-visible' );
+            }
+        }
+        else {
+            // Look for leading !
+            var invert = expr.match( /^!/ );
+            if ( invert ) {
+                expr = expr.replace( /^!/, '' );
+            }
+            // Find arg value and check for booleans
+            if ( ( !invert && args[ expr ] ) || ( invert && !args[ expr ] ) ) {
+                el.classList.add( 'zapp-visible' );
+            }
+            else {
+                el.classList.remove( 'zapp-visible' );
+            }
+        }
+    });
+
+}
+
 document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'change', 'select.add-task', addTask );
     delegateEvent( 'click', 'button.test-add', addTest );
     delegateEvent( 'click', 'button.test-remove', removeTest );
     delegateEvent( 'click', 'button.result-add', addResult );
     delegateEvent( 'click', 'button.result-remove', removeResult );
+    delegateEvent( 'change', '*', checkZappExpressions );
 });
 
 % for my $js ( grep !!$_, map { data_section( $_, 'args.js.ep' ) } @{ stash 'tasks' } ) {
