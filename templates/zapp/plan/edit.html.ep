@@ -2,92 +2,227 @@
     use Mojo::Loader qw( data_section );
     use Zapp::Util qw( get_path_from_data );
     use Text::Balanced qw( extract_delimited );
+    layout 'zapp';
     my $plan = stash( 'plan' ) // {};
 %>
 
 <style>
-    .task-container {
-        padding: 0.4em;
-        border: 1px solid black;
-    }
-    .task-container h2 {
-        margin-top: 0.2em;
-    }
+/********************************
+ * Auto-grow textarea from https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/
+ * Markup:
+ * <div class="grow-wrap">
+ *   <textarea name="text" id="text" onInput="this.parentNode.dataset.replicatedValue = this.value"></textarea>
+ * </div>
+ */
+.grow-wrap {
+  /* easy way to plop the elements on top of each other and have them both sized based on the tallest one's height */
+  display: grid;
+}
+.grow-wrap::after {
+  /* Note the weird space! Needed to preventy jumpy behavior */
+  content: attr(data-replicated-value) " ";
 
-    .task-container [data-task-form] {
-        border-bottom: 1px solid black;
-        margin-bottom: 0.4em;
-        padding-bottom: 0.4em;
-    }
+  /* This is how textarea text behaves */
+  white-space: pre-wrap;
 
-    label {
-        display: block;
-    }
+  /* Hidden from view, clicks, and screen readers */
+  visibility: hidden;
+}
+.grow-wrap > textarea {
+  /* You could leave this, but after a user resizes, then it ruins the auto sizing */
+  resize: none;
 
-    [data-zapp-if] {
-        display: none;
-    }
-    [data-zapp-if].zapp-visible {
-        display: block;
-    }
+  /* Firefox shows scrollbar on growth, you can hide like this. */
+  overflow: hidden;
+}
+.grow-wrap > textarea,
+.grow-wrap::after {
+  /* Identical styling required!! */
+  border: 1px solid black;
+  padding: 0.5rem;
+  font: inherit;
+
+  /* Place on top of each other */
+  grid-area: 1 / 1 / 2 / 2;
+}
+
+/**************************************************************************************
+ * Zapp form classes for use by task arg forms
+ */
+[data-zapp-if] {
+    display: none;
+}
+[data-zapp-if].zapp-visible {
+    display: block;
+}
 
 </style>
 
 %# Form for a single test
 % my $test_tmpl = begin
     % my ( $i, $test ) = @_;
-    <input type="hidden" name="tests[<%= $i %>].test_id" value="<%= $test->{test_id} // '' %>" />
-    <input type="text" name="tests[<%= $i %>].expr" value="<%= $test->{expr} %>">
-    <select name="tests[<%= $i %>].op">
-        <option value="==" <%= $test->{op} eq '==' ? 'selected' : '' %>>==</option>
-        <option value="!=" <%= $test->{op} eq '!=' ? 'selected' : '' %>>!=</option>
-        <option value="&gt;" <%= $test->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
-        <option value="&lt;" <%= $test->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
-    </select>
-    <input type="text" name="tests[<%= $i %>].value" value="<%= $test->{value} %>">
-    <button type="button" class="test-remove">-</button>
+    <div class="form-row test-form">
+        <input type="hidden" name="tests[<%= $i %>].test_id" value="<%= $test->{test_id} // '' %>" />
+        <div class="col">
+            <label for="tests[<%= $i %>].expr">Expression</label>
+            <input type="text" name="tests[<%= $i %>].expr" value="<%= $test->{expr} %>" class="form-control">
+        </div>
+        <div class="col-auto align-self-end">
+            <select name="tests[<%= $i %>].op" class="form-control">
+                <option value="==" <%= $test->{op} eq '==' ? 'selected' : '' %>>==</option>
+                <option value="!=" <%= $test->{op} eq '!=' ? 'selected' : '' %>>!=</option>
+                <option value="&gt;" <%= $test->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
+                <option value="&lt;" <%= $test->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
+            </select>
+        </div>
+        <div class="col">
+            <label for="tests[<%= $i %>].value">Value</label>
+            <input type="text" name="tests[<%= $i %>].value" value="<%= $test->{value} %>" class="form-control">
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="button" class="test-remove btn btn-danger">-</button>
+        </div>
+    </div>
 % end
 
 %# Form for saving results
 % my $result_tmpl = begin
     % my ( $i, $result ) = @_;
-    <input type="text" name="results[<%= $i %>].name" value="<%= $result->{name} %>">
-    =
-    <input type="text" name="results[<%= $i %>].expr" value="<%= $result->{expr} %>">
-    <button type="button" class="result-remove">-</button>
+    <div class="form-row result-form">
+        <div class="col">
+            <label for="results[<%= $i %>].name">Name</label>
+            <input type="text" name="results[<%= $i %>].name" value="<%= $result->{name} %>" class="form-control">
+        </div>
+        <div class="col-auto align-self-end">
+            <span class="form-control-plaintext">=</span>
+        </div>
+        <div class="col">
+            <label for="results[<%= $i %>].expr">Expression</label>
+            <input type="text" name="results[<%= $i %>].expr" value="<%= $result->{expr} %>" class="form-control">
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="button" class="result-remove btn btn-danger">-</button>
+        </div>
+    </div>
 % end
 
 %# The form for the main task fields
 % my $task_tmpl = begin
     % my $task = shift;
-    <input type="hidden" name="task_id" value="<%= $task->{task_id} // '' %>" />
-    <input type="hidden" name="class" value="<%= $task->{class} %>" />
-    <h3 class="task-type"><label for="name"><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %></label>
-        <input type="text" name="name" placeholder="Task Name"
-            value="<%= $task->{name} %>"
-        />
-    </h3>
-    <div>
-        <label for="description">Description</label>
-        <textarea name="description" placeholder="Description"><%= $task->{description} %></textarea>
+    <div class="task-form">
+        <input type="hidden" name="task_id" value="<%= $task->{task_id} // '' %>" />
+        <input type="hidden" name="class" value="<%= $task->{class} %>" />
+        <header class="form-row align-items-center">
+            <h3 class="col-auto mb-0">
+                <label for="name"><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>:</label>
+            </h3>
+            <div class="col">
+                %= text_field "name", $task->{name}, placeholder => 'Task Name', class => 'form-control'
+            </div>
+        </header>
+        <!-- XXX: support markdown -->
+        <div class="grow-wrap">
+            <%= text_area "description", $task->{description}, class => 'form-control',
+                oninput => 'this.parentNode.dataset.replicatedValue = this.value',
+                placeholder => 'Task description',
+            %>
+        </div>
+
+        <div class="d-flex my-2 task-tabs">
+            <ul class="col-auto flex-column nav nav-pills task-tabs-nav" role="tablist">
+                <li class="nav-item">
+                    <a class="args-tab nav-link active" href="#">Config</a>
+                </li>
+                <li class="nav-item">
+                    <a class="tests-tab nav-link" href="#">
+                        Tests
+                        (<span class="tests-count">
+                            <%= scalar @{$task->{tests}} %>
+                        </span>)
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="results-tab nav-link" href="#">
+                        Results
+                        (<span class="results-count">
+                            <%= scalar @{$task->{results}} %>
+                        </span>)
+                    </a>
+                </li>
+            </ul>
+
+            <div class="col tab-content task-tabs-content">
+                <section class="tab-pane show active all-args">
+                    <div data-args-form></div>
+                </section>
+
+                <section class="tab-pane all-tests">
+                    <ul class="tests list-unstyled">
+                    % for my $i ( 0 .. $#{$task->{tests}} ) {
+                        <li><%= $test_tmpl->( $i, $task->{tests}[ $i ] ) %></li>
+                    % }
+                    </ul>
+                    <button class="test-add btn btn-secondary" type="button">
+                        <i class="fa fa-plus"></i> Add Test
+                    </button>
+                </section>
+
+                <section class="tab-pane all-results">
+                    <ul class="results list-unstyled">
+                    % for my $i ( 0 .. $#{$task->{results}} ) {
+                        <li><%= $result_tmpl->( $i, $task->{results}[ $i ] ) %></li>
+                    % }
+                    </ul>
+                    <button class="result-add btn btn-secondary" type="button">
+                        <i class="fa fa-plus"></i> Add Result
+                    </button>
+                </section>
+            </div>
+        </div>
+
     </div>
-
-    <div data-args-form></div>
-
-    <ul class="tests">
-    % for my $i ( 0 .. $#{$task->{tests}} ) {
-        <li><%= $test_tmpl->( $i, $task->{tests}[ $i ] ) %></li>
-    % }
-    </ul>
-    <button class="test-add" type="button">+</button>
-
-    <ul class="results">
-    % for my $i ( 0 .. $#{$task->{results}} ) {
-        <li><%= $result_tmpl->( $i, $task->{results}[ $i ] ) %></li>
-    % }
-    </ul>
-    <button class="result-add" type="button">+</button>
 % end
+
+%# The form for plan inputs
+% my $input_tmpl = begin
+    % my ( $input_num, $input ) = @_;
+
+    <div class="input-form form-row">
+        <div class="col-auto">
+            <label for="input[<%= $input_num %>].name">Name</label>
+            %= text_field "input[$input_num].name", $input->{name}, placeholder => 'Name', class => 'form-control'
+        </div>
+        <div class="col-auto">
+            <!-- Type is hidden so that in the future we can have different
+                input elements for different types. That is much easier if we do not
+                have to be able to mutate the form (though, [data-zapp-if] could
+                solve that problem...) -->
+            %= hidden_field "input[$input_num].type", $input->{type}
+            <label>Type</label>
+            <span class="input-type form-control-plaintext"><%= $input->{type} %></span>
+        </div>
+        <div class="col">
+            <label for="input[<%= $input_num %>].default_value">Default Value</label>
+            %= text_field "input[$input_num].default_value", $input->{default_value}, placeholder => 'Default value', class => 'form-control'
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="button" class="delete input-remove btn btn-danger">-</button>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="col">
+            <label for="input[<%= $input_num %>].description">Description</label>
+            <div class="grow-wrap">
+                <!-- XXX: support markdown -->
+                <%= text_area "input[$input_num].description", $input->{description},
+                    oninput => 'this.parentNode.dataset.replicatedValue = this.value',
+                    placeholder => 'Input description',
+                %>
+            </div>
+        </div>
+    </div>
+% end
+
 <template id="task-form">
     %= $task_tmpl->( {} )
 </template>
@@ -97,6 +232,9 @@
 <template id="result-form">
     %= $result_tmpl->( 0, {} )
 </template>
+<template id="input-form">
+    %= $input_tmpl->( 0, {} )
+</template>
 
 % for my $class ( @{ stash 'tasks' } ) {
     <template data-class="<%= $class %>">
@@ -105,43 +243,47 @@
 % }
 
 %= form_for 'zapp.save_plan', id => 'plan', begin
-    <div>
-        <label for="name">Plan Name</label>
-        <input id="name" name="name" type="text" placeholder="name" value="<%= $plan->{name} %>">
-    </div>
-    <div>
+    <header class="form-row align-items-center">
+        <h1 class="col-auto mb-0">Edit Plan</h1>
+        <div class="col">
+            <label class="mb-1" for="name">Plan Name</label>
+            <input id="name" class="form-control" name="name" type="text" placeholder="Plan Name" value="<%= $plan->{name} %>">
+            <!-- XXX: Add folders to organize plans -->
+        </div>
+    </header>
+    <div class="form-group">
         <label for="description">Plan Description</label>
-        <textarea id="description" name="description" placeholder="Description"><%= $plan->{description} %></textarea>
+        <div class="grow-wrap">
+            <%= text_area "description", $plan->{description}, id => 'description', class => 'form-control',
+                oninput => 'this.parentNode.dataset.replicatedValue = this.value',
+                placeholder => 'Plan description',
+            %>
+        </div>
     </div>
 
-    <div class="input-container">
-        <h2>Input</h2>
-        <div id="all-inputs">
+    <div class="input-container my-2">
+        <h2 class="border-bottom border-secondary">Input</h2>
+        <ul id="all-inputs" class="list-unstyled">
             % for my $input_num ( 0 .. $#{ $plan->{inputs} } ) {
                 % my $input = $plan->{inputs}[ $input_num ];
-                <div input-form>
-                    %= text_field "input[$input_num].name", $input->{name}
-                    %= hidden_field "input[$input_num].type", $input->{type}
-                    %= $input->{type}
-                    %= text_field "input[$input_num].default_value", $input->{default_value}
-                    %= text_area "input[$input_num].description", $input->{description}
-                </div>
+                <li>
+                    %= $input_tmpl->( $input_num, $input )
+                </li>
             % }
-        </div>
-        <div>
-            <select class="add-input">
-                <option>Add Input...</option>
-                % for my $type ( qw( string number integer boolean ) ) {
-                    %= tag option => ( value => $type ), ucfirst $type
-                % }
-            </select>
-        </div>
+        </ul>
+        <select class="add-input form-control col-auto">
+            <option>Add Input...</option>
+            % for my $type ( qw( string number integer boolean ) ) {
+                %= tag option => ( value => $type ), ucfirst $type
+            % }
+        </select>
     </div>
-    <div class="task-container">
-        <h2>Tasks</h2>
+
+    <div class="task-container my-2">
+        <h2 class="border-bottom border-secondary">Tasks</h2>
         <div id="all-tasks">
             <% for my $task_num ( 0 .. $#{ $plan->{tasks} } ) { %>
-                <div data-task-form><%
+                <section data-task-form class="task pt-2 border-bottom border-secondary"><%
                     my $task = $plan->{tasks}[ $task_num ];
                     my $args_form = include inline => data_section( $task->{class}, 'args.html.ep' ), args => $task->{args};
                     my $args_dom = Mojo::DOM->new( $args_form );
@@ -220,12 +362,12 @@
                             $el->attr( for => 'task[' . $task_num . '].' . $el->attr( 'for' ) );
                         },
                     );
-                    %><%== $task_dom %></div><%
+                    %><%== $task_dom %></section><%
             } %>
         </div>
 
-        <div>
-            <select class="add-task">
+        <div class="my-3">
+            <select class="add-task form-control">
                 <option>Add Task...</option>
                 % for my $class ( @{ stash 'tasks' } ) {
                     %= tag option => ( value => $class ), $class =~ s/Zapp::Task:://r
@@ -234,7 +376,7 @@
         </div>
     </div>
 
-    <button name="save-plan">Save</button>
+    <button name="save-plan" class="btn btn-primary">Save Plan</button>
 % end
 
 %= javascript begin
@@ -259,7 +401,7 @@ function addTask( event ) {
         allTasks = document.querySelector( '#all-tasks' ),
         beforeTask = sel.closest( '[data-task-form]' ),
         taskIdx = beforeTask ? allTasks.indexOf( beforeTask ) : allTasks.childElementCount,
-        taskTmpl = document.querySelector( '#task-form' ).content.cloneNode(true),
+        taskTmpl = document.querySelector( 'template#task-form' ).content.cloneNode(true),
         taskForm = document.createElement( 'div' ),
         argsTmpl = document.querySelector( `[data-class="${cls}"]` ).content,
         argsForm = argsTmpl.cloneNode(true);
@@ -317,11 +459,12 @@ function addTest( event ) {
     // Clone the blank row from the template
     var button = event.target,
         list = button.previousElementSibling,
-        task = button.parentNode,
+        task = button.closest( '.task-form' ),
+        newTest = document.querySelector( 'template#test-form' ).content.cloneNode(true),
+        newIndex = list.querySelectorAll('li').length,
+        // Find an input so we can see which task we're in
         nameAttr = task.querySelector( 'input' ).attributes.getNamedItem( 'name' ).value,
-        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') ),
-        newTest = document.querySelector( '#test-form' ).content.cloneNode(true),
-        newIndex = list.querySelectorAll('li').length;
+        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') );
 
     // Reset expr, op, value
     newTest.querySelectorAll( 'input,select' ).forEach( function (el) {
@@ -334,16 +477,20 @@ function addTest( event ) {
         el.name = el.name.replace( /tests\[\d+\]/, 'task[' + taskIndex + '].tests[' + newIndex + ']' );
         el.id = el.name;
     } );
+    // XXX: Labels
 
     // Append
     var newRow = document.createElement( 'li' );
     newRow.appendChild( newTest );
     list.appendChild( newRow );
+
+    // XXX: Focus test expression field
+    // XXX: Increment test count
 }
 
 function removeTest( event ) {
     var button = event.target,
-        row = button.parentElement,
+        row = button.closest( '.test-form' ).parentNode,
         list = row.parentElement;
 
     row.parentNode.removeChild( row );
@@ -353,18 +500,21 @@ function removeTest( event ) {
             el.name = el.name.replace( /tests\[\d+\]/, 'tests[' + i + ']' );
             el.id = el.name;
         });
+        // XXX: Labels
     } );
+    // XXX: Decrement test count
 }
 
 function addResult( event ) {
     // Clone the blank row from the template
     var button = event.target,
         list = button.previousElementSibling,
-        task = button.parentNode,
+        task = button.closest( '.task-form' ),
+        newResult = document.querySelector( 'template#result-form' ).content.cloneNode(true),
+        newIndex = list.querySelectorAll('li').length,
+        // Find an input so we can see which task we're in
         nameAttr = task.querySelector( 'input' ).attributes.getNamedItem( 'name' ).value,
-        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') ),
-        newResult = document.querySelector( '#result-form' ).content.cloneNode(true),
-        newIndex = list.querySelectorAll('li').length;
+        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') );
 
     // Reset expr, op, value
     newResult.querySelectorAll( 'input,select' ).forEach( function (el) {
@@ -377,16 +527,20 @@ function addResult( event ) {
         el.name = el.name.replace( /results\[\d+\]/, 'task[' + taskIndex + '].results[' + newIndex + ']' );
         el.id = el.name;
     } );
+    // XXX: Labels
 
     // Append
     var newRow = document.createElement( 'li' );
     newRow.appendChild( newResult );
     list.appendChild( newRow );
+
+    // XXX: Focus result name field
+    // XXX: Increment results count
 }
 
 function removeResult( event ) {
     var button = event.target,
-        row = button.parentElement,
+        row = button.closest( '.result-form' ).parentNode,
         list = row.parentElement;
 
     row.parentNode.removeChild( row );
@@ -394,6 +548,52 @@ function removeResult( event ) {
     list.querySelectorAll( 'li' ).forEach( function (row, i) {
         row.querySelectorAll( 'input,select' ).forEach( function (el) {
             el.name = el.name.replace( /results\[\d+\]/, 'results[' + i + ']' );
+            el.id = el.name;
+        });
+        // XXX: Labels
+    } );
+    // XXX: Decrement result count
+}
+
+function addInput( event ) {
+    // Clone the blank row from the template
+    var select = event.target,
+        inputType = select.options[ select.selectedIndex ].value,
+        list = select.previousElementSibling,
+        input = select.parentNode,
+        newInput = document.querySelector( 'template#input-form' ).content.cloneNode(true),
+        newIndex = list.querySelectorAll('li').length;
+
+    // Set type
+    newInput.querySelector( '[name="input[0].type"]' ).attributes.getNamedItem( 'value' ).value = inputType;
+    newInput.querySelector( '.input-type' ).innerHTML = inputType;
+
+    // Fix indexes
+    newInput.querySelectorAll( 'input,select,textarea' ).forEach( function (el) {
+        el.name = el.name.replace( /input\[\d+\]/, 'input[' + newIndex + ']' );
+        el.id = el.name;
+    } );
+
+    // Append
+    var newRow = document.createElement( 'li' );
+    newRow.appendChild( newInput );
+    list.appendChild( newRow );
+
+    select.selectedIndex = 0;
+    // XXX: Focus input name field
+}
+
+function removeInput( event ) {
+    event.preventDefault();
+    var button = event.target,
+        row = button.closest( '.input-form' ).parentElement,
+        list = row.parentElement;
+
+    row.parentNode.removeChild( row );
+    // Reset indexes in remaining test rows
+    list.querySelectorAll( 'li' ).forEach( function (row, i) {
+        row.querySelectorAll( 'input,select,textarea' ).forEach( function (el) {
+            el.name = el.name.replace( /input\[\d+\]/, 'input[' + i + ']' );
             el.id = el.name;
         });
     } );
@@ -470,13 +670,40 @@ function checkZappExpressions( event ) {
 
 }
 
+function changeTaskTab( event ) {
+    event.preventDefault();
+    var tabNavItem = event.target,
+        tabNavListItem = tabNavItem.parentNode,
+        tabContainer = tabNavItem.closest( '.task-tabs' ),
+        tabNav = tabContainer.querySelector( '.task-tabs-nav' ),
+        tabIndex = Array.prototype.indexOf.call( tabNav.childNodes, tabNavListItem ),
+        tabPaneContainer = tabContainer.querySelector( '.task-tabs-content' );
+    tabNav.querySelectorAll( '.task-tabs-nav .active' ).forEach( function (el) {
+        el.classList.remove( 'active' );
+    } );
+    tabNav.childNodes[ tabIndex ].querySelector('a').classList.add( 'active' );
+    tabPaneContainer.querySelectorAll( '.task-tabs-content > .tab-pane.show.active' ).forEach( function (el) {
+        el.classList.remove( 'show', 'active' );
+    } );
+    tabPaneContainer.childNodes[ tabIndex ].classList.add( 'show', 'active' );
+}
+
 document.addEventListener('DOMContentLoaded', function ( event ) {
+    document.querySelectorAll( '.grow-wrap textarea' ).forEach( function (el) {
+        // This causes a slight blink when the DOM is loaded. It would
+        // be nice if we could remove this and have the textarea start
+        // the correct size for the content.
+        el.parentNode.dataset.replicatedValue = el.value;
+    } );
     delegateEvent( 'change', 'select.add-task', addTask );
     delegateEvent( 'click', 'button.test-add', addTest );
     delegateEvent( 'click', 'button.test-remove', removeTest );
     delegateEvent( 'click', 'button.result-add', addResult );
     delegateEvent( 'click', 'button.result-remove', removeResult );
     delegateEvent( 'change', '*', checkZappExpressions );
+    delegateEvent( 'click', '.task-tabs > .task-tabs-nav .nav-link', changeTaskTab );
+    delegateEvent( 'change', 'select.add-input', addInput );
+    delegateEvent( 'click', 'button.input-remove', removeInput );
 });
 
 % for my $js ( grep !!$_, map { data_section( $_, 'args.js.ep' ) } @{ stash 'tasks' } ) {

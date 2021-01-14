@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<title><%= title %></title>
+%= stylesheet '/yancy/bootstrap.css'
+%= stylesheet '/yancy/font-awesome/css/font-awesome.css'
+%= javascript '/yancy/jquery.js'
+%= javascript '/yancy/popper.js'
+%= javascript '/yancy/bootstrap.js'
+<style>
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+    }
+    .buttons {
+        margin: 0.2em 0 1em 0;
+    }
+    .task-bar {
+        display: flex;
+        align-items: center;
+    }
+    .task-bar > * {
+        padding: 0.5em;
+    }
+    .task-bar > :last-child {
+        flex: 1 1 100%;
+    }
+    .task-finished {
+        background: palegreen;
+    }
+    .task-failed {
+        background: red;
+    }
+</style>
+
+
+<body>
+    <main class="container">
+        %= content
+    </main>
+</body>

@@ -37,6 +37,34 @@ sub _get_plan( $self, $plan_id ) {
     return $plan;
 }
 
+sub _get_run( $self, $run_id ) {
+    my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
+    if ( my $run_id = $run->{run_id } ) {
+        $run->{input_values} = decode_json( $run->{input_values} );
+
+        my $plan = $run->{plan} = $self->_get_plan( $run->{plan_id} );
+        for my $task ( @{ $plan->{tasks} } ) {
+            my $task_id = $task->{task_id};
+            my ( $job ) = $self->yancy->list( zapp_run_jobs => { run_id => $run_id, task_id => $task_id } );
+            $job->{context} = decode_json( $job->{context} );
+            push $run->{tasks}->@*, {
+                $self->yancy->get( zapp_plan_tasks => $task_id )->%*,
+                %$job,
+                $self->minion->job( $job->{minion_job_id} )->info->%*,
+            };
+        }
+
+        my $inputs = $plan->{inputs} = [
+            $self->yancy->list( zapp_plan_inputs => { plan_id => $run->{plan_id} }, { order_by => 'name' } ),
+        ];
+        for my $input ( @$inputs ) {
+            $input->{default_value} = decode_json( $input->{default_value} );
+            $input->{value} = $run->{input_values}{ $input->{name} };
+        }
+    }
+    return $run;
+}
+
 sub edit_plan( $self ) {
     my @tasks =
         sort grep { !ref $_ && eval { $_->isa('Zapp::Task') } }
@@ -228,7 +256,13 @@ sub save_run( $self ) {
         $self->yancy->set( zapp_runs => $run_id, $run );
     }
 
-    $self->redirect_to( 'zapp.edit_run' => { run_id => $run_id } );
+    $self->redirect_to( 'zapp.get_run' => { run_id => $run_id } );
+}
+
+sub get_run( $self ) {
+    my $run_id = $self->stash( 'run_id' );
+    my $run = $self->_get_run( $run_id );
+    $self->render( 'zapp/run/view', run => $run );
 }
 
 

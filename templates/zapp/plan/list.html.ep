@@ -1,9 +1,28 @@
+% layout 'zapp';
 
+<header>
+    <h1>Plans</h1>
+    %= link_to 'zapp.edit_plan', class => 'btn btn-secondary', begin
+        <i class="fa fa-plus"></i> Add Plan
+    % end
+</header>
+
+<div class="plans-list">
 % for my $plan ( @{ $plans // [] } ) {
     <section data-plan-id="<%= $plan->{plan_id} %>">
         <h2><%= $plan->{name} %></h2>
         <p class="description"><%= $plan->{description} %></p>
-        %= link_to 'Run', 'zapp.edit_run', $plan, class => 'btn btn-primary run'
-        %= link_to 'Edit', 'zapp.edit_plan', $plan, class => 'btn edit'
+        <div class="buttons">
+            %= link_to 'zapp.new_run', $plan, class => 'btn btn-primary run', begin
+                <i class="fa fa-arrow-right"></i> Run...
+            % end
+            %= link_to 'zapp.edit_plan', $plan, class => 'btn btn-outline-secondary edit', begin
+                <i class="fa fa-pencil"></i> Edit
+            % end
+        </div>
     </section>
 % }
+% if ( !@{ $plans // [] } ) {
+    <p>No plans found. <%= link_to 'Create a new Plan' => 'zapp.edit_plan' %>.</p>
+% }
+</div>

@@ -407,75 +407,75 @@ subtest 'edit existing plan' => sub {
 
         subtest 'inputs form' => sub {
             $t->element_exists(
-                '[name="input[0].name"]',
+                'form [name="input[0].name"]',
                 'first input name input exists',
             );
             $t->attr_is(
-                '[name="input[0].name"]',
+                'form [name="input[0].name"]',
                 value => 'delay',
                 'first input name input value is correct',
-            );
+            ) or diag $t->tx->res->dom->at( 'form [name="input[0].name"]' );
             $t->element_exists(
-                '[name="input[0].type"]',
+                'form [name="input[0].type"]',
                 'first input type input exists',
             );
             $t->attr_is(
-                '[name="input[0].type"]',
+                'form [name="input[0].type"]',
                 value => 'number',
                 'first input type input value is correct',
             );
             $t->element_exists(
-                '[name="input[0].description"]',
+                'form [name="input[0].description"]',
                 'first input description input exists',
             );
             $t->text_is(
-                '[name="input[0].description"]',
+                'form [name="input[0].description"]',
                 'Time to give crew to survive, in minutes',
                 'first input description input value is correct',
             );
             $t->element_exists(
-                '[name="input[0].default_value"]',
+                'form [name="input[0].default_value"]',
                 'first input default input exists',
             );
             $t->attr_is(
-                '[name="input[0].default_value"]',
+                'form [name="input[0].default_value"]',
                 value => '25',
                 'first input default value input value is correct',
             );
 
             $t->element_exists(
-                '[name="input[1].name"]',
+                'form [name="input[1].name"]',
                 'second input name input exists',
             );
             $t->attr_is(
-                '[name="input[1].name"]',
+                'form [name="input[1].name"]',
                 value => 'location',
                 'second input name input value is correct',
             );
             $t->element_exists(
-                '[name="input[1].type"]',
+                'form [name="input[1].type"]',
                 'second input type input exists',
             );
             $t->attr_is(
-                '[name="input[1].type"]',
+                'form [name="input[1].type"]',
                 value => 'string',
                 'second input type input value is correct',
             );
             $t->element_exists(
-                '[name="input[1].description"]',
+                'form [name="input[1].description"]',
                 'second input description input exists',
             );
             $t->text_is(
-                '[name="input[1].description"]',
+                'form [name="input[1].description"]',
                 'Where to place the bomb',
                 'second input description input value is correct',
             );
             $t->element_exists(
-                '[name="input[1].default_value"]',
+                'form [name="input[1].default_value"]',
                 'second input default input exists',
             );
             $t->attr_is(
-                '[name="input[1].default_value"]',
+                'form [name="input[1].default_value"]',
                 value => 'In the center',
                 'second input default value input value is correct',
             );
@@ -574,16 +574,16 @@ subtest 'edit existing plan' => sub {
                         'task 1 test 1 value value is correct',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(1) .tests :nth-child(1) button.test-remove',
+                        '#all-tasks > :nth-child(1) .tests > :nth-child(1) button.test-remove',
                         'task 1 test 1 remove button exists',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(1) .tests :nth-child(1) button.test-remove',
+                        '#all-tasks > :nth-child(1) .tests > :nth-child(1) button.test-remove',
                         'task 1 test 1 remove button exists',
                     );
                 };
                 $t->element_exists(
-                    '#all-tasks :nth-child(1) button.test-add',
+                    '#all-tasks > :nth-child(1) button.test-add',
                     'task 1 add test button exists',
                 );
             };
@@ -609,12 +609,12 @@ subtest 'edit existing plan' => sub {
                         'task 1 test 1 expr value is correct',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(1) .results :nth-child(1) button.result-remove',
+                        '#all-tasks > :nth-child(1) .results :nth-child(1) button.result-remove',
                         'task 1 results 1 remove button exists',
                     );
                 };
                 $t->element_exists(
-                    '#all-tasks :nth-child(1) button.result-add',
+                    '#all-tasks > :nth-child(1) button.result-add',
                     'task 1 add result button exists',
                 );
             };
@@ -710,11 +710,11 @@ subtest 'edit existing plan' => sub {
                         'task 2 test 1 value value is correct',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(2) .tests :nth-child(1) button.test-remove',
+                        '#all-tasks > :nth-child(2) .tests > :nth-child(1) button.test-remove',
                         'task 2 test 1 remove button exists',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(2) .tests :nth-child(1) button.test-remove',
+                        '#all-tasks > :nth-child(2) .tests > :nth-child(1) button.test-remove',
                         'task 2 test 1 remove button exists',
                     );
                 };
@@ -756,16 +756,16 @@ subtest 'edit existing plan' => sub {
                         'task 2 test 2 value value is correct',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(2) .tests :nth-child(2) button.test-remove',
+                        '#all-tasks > :nth-child(2) .tests > :nth-child(2) button.test-remove',
                         'task 2 test 2 remove button exists',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(2) .tests :nth-child(2) button.test-remove',
+                        '#all-tasks > :nth-child(2) .tests > :nth-child(2) button.test-remove',
                         'task 2 test 2 remove button exists',
                     );
                 };
                 $t->element_exists(
-                    '#all-tasks :nth-child(2) button.test-add',
+                    '#all-tasks > :nth-child(2) button.test-add',
                     'task 2 add test button exists',
                 );
             };
@@ -791,12 +791,12 @@ subtest 'edit existing plan' => sub {
                         'task 2 test 1 expr value is correct',
                     );
                     $t->element_exists(
-                        '#all-tasks :nth-child(2) .results :nth-child(1) button.result-remove',
+                        '#all-tasks > :nth-child(2) .results :nth-child(1) button.result-remove',
                         'task 2 results 1 remove button exists',
                     );
                 };
                 $t->element_exists(
-                    '#all-tasks :nth-child(2) button.result-add',
+                    '#all-tasks > :nth-child(2) button.result-add',
                     'task 2 add result button exists',
                 );
             };
@@ -1375,26 +1375,26 @@ subtest 'list plans' => sub {
     );
 
     $t->get_ok( '/' )->status_is( 200 )
-        ->text_like( 'section:nth-child(1) h2', qr{Deliver a package} )
-        ->text_like( 'section:nth-child(1) .description', qr{To a dangerous place} )
-        ->element_exists( 'section:nth-child(1) a.run', 'run button exists' )
-        ->attr_is( 'section:nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run/' )
-        ->element_exists( 'section:nth-child(1) a.edit', 'edit button exists' )
-        ->attr_is( 'section:nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} )
+        ->text_like( '.plans-list > :nth-child(1) h2', qr{Deliver a package} )
+        ->text_like( '.plans-list > :nth-child(1) .description', qr{To a dangerous place} )
+        ->element_exists( '.plans-list > :nth-child(1) a.run', 'run button exists' )
+        ->attr_is( '.plans-list > :nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run' )
+        ->element_exists( '.plans-list > :nth-child(1) a.edit', 'edit button exists' )
+        ->attr_is( '.plans-list > :nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} )
 
-        ->text_like( 'section:nth-child(2) h2', qr{Clean the ship} )
-        ->text_like( 'section:nth-child(2) .description', qr{Of any remains of the crew} )
-        ->element_exists( 'section:nth-child(2) a.run', 'run button exists' )
-        ->attr_is( 'section:nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run/' )
-        ->element_exists( 'section:nth-child(2) a.edit', 'edit button exists' )
-        ->attr_is( 'section:nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} )
+        ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
+        ->text_like( '.plans-list > :nth-child(2) .description', qr{Of any remains of the crew} )
+        ->element_exists( '.plans-list > :nth-child(2) a.run', 'run button exists' )
+        ->attr_is( '.plans-list > :nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run' )
+        ->element_exists( '.plans-list > :nth-child(2) a.edit', 'edit button exists' )
+        ->attr_is( '.plans-list > :nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} )
 
-        ->text_like( 'section:nth-child(3) h2', qr{Find a replacement crew} )
-        ->text_like( 'section:nth-child(3) .description', qr{After their inevitable deaths} )
-        ->element_exists( 'section:nth-child(3) a.run', 'run button exists' )
-        ->attr_is( 'section:nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run/' )
-        ->element_exists( 'section:nth-child(3) a.edit', 'edit button exists' )
-        ->attr_is( 'section:nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} )
+        ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
+        ->text_like( '.plans-list > :nth-child(3) .description', qr{After their inevitable deaths} )
+        ->element_exists( '.plans-list > :nth-child(3) a.run', 'run button exists' )
+        ->attr_is( '.plans-list > :nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run' )
+        ->element_exists( '.plans-list > :nth-child(3) a.edit', 'edit button exists' )
+        ->attr_is( '.plans-list > :nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} )
         ;
 };
 
@@ -1451,7 +1451,7 @@ subtest 'run a plan' => sub {
 
     subtest 'create run form' => sub {
         $t->get_ok( "/plan/$plan_id/run" )->status_is( 200 )
-            ->element_exists( "form[action=/plan/$plan_id/run/]", 'form exists' )
+            ->element_exists( "form[action=/plan/$plan_id/run]", 'form exists' )
             ->element_exists( '[name=input.destination]', 'input field exists' )
             ;
     };
@@ -1463,9 +1463,9 @@ subtest 'run a plan' => sub {
                 'input.destination' => 'Galaxy of Terror',
             } )
             ->status_is( 302 )->or( $dump_debug )
-            ->header_like( Location => qr{/plan/$plan_id/run/\d+} )
+            ->header_like( Location => qr{/run/\d+} )
             ;
-        my ( $run_id ) = $t->tx->res->headers->location =~ m{/plan/\d+/run/(\d+)};
+        my ( $run_id ) = $t->tx->res->headers->location =~ m{/run/(\d+)};
 
         # Recorded in Zapp
         my $run = $t->app->yancy->get( zapp_runs => $run_id );

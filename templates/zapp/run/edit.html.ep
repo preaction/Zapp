@@ -1,23 +1,47 @@
+% layout 'zapp';
 
-%= form_for 'zapp.save_run' => begin
-    <h2>Input</h2>
-    % for my $input ( @{ $plan->{inputs} // [] } ) {
-        % my $field_name = 'input.' . $input->{name};
-        <label><%= $input->{name} %></label>
-        % if ( $input->{type} eq 'boolean' ) {
-            %= check_box $field_name
+<header>
+    <h1>Run Plan: <%= $plan->{name} %></h1>
+    %= link_to 'zapp.list_plans', class => 'btn btn-secondary', begin
+        <i class="fa fa-arrow-left"></i> Back to Plans
+    % end
+</header>
+<div style="white-space: pre-line" class="mb-3"><%= $plan->{description} %></div>
+
+%= form_for 'zapp.create_run' => begin
+    % if ( @{ $plan->{inputs} // [] } ) {
+        <h2>Input</h2>
+        % for my $input ( @{ $plan->{inputs} // [] } ) {
+            <div class="form-group">
+                <%
+                    my $field_name = 'input.' . $input->{name};
+                    my %common_args = (
+                        class => 'form-control',
+                        id => $field_name,
+                        'aria-describedby' => $field_name . '-description',
+                    );
+                %>
+                <label for="<%= $common_args{id} %>"><%= $input->{name} =~ s/_/ /gr %></label>
+                % if ( $input->{type} eq 'boolean' ) {
+                    %= check_box $field_name, ( $input->{default_value} ? ( 'selected' => 'selected' ) : () ), %common_args
+                % }
+                % elsif ( $input->{type} eq 'number' ) {
+                    %= number_field $field_name, value => $input->{default_value}, %common_args
+                % }
+                % elsif ( $input->{type} eq 'integer' ) {
+                    %= number_field $field_name, value => $input->{default_value}, step => 1, %common_args
+                % }
+                % else {
+                    %= text_field $field_name, value => $input->{default_value}, %common_args
+                % }
+                <small class="form-text" id="<%= $common_args{'aria-describedby'} %>">
+                    %= $input->{description}
+                </small>
+            </div>
         % }
-        % elsif ( $input->{type} eq 'number' ) {
-            %= number_field $field_name
-        % }
-        % elsif ( $input->{type} eq 'integer' ) {
-            %= number_field $field_name, step => 1
-        % }
-        % else {
-            %= text_field $field_name
-        % }
-        <small><%= $input->{description} %></small>
     % }
-    <button>Run</button>
+    <div class="buttons">
+        <button class="btn btn-primary"><i class="fa fa-arrow-right"></i> Start</button>
+    </div>
 % end
 

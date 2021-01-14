@@ -48,7 +48,7 @@ sub startup( $self ) {
             $self->log->error( sprintf "Could not load task class %s: %s", $class, $e );
             next;
         }
-        ; say "Adding task class: $class";
+        #; say "Adding task class: $class";
         $self->minion->add_task( $class, $class );
     }
 
@@ -77,12 +77,16 @@ sub startup( $self ) {
     # Create/view runs
     $self->routes->get( '/' )
         ->to( 'plan#list_plans' )->name( 'zapp.list_plans' );
-    $self->routes->get( '/plan/:plan_id/run/:run_id', { run_id => undef } )
-        ->to( 'plan#edit_run' )->name( 'zapp.edit_run' );
-    $self->routes->post( '/plan/:plan_id/run/:run_id', { run_id => undef } )
-        ->to( 'plan#save_run' )->name( 'zapp.save_run' );
-    $self->routes->get( '/plan/:plan_id/run/:run_id' )
+    $self->routes->get( '/plan/:plan_id/run', { run_id => undef } )
+        ->to( 'plan#edit_run' )->name( 'zapp.new_run' );
+    $self->routes->post( '/plan/:plan_id/run', { run_id => undef } )
+        ->to( 'plan#save_run' )->name( 'zapp.create_run' );
+    $self->routes->get( '/run/:run_id' )
         ->to( 'plan#get_run' )->name( 'zapp.get_run' );
+    # $self->routes->get( '/run/:run_id/edit' )
+    # ->to( 'plan#edit_run' )->name( 'zapp.edit_run' );
+    # $self->routes->post( '/run/:run_id/edit' )
+    # ->to( 'plan#save_run' )->name( 'zapp.save_run' );
 
 }
 
@@ -293,18 +297,19 @@ CREATE TABLE zapp_run_tests (
 
 -- 1 up
 CREATE TABLE zapp_plans (
-    plan_id INTEGER PRIMARY KEY,
+    plan_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(255) NOT NULL,
     description TEXT
 );
 
 CREATE TABLE zapp_plan_tasks (
-    task_id INTEGER PRIMARY KEY,
+    task_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     class VARCHAR(255) NOT NULL,
-    args JSON
+    args JSON,
+    results JSON
 );
 
 CREATE TABLE zapp_task_parents (
@@ -324,7 +329,7 @@ CREATE TABLE zapp_plan_inputs (
 );
 
 CREATE TABLE zapp_runs (
-    run_id INTEGER PRIMARY KEY,
+    run_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ),
     description TEXT,
     input_values JSON
@@ -339,7 +344,7 @@ CREATE TABLE zapp_run_jobs (
 );
 
 CREATE TABLE zapp_plan_tests (
-    test_id INTEGER PRIMARY KEY,
+    test_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
     expr VARCHAR(255) NOT NULL,

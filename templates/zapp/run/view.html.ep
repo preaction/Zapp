@@ -1,0 +1,35 @@
+<%
+    use List::Util qw( first );
+    use Mojo::Loader qw( data_section );
+    use Time::Piece;
+    layout 'zapp';
+%>
+
+<header>
+    <h1>Run Plan: <%= $run->{plan}{name} %></h1>
+    %= link_to 'zapp.list_plans', class => 'btn btn-secondary', begin
+        <i class="fa fa-arrow-left"></i> Back to Plans
+    % end
+</header>
+
+<dl>
+    <dt>Started: </dt>
+    <dd><%= Time::Piece->new( $run->{tasks}[0]{started} )->strftime( '%Y-%m-%d %H:%M:%S' ) %></dd>
+    <dt>Finished: </dt>
+    <dd><%= Time::Piece->new( $run->{tasks}[-1]{finished} )->strftime( '%Y-%m-%d %H:%M:%S' ) %></dd>
+    <dt>State: </dt>
+    <dd><%= ( first { $_->{state} ne 'finished' } @{ $run->{tasks} } ) // 'finished' %></dd>
+</dl>
+
+% if ( @{ $run->{inputs} // [] } ) {
+    <h2>Input</h2>
+    XXX Show read-only input
+% }
+
+<h2>Tasks</h2>
+% for my $task ( @{ $run->{tasks} } ) {
+    <div>
+        %= include inline => data_section( $task->{class}, 'result.html.ep' ), task => $task;
+    </div>
+% }
+

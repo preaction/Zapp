@@ -1,7 +1,7 @@
 package Zapp::Task;
 use Mojo::Base 'Minion::Job', -signatures;
-use Yancy::Util qw( fill_brackets );
 use Mojo::JSON qw( decode_json encode_json );
+use Zapp::Util qw( get_path_from_data );
 
 sub execute( $self, @args ) {
     my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
@@ -14,7 +14,7 @@ sub execute( $self, @args ) {
     return $self->SUPER::execute( @args );
 }
 
-sub finish( $self, $result ) {
+sub finish( $self, $result=undef ) {
     my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
@@ -61,7 +61,7 @@ sub finish( $self, $result ) {
     my $result_saves = decode_json( $task->{results} // '[]' );
     my $context = decode_json( $run_job->{context} // '{}' );
     for my $save ( @$result_saves ) {
-        $context->{ $save->{name} } = $result->{ $save->{expr} };
+        $context->{ $save->{name} } = get_path_from_data( $save->{expr}, $result );
     }
     for my $minion_job_id ( @{ $self->info->{children} } ) {
         $self->app->yancy->backend->set(
@@ -87,7 +87,7 @@ sub schema( $class ) {
 
 sub _interpolate_args( $self, $args, $vars ) {
     if ( !ref $args ) {
-        return fill_brackets( $args, $vars );
+        return scalar $args =~ s{(?<!\\)\{([^\s\}]+)\}}{$vars->{$1}}reg
     }
     elsif ( ref $args eq 'ARRAY' ) {
         return [

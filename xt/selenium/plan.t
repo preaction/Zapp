@@ -67,7 +67,9 @@ subtest 'create a plan' => sub {
       ;
 
     # Add a test
-    $t->click_ok( '#all-tasks :nth-child(1) button.test-add' )
+    $t->click_ok( '#all-tasks > :nth-child(1) .tests-tab' )
+      ->wait_for( '#all-tasks > :nth-child(1) .all-tests.active' )
+      ->click_ok( '#all-tasks > :nth-child(1) button.test-add' )
       ->wait_for( '[name="task[0].tests[0].expr"]' )
       ->send_keys_ok( '[name="task[0].tests[0].expr"]', 'frequency' )
       ->click_ok( '[name="task[0].tests[0].op"]' )
@@ -86,7 +88,9 @@ subtest 'create a plan' => sub {
       ;
 
     # Add a test
-    $t->click_ok( '#all-tasks :nth-child(2) button.test-add' )
+    $t->click_ok( '#all-tasks > :nth-child(2) .tests-tab' )
+      ->wait_for( '#all-tasks > :nth-child(2) .all-tests.active' )
+      ->click_ok( '#all-tasks > :nth-child(2) button.test-add' )
       ->wait_for( '[name="task[1].tests[0].expr"]' )
       ->send_keys_ok( '[name="task[1].tests[0].expr"]', 'frequency' )
       ->click_ok( '[name="task[1].tests[0].op"]' )
@@ -94,7 +98,7 @@ subtest 'create a plan' => sub {
       ->send_keys_ok( '[name="task[1].tests[0].value"]', '1138' )
       ;
 
-    $t->click_ok( '#all-tasks :nth-child(2) button.test-add' )
+    $t->click_ok( '#all-tasks > :nth-child(2) button.test-add' )
       ->wait_for( '[name="task[1].tests[1].expr"]' )
       ->send_keys_ok( '[name="task[1].tests[1].expr"]', 'volume' )
       ->click_ok( '[name="task[1].tests[1].op"]' )
@@ -128,6 +132,7 @@ subtest 'create a plan' => sub {
         {
             $got_tasks[0]->%*,
             args => decode_json( $got_tasks[0]{args} ),
+            results => decode_json( $got_tasks[0]{results} ),
         },
         {
             plan_id => $got_plan->{plan_id},
@@ -138,13 +143,21 @@ subtest 'create a plan' => sub {
             args => {
                 method => 'GET',
                 url => 'http://example.com',
+                body => '',
+                content_type => '',
+                auth => {
+                    type => '',
+                    token => '',
+                },
             },
+            results => [],
         },
         'task 1 is correct';
     is_deeply
         {
             $got_tasks[1]->%*,
             args => decode_json( $got_tasks[1]{args} ),
+            results => decode_json( $got_tasks[1]{results} ),
         },
         {
             plan_id => $got_plan->{plan_id},
@@ -155,7 +168,14 @@ subtest 'create a plan' => sub {
             args => {
                 method => 'GET',
                 url => 'http://example.com',
+                body => '',
+                content_type => '',
+                auth => {
+                    type => '',
+                    token => '',
+                },
             },
+            results => [],
         },
         'task 2 is correct';
 
@@ -313,6 +333,8 @@ subtest 'edit a plan' => sub {
         ->send_keys_ok( '[name="task[1].name"]', 'Verify Bomb' )
         ->main::clear_ok( '[name="task[1].description"]' )
         ->send_keys_ok( '[name="task[1].description"]', 'Make sure this time' )
+        ->click_ok( '#all-tasks > :nth-child(2) .tests-tab' )
+        ->wait_for( '#all-tasks > :nth-child(2) .all-tests.active' )
         ->main::clear_ok( '[name="task[1].tests[0].expr"]' )
         ->send_keys_ok( '[name="task[1].tests[0].expr"]', 'bomb.orientation' )
         ->click_ok( '[name="task[1].tests[0].op"]' )
@@ -322,7 +344,9 @@ subtest 'edit a plan' => sub {
         ;
 
     # Add a new test
-    $t->click_ok( '#all-tasks :nth-child(1) button.test-add' )
+    $t->click_ok( '#all-tasks > :nth-child(1) .tests-tab' )
+        ->wait_for( '#all-tasks > :nth-child(1) .all-tests.active' )
+        ->click_ok( '#all-tasks > :nth-child(1) button.test-add' )
         ->wait_for( '[name="task[0].tests[1].expr"]' )
         ->send_keys_ok( '[name="task[0].tests[1].expr"]', 'bomb.timer' )
         ->click_ok( '[name="task[0].tests[1].op"]' )
@@ -331,7 +355,7 @@ subtest 'edit a plan' => sub {
         ;
 
     # Remove the new test
-    $t->click_ok( '[name="task[0].tests[1].expr"] ~ button.test-remove' )
+    $t->click_ok( '#all-tasks > :nth-child(1) .all-tests > ul > :nth-child(2) button.test-remove' )
         ;
 
     # XXX: Insert a new task in the middle
@@ -359,6 +383,7 @@ subtest 'edit a plan' => sub {
             {
                 $got_tasks[0]->%*,
                 args => decode_json( $got_tasks[0]{args} ),
+                results => decode_json( $got_tasks[0]{results} ),
             },
             {
                 plan_id => $plan_id,
@@ -369,12 +394,14 @@ subtest 'edit a plan' => sub {
                 args => {
                     script => 'make thebomb',
                 },
+                results => [],
             },
             'task 1 is correct';
         is_deeply
             {
                 $got_tasks[1]->%*,
                 args => decode_json( $got_tasks[1]{args} ),
+                results => decode_json( $got_tasks[0]{results} ),
             },
             {
                 plan_id => $plan_id,
@@ -385,6 +412,7 @@ subtest 'edit a plan' => sub {
                 args => {
                     script => 'make check',
                 },
+                results => [],
             },
             'task 2 is correct';
 
