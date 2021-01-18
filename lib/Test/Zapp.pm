@@ -49,9 +49,9 @@ sub run_task {
     return $self;
 }
 
-sub task_result_is {
-    my ( $self, $result, $name ) = @_;
-    $self->test( 'is_deeply', $self->{zapp}{job}->info->{result}, $result, $name );
+sub task_output_is {
+    my ( $self, $output, $name ) = @_;
+    $self->test( 'is_deeply', $self->{zapp}{job}->info->{result}, $output, $name );
 }
 
 sub task_info_is {

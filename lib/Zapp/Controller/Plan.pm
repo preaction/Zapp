@@ -16,7 +16,7 @@ sub _get_plan( $self, $plan_id ) {
         ];
         for my $task ( @$tasks ) {
             $task->{args} = decode_json( $task->{args} );
-            $task->{results} = decode_json( $task->{results} // '[]' );
+            $task->{output} = decode_json( $task->{output} // '[]' );
             $task->{tests} = [
                 $self->yancy->list(
                     zapp_plan_tests =>
@@ -172,9 +172,9 @@ sub save_plan( $self ) {
         my $task_id = $task->{task_id};
         my $tests = $task->{tests} ? delete $task->{tests} : [];
 
-        $task->{results} //= [];
+        $task->{output} //= [];
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        for my $json_field ( qw( args results ) ) {
+        for my $json_field ( qw( args output ) ) {
             $task->{ $json_field } = encode_json( $task->{ $json_field } );
         }
 

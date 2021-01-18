@@ -43,7 +43,7 @@ sub schema( $class ) {
             },
             additionalProperties => false,
         },
-        result => {
+        output => {
             type => 'object',
             properties => {
                 res => {
@@ -185,7 +185,7 @@ __DATA__
     </div>
 </div>
 
-@@ result.html.ep
+@@ output.html.ep
 %= include 'zapp/task-bar', synopsis => begin
     <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
     <%= $task->{args}{method} %>
@@ -193,8 +193,8 @@ __DATA__
 % end
 <%
     use Mojo::JSON qw( decode_json );
-    my $body = $task->{result}{res}{body};
-    if ( $task->{result}{res}{headers}{content_type} =~ m{^application/json} ) {
+    my $body = $task->{output}{res}{body};
+    if ( $task->{output}{res}{headers}{content_type} =~ m{^application/json} ) {
         $body = decode_json( $body );
     }
 %>
@@ -204,9 +204,9 @@ __DATA__
     <h4>Response</h4>
     <dl>
         <dt>Code</dt>
-        <dd><%= $task->{result}{res}{code} %> <%= $task->{result}{res}{message} %></dd>
+        <dd><%= $task->{output}{res}{code} %> <%= $task->{output}{res}{message} %></dd>
         <dt>Content-Type</dt>
-        <dd><%= $task->{result}{res}{headers}{content_type} // '' %></dd>
+        <dd><%= $task->{output}{res}{headers}{content_type} // '' %></dd>
     </dl>
     <pre class="bg-light border border-secondary p-1"><%= dumper $body %></pre>
 </div>

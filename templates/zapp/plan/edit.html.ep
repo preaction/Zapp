@@ -80,28 +80,36 @@
             <input type="text" name="tests[<%= $i %>].value" value="<%= $test->{value} %>" class="form-control">
         </div>
         <div class="col-auto align-self-end">
-            <button type="button" class="test-remove btn btn-danger">-</button>
+            <button type="button" class="test-remove btn btn-danger"
+                aria-label="Delete test"
+            >
+                <i class="fa fa-times-circle"></i>
+            </button>
         </div>
     </div>
 % end
 
-%# Form for saving results
-% my $result_tmpl = begin
-    % my ( $i, $result ) = @_;
-    <div class="form-row result-form">
+%# Form for saving output
+% my $output_tmpl = begin
+    % my ( $i, $output ) = @_;
+    <div class="form-row output-form">
         <div class="col">
-            <label for="results[<%= $i %>].name">Name</label>
-            <input type="text" name="results[<%= $i %>].name" value="<%= $result->{name} %>" class="form-control">
+            <label for="output[<%= $i %>].name">Name</label>
+            <input type="text" name="output[<%= $i %>].name" value="<%= $output->{name} %>" class="form-control">
         </div>
         <div class="col-auto align-self-end">
             <span class="form-control-plaintext">=</span>
         </div>
         <div class="col">
-            <label for="results[<%= $i %>].expr">Expression</label>
-            <input type="text" name="results[<%= $i %>].expr" value="<%= $result->{expr} %>" class="form-control">
+            <label for="output[<%= $i %>].expr">Expression</label>
+            <input type="text" name="output[<%= $i %>].expr" value="<%= $output->{expr} %>" class="form-control">
         </div>
         <div class="col-auto align-self-end">
-            <button type="button" class="result-remove btn btn-danger">-</button>
+            <button type="button" class="output-remove btn btn-danger"
+                aria-label="Delete output"
+            >
+                <i class="fa fa-times-circle"></i>
+            </button>
         </div>
     </div>
 % end
@@ -142,11 +150,9 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="results-tab nav-link" href="#">
-                        Results
-                        (<span class="results-count">
-                            <%= scalar @{$task->{results}} %>
-                        </span>)
+                    <a class="output-tab nav-link" href="#">
+                        Output
+                        (<span class="output-count"><%= scalar @{$task->{output}} %></span>)
                     </a>
                 </li>
             </ul>
@@ -167,14 +173,14 @@
                     </button>
                 </section>
 
-                <section class="tab-pane all-results">
-                    <ul class="results list-unstyled">
-                    % for my $i ( 0 .. $#{$task->{results}} ) {
-                        <li><%= $result_tmpl->( $i, $task->{results}[ $i ] ) %></li>
+                <section class="tab-pane all-output">
+                    <ul class="output list-unstyled">
+                    % for my $i ( 0 .. $#{$task->{output}} ) {
+                        <li><%= $output_tmpl->( $i, $task->{output}[ $i ] ) %></li>
                     % }
                     </ul>
-                    <button class="result-add btn btn-secondary" type="button">
-                        <i class="fa fa-plus"></i> Add Result
+                    <button class="output-add btn btn-secondary" type="button">
+                        <i class="fa fa-plus"></i> Add Output
                     </button>
                 </section>
             </div>
@@ -206,7 +212,11 @@
             %= text_field "input[$input_num].default_value", $input->{default_value}, placeholder => 'Default value', class => 'form-control'
         </div>
         <div class="col-auto align-self-end">
-            <button type="button" class="delete input-remove btn btn-danger">-</button>
+            <button type="button" class="delete input-remove btn btn-danger"
+                aria-label="Delete input"
+            >
+                <i class="fa fa-times-circle"></i>
+            </button>
         </div>
     </div>
     <div class="form-row">
@@ -229,8 +239,8 @@
 <template id="test-form">
     %= $test_tmpl->( 0, { op => '=='} )
 </template>
-<template id="result-form">
-    %= $result_tmpl->( 0, {} )
+<template id="output-form">
+    %= $output_tmpl->( 0, {} )
 </template>
 <template id="input-form">
     %= $input_tmpl->( 0, {} )
@@ -518,54 +528,54 @@ function removeTest( event ) {
     // XXX: Decrement test count
 }
 
-function addResult( event ) {
+function addOutput( event ) {
     // Clone the blank row from the template
     var button = event.target,
         list = button.previousElementSibling,
         task = button.closest( '.task-form' ),
-        newResult = document.querySelector( 'template#result-form' ).content.cloneNode(true),
+        newOutput = document.querySelector( 'template#output-form' ).content.cloneNode(true),
         newIndex = list.querySelectorAll('li').length,
         // Find an input so we can see which task we're in
         nameAttr = task.querySelector( 'input' ).attributes.getNamedItem( 'name' ).value,
         taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') );
 
     // Reset expr, op, value
-    newResult.querySelectorAll( 'input,select' ).forEach( function (el) {
+    newOutput.querySelectorAll( 'input,select' ).forEach( function (el) {
         if ( el.tagName == 'SELECT' ) {
             el.selectedIndex = 0;
         }
         else {
             el.value = '';
         }
-        el.name = el.name.replace( /results\[\d+\]/, 'task[' + taskIndex + '].results[' + newIndex + ']' );
+        el.name = el.name.replace( /output\[\d+\]/, 'task[' + taskIndex + '].output[' + newIndex + ']' );
         el.id = el.name;
     } );
     // XXX: Labels
 
     // Append
     var newRow = document.createElement( 'li' );
-    newRow.appendChild( newResult );
+    newRow.appendChild( newOutput );
     list.appendChild( newRow );
 
-    // XXX: Focus result name field
-    // XXX: Increment results count
+    // XXX: Focus output name field
+    // XXX: Increment output count
 }
 
-function removeResult( event ) {
+function removeOutput( event ) {
     var button = event.target,
-        row = button.closest( '.result-form' ).parentNode,
+        row = button.closest( '.output-form' ).parentNode,
         list = row.parentElement;
 
     row.parentNode.removeChild( row );
     // Reset indexes in remaining test rows
     list.querySelectorAll( 'li' ).forEach( function (row, i) {
         row.querySelectorAll( 'input,select' ).forEach( function (el) {
-            el.name = el.name.replace( /results\[\d+\]/, 'results[' + i + ']' );
+            el.name = el.name.replace( /output\[\d+\]/, 'output[' + i + ']' );
             el.id = el.name;
         });
         // XXX: Labels
     } );
-    // XXX: Decrement result count
+    // XXX: Decrement output count
 }
 
 function addInput( event ) {
@@ -711,8 +721,8 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'change', 'select.add-task', addTask );
     delegateEvent( 'click', 'button.test-add', addTest );
     delegateEvent( 'click', 'button.test-remove', removeTest );
-    delegateEvent( 'click', 'button.result-add', addResult );
-    delegateEvent( 'click', 'button.result-remove', removeResult );
+    delegateEvent( 'click', 'button.output-add', addOutput );
+    delegateEvent( 'click', 'button.output-remove', removeOutput );
     delegateEvent( 'change', '*', checkZappExpressions );
     delegateEvent( 'click', '.task-tabs > .task-tabs-nav .nav-link', changeTaskTab );
     delegateEvent( 'change', 'select.add-input', addInput );

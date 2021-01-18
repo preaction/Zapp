@@ -24,7 +24,7 @@ sub schema( $class ) {
             },
             additionalProperties => false,
         },
-        result => {
+        output => {
             type => 'object',
             required => [qw( access_token token_type )],
             properties => {
@@ -78,13 +78,13 @@ sub run( $self, $args ) {
     # the token. On failure (400 Bad Request) it will describe the
     # error.
     my $json = $tx->res->json;
-    my %result = (
+    my %output = (
         is_success => $tx->res->is_success ? true : false,
     );
     # Success: https://tools.ietf.org/html/rfc6749#section-5.1
-    if ( $result{is_success} ) {
+    if ( $output{is_success} ) {
         return $self->finish({
-            %result,
+            %output,
             $json->%{qw( access_token token_type expires_in refresh_token )},
             # If scope is omitted, it is the same as the scope sent with the
             # request (https://tools.ietf.org/html/rfc6749#section-5.1)
@@ -93,7 +93,7 @@ sub run( $self, $args ) {
     }
     # Error: https://tools.ietf.org/html/rfc6749#section-5.2
     return $self->fail({
-        %result,
+        %output,
         $json->%{qw( error error_description error_uri )},
     });
 }
@@ -121,6 +121,6 @@ __DATA__
     %= text_field 'scope', value => $args->{scope}
 </div>
 
-@@ result.html.ep
-%= dumper $result
+@@ output.html.ep
+%= dumper $output
 

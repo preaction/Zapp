@@ -70,7 +70,7 @@ subtest 'run' => sub {
             'Test: Success',
         );
         $t->task_info_is( state => 'finished', 'job finished' );
-        $t->task_result_is( {
+        $t->task_output_is( {
             is_success => true,
             access_token => 'TESTACCESSTOKEN',
             token_type => 'bearer',
@@ -104,7 +104,7 @@ subtest 'run' => sub {
             'Test: Failure',
         );
         $t->task_info_is( state => 'failed', 'job failed' );
-        $t->task_result_is( {
+        $t->task_output_is( {
             is_success => false,
             error => 'invalid_scope',
             error_description => 'You gave an invalid scope.',

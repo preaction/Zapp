@@ -26,6 +26,6 @@ __DATA__
     <%= text_area 'script', begin %><%= $args->{script} %><% end %>
 </div>
 
-@@ result.html.ep
-%= dumper $result
+@@ output.html.ep
+%= dumper $output
 

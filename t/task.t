@@ -45,7 +45,7 @@ subtest 'execute' => sub {
                         value => '',
                     },
                 ],
-                results => encode_json([
+                output => encode_json([
                     { name => 'initial_destination', expr => 'destination' },
                 ]),
             },
@@ -68,7 +68,7 @@ subtest 'execute' => sub {
                         value => '',
                     },
                 ],
-                results => encode_json([
+                output => encode_json([
                     { name => 'final_destination', expr => 'destination' },
                     { name => 'final_address', expr => 'delivery_address' },
                 ]),

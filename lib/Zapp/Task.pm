@@ -14,14 +14,14 @@ sub execute( $self, @args ) {
     return $self->SUPER::execute( @args );
 }
 
-sub finish( $self, $result=undef ) {
+sub finish( $self, $output=undef ) {
     my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
     # Verify tests
     my @tests = $self->app->yancy->list( zapp_run_tests => { run_id => $run_id, task_id => $task_id }, { order_by => 'test_id' } );
     for my $test ( @tests ) {
-        my $expr_value = $test->{ expr_value } = $result->{ $test->{expr} }; # XXX Support ./[0] syntax (or JSONPath instead?)
+        my $expr_value = $test->{ expr_value } = $output->{ $test->{expr} }; # XXX Support ./[0] syntax (or JSONPath instead?)
         my $pass;
         if ( $test->{op} eq '==' ) {
             $pass = ( $expr_value eq $test->{value} );
@@ -52,16 +52,16 @@ sub finish( $self, $result=undef ) {
             },
         );
         if ( !$pass ) {
-            return $self->fail( $result );
+            return $self->fail( $output );
         }
     }
 
     # Save assignments to child contexts
     my $task = $self->app->yancy->get( zapp_plan_tasks => $task_id );
-    my $result_saves = decode_json( $task->{results} // '[]' );
+    my $output_saves = decode_json( $task->{output} // '[]' );
     my $context = decode_json( $run_job->{context} // '{}' );
-    for my $save ( @$result_saves ) {
-        $context->{ $save->{name} } = get_path_from_data( $save->{expr}, $result );
+    for my $save ( @$output_saves ) {
+        $context->{ $save->{name} } = get_path_from_data( $save->{expr}, $output );
     }
     for my $minion_job_id ( @{ $self->info->{children} } ) {
         $self->app->yancy->backend->set(
@@ -71,7 +71,7 @@ sub finish( $self, $result=undef ) {
         );
     }
 
-    return $self->SUPER::finish( $result );
+    return $self->SUPER::finish( $output );
 }
 
 sub schema( $class ) {
@@ -79,7 +79,7 @@ sub schema( $class ) {
         args => {
             type => 'array',
         },
-        result => {
+        output => {
             type => 'string',
         },
     };

@@ -249,7 +249,7 @@ CREATE TABLE zapp_plan_tasks (
     description TEXT,
     class VARCHAR(255) NOT NULL,
     args JSON,
-    results JSON,
+    output JSON,
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -331,7 +331,7 @@ CREATE TABLE zapp_plan_tasks (
     description TEXT,
     class VARCHAR(255) NOT NULL,
     args JSON,
-    results JSON
+    output JSON
 );
 
 CREATE TABLE zapp_task_parents (

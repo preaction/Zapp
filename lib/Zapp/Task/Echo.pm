@@ -9,7 +9,7 @@ sub run( $self, @args ) {
 __DATA__
 @@ args.html.ep
 This is for testing only (for now).
-@@ result.html.ep
+@@ output.html.ep
 %= include 'zapp/task-bar', synopsis => begin
     <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
 % end

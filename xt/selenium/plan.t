@@ -132,7 +132,7 @@ subtest 'create a plan' => sub {
         {
             $got_tasks[0]->%*,
             args => decode_json( $got_tasks[0]{args} ),
-            results => decode_json( $got_tasks[0]{results} ),
+            output => decode_json( $got_tasks[0]{output} ),
         },
         {
             plan_id => $got_plan->{plan_id},
@@ -150,14 +150,14 @@ subtest 'create a plan' => sub {
                     token => '',
                 },
             },
-            results => [],
+            output => [],
         },
         'task 1 is correct';
     is_deeply
         {
             $got_tasks[1]->%*,
             args => decode_json( $got_tasks[1]{args} ),
-            results => decode_json( $got_tasks[1]{results} ),
+            output => decode_json( $got_tasks[1]{output} ),
         },
         {
             plan_id => $got_plan->{plan_id},
@@ -175,7 +175,7 @@ subtest 'create a plan' => sub {
                     token => '',
                 },
             },
-            results => [],
+            output => [],
         },
         'task 2 is correct';
 
@@ -383,7 +383,7 @@ subtest 'edit a plan' => sub {
             {
                 $got_tasks[0]->%*,
                 args => decode_json( $got_tasks[0]{args} ),
-                results => decode_json( $got_tasks[0]{results} ),
+                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -394,14 +394,14 @@ subtest 'edit a plan' => sub {
                 args => {
                     script => 'make thebomb',
                 },
-                results => [],
+                output => [],
             },
             'task 1 is correct';
         is_deeply
             {
                 $got_tasks[1]->%*,
                 args => decode_json( $got_tasks[1]{args} ),
-                results => decode_json( $got_tasks[0]{results} ),
+                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -412,7 +412,7 @@ subtest 'edit a plan' => sub {
                 args => {
                     script => 'make check',
                 },
-                results => [],
+                output => [],
             },
             'task 2 is correct';
 

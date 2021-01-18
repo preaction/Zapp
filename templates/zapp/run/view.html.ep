@@ -27,7 +27,7 @@
 <h2>Tasks</h2>
 % for my $task ( @{ $run->{tasks} } ) {
     <div data-task="<%= $task->{task_id} %>">
-        %= include inline => data_section( $task->{class}, 'result.html.ep' ), task => $task;
+        %= include inline => data_section( $task->{class}, 'output.html.ep' ), task => $task;
     </div>
 % }
 

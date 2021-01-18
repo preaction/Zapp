@@ -53,7 +53,7 @@ subtest 'run' => sub {
         'Request: Success',
     );
     $t->task_info_is( state => 'finished' );
-    $t->task_result_is({
+    $t->task_output_is({
         res => {
             is_success => 1,
             code => 200,
@@ -81,7 +81,7 @@ subtest 'auth' => sub {
                 'Test: Bearer Auth - Success',
             );
             $t->task_info_is( state => 'finished', 'job finished' );
-            $t->task_result_is({
+            $t->task_output_is({
                 res => {
                     is_success => 1,
                     code => 200,
@@ -111,7 +111,7 @@ subtest 'auth' => sub {
                 'Test: Bearer Auth - Unauthorized',
             );
             $t->task_info_is( state => 'failed', 'job failed' );
-            $t->task_result_is({
+            $t->task_output_is({
                 res => {
                     is_success => '',
                     code => 401,
