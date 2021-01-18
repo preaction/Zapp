@@ -5,7 +5,7 @@ use Mojo::Util qw( b64_encode );
 
 sub schema( $class ) {
     return {
-        args => {
+        input => {
             type => 'object',
             required => [qw( endpoint client_id client_secret )],
             properties => {
@@ -57,12 +57,12 @@ sub schema( $class ) {
     };
 }
 
-sub run( $self, $args ) {
+sub run( $self, $input ) {
     # An OAuth2 client credentials request is authenticated with HTTP
     # basic auth: The client_id is the username, the client_secret is
     # the password. https://tools.ietf.org/html/rfc6749#section-4.4
-    my $url = Mojo::URL->new( $args->{endpoint} );
-    my $auth = b64_encode( join( ':', $args->@{qw( client_id client_secret )} ), "" );
+    my $url = Mojo::URL->new( $input->{endpoint} );
+    my $auth = b64_encode( join( ':', $input->@{qw( client_id client_secret )} ), "" );
     my $tx = $self->app->ua->post(
         $url,
         {
@@ -70,7 +70,7 @@ sub run( $self, $args ) {
         },
         form => {
             grant_type => 'client_credentials',
-            scope => $args->{ scope },
+            scope => $input->{ scope },
         },
     );
 
@@ -88,7 +88,7 @@ sub run( $self, $args ) {
             $json->%{qw( access_token token_type expires_in refresh_token )},
             # If scope is omitted, it is the same as the scope sent with the
             # request (https://tools.ietf.org/html/rfc6749#section-5.1)
-            scope => $json->{scope} || $args->{scope},
+            scope => $json->{scope} || $input->{scope},
         });
     }
     # Error: https://tools.ietf.org/html/rfc6749#section-5.2
@@ -101,24 +101,24 @@ sub run( $self, $args ) {
 1;
 __DATA__
 
-@@ args.html.ep
-% my $args = stash( 'args' ) // {};
+@@ input.html.ep
+% my $input = stash( 'input' ) // {};
 <!-- XXX: A form this simple should be auto-generated from the schema -->
 <div>
     <label for="endpoint">Endpoint</label>
-    %= url_field 'endpoint', value => $args->{endpoint}
+    %= url_field 'endpoint', value => $input->{endpoint}
 </div>
 <div>
     <label for="client_id">Client ID</label>
-    %= text_field 'client_id', value => $args->{client_id}
+    %= text_field 'client_id', value => $input->{client_id}
 </div>
 <div>
     <label for="client_secret">Client Secret</label>
-    %= text_field 'client_secret', value => $args->{client_secret}
+    %= text_field 'client_secret', value => $input->{client_secret}
 </div>
 <div>
     <label for="scope">Scope</label>
-    %= text_field 'scope', value => $args->{scope}
+    %= text_field 'scope', value => $input->{scope}
 </div>
 
 @@ output.html.ep

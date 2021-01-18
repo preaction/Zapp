@@ -15,26 +15,26 @@
             <div class="form-group">
                 <%
                     my $field_name = 'input.' . $input->{name};
-                    my %common_args = (
+                    my %common_input = (
                         class => 'form-control',
                         id => $field_name,
                         'aria-describedby' => $field_name . '-description',
                     );
                 %>
-                <label for="<%= $common_args{id} %>"><%= $input->{name} =~ s/_/ /gr %></label>
+                <label for="<%= $common_input{id} %>"><%= $input->{name} =~ s/_/ /gr %></label>
                 % if ( $input->{type} eq 'boolean' ) {
-                    %= check_box $field_name, ( $input->{default_value} ? ( 'selected' => 'selected' ) : () ), %common_args
+                    %= check_box $field_name, ( $input->{default_value} ? ( 'selected' => 'selected' ) : () ), %common_input
                 % }
                 % elsif ( $input->{type} eq 'number' ) {
-                    %= number_field $field_name, value => $input->{default_value}, %common_args
+                    %= number_field $field_name, value => $input->{default_value}, %common_input
                 % }
                 % elsif ( $input->{type} eq 'integer' ) {
-                    %= number_field $field_name, value => $input->{default_value}, step => 1, %common_args
+                    %= number_field $field_name, value => $input->{default_value}, step => 1, %common_input
                 % }
                 % else {
-                    %= text_field $field_name, value => $input->{default_value}, %common_args
+                    %= text_field $field_name, value => $input->{default_value}, %common_input
                 % }
-                <small class="form-text" id="<%= $common_args{'aria-describedby'} %>">
+                <small class="form-text" id="<%= $common_input{'aria-describedby'} %>">
                     %= $input->{description}
                 </small>
             </div>

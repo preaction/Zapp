@@ -4,7 +4,7 @@ use Mojo::JSON qw( false true );
 
 sub schema( $class ) {
     return {
-        args => {
+        input => {
             type => 'object',
             required => [qw( url )],
             properties => {
@@ -81,22 +81,22 @@ sub schema( $class ) {
     };
 }
 
-sub run( $self, $args ) {
+sub run( $self, $input ) {
     my $ua = $self->app->ua;
     $ua->max_redirects( 5 );
-    #$self->app->log->debug( 'Args: ' . $self->app->dumper( $args ) );
+    #$self->app->log->debug( 'input: ' . $self->app->dumper( $input ) );
     my %headers;
-    if ( $args->{auth} && $args->{auth}{type} eq 'bearer' ) {
-        $headers{ Authorization } = join ' ', 'Bearer', $args->{auth}{token};
+    if ( $input->{auth} && $input->{auth}{type} eq 'bearer' ) {
+        $headers{ Authorization } = join ' ', 'Bearer', $input->{auth}{token};
     }
-    if ( $args->{content_type} ) {
-        $headers{ 'Content-Type' } = $args->{content_type};
+    if ( $input->{content_type} ) {
+        $headers{ 'Content-Type' } = $input->{content_type};
     }
 
     my $tx = $ua->build_tx(
-        $args->{method} => $args->{url},
+        $input->{method} => $input->{url},
         \%headers,
-        $args->{content_type} ? ( $args->{body} ) : (),
+        $input->{content_type} ? ( $input->{body} ) : (),
     );
     $ua->start( $tx );
     my $method = $tx->res->is_success ? 'finish' : 'fail';
@@ -125,24 +125,24 @@ sub run( $self, $args ) {
 1;
 __DATA__
 
-@@ args.html.ep
+@@ input.html.ep
 <%
-    my $args = stash( 'args' ) // { method => 'GET' };
-    $args->{method} //= 'GET';
-    $args->{auth} //= { type => '' };
+    my $input = stash( 'input' ) // { method => 'GET' };
+    $input->{method} //= 'GET';
+    $input->{auth} //= { type => '' };
 %>
 
 <div class="form-row">
     <div class="col-auto">
         <label for="method">Method</label>
         <%= select_field method =>
-            [ map { $args->{method} eq $_ ? [ $_, $_, selected => 'selected' ] : $_ } qw( GET POST PUT DELETE PATCH ) ],
+            [ map { $input->{method} eq $_ ? [ $_, $_, selected => 'selected' ] : $_ } qw( GET POST PUT DELETE PATCH ) ],
             class => 'form-control',
         %>
     </div>
     <div class="col">
         <label for="url">URL</label>
-        %= text_field 'url', value => $args->{url}, class => 'form-control'
+        %= text_field 'url', value => $input->{url}, class => 'form-control'
     </div>
 </div>
 
@@ -152,7 +152,7 @@ __DATA__
         <%= select_field 'content_type' =>
             [
                 [ 'None' => '' ],
-                [ 'JSON' => 'application/json', $args->{content_type} eq 'application/json' ? ( selected => 'selected' ) : () ],
+                [ 'JSON' => 'application/json', $input->{content_type} eq 'application/json' ? ( selected => 'selected' ) : () ],
             ],
             class => 'form-control',
         %>
@@ -162,7 +162,7 @@ __DATA__
     <div class="col">
         <label for="body">JSON Body</label>
         <div class="grow-wrap">
-            <%= text_area "body", $args->{body}, class => 'form-control',
+            <%= text_area "body", $input->{body}, class => 'form-control',
                 oninput => 'this.parentNode.dataset.replicatedValue = this.value',
             %>
         </div>
@@ -175,21 +175,21 @@ __DATA__
         <%= select_field 'auth.type' =>
             [
                 [ 'None' => '' ],
-                [ 'Bearer Token' => 'bearer', $args->{auth}{type} eq 'bearer' ? ( selected => 'selected' ) : () ],
+                [ 'Bearer Token' => 'bearer', $input->{auth}{type} eq 'bearer' ? ( selected => 'selected' ) : () ],
             ],
             class => 'form-control',
         %>
     </div>
     <div data-zapp-if="auth.type eq 'bearer'" class="col align-self-end">
-        %= text_field 'auth.token', value => $args->{auth}{token}, class => 'form-control'
+        %= text_field 'auth.token', value => $input->{auth}{token}, class => 'form-control'
     </div>
 </div>
 
 @@ output.html.ep
 %= include 'zapp/task-bar', synopsis => begin
     <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
-    <%= $task->{args}{method} %>
-    <%= $task->{args}{url} %>
+    <%= $task->{input}{method} %>
+    <%= $task->{input}{url} %>
 % end
 <%
     use Mojo::JSON qw( decode_json );
@@ -200,7 +200,7 @@ __DATA__
 %>
 <div class="ml-4">
     <h4>Request</h4>
-    <pre class="bg-light border border-secondary p-1"><%= $task->{args}{method} %> <%= $task->{args}{url} %></pre>
+    <pre class="bg-light border border-secondary p-1"><%= $task->{input}{method} %> <%= $task->{input}{url} %></pre>
     <h4>Response</h4>
     <dl>
         <dt>Code</dt>

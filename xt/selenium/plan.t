@@ -55,15 +55,15 @@ subtest 'create a plan' => sub {
       ->wait_for( '[name="task[0].name"]' )
 
       ->live_element_exists(
-          '[name="task[0].args.method"] option[selected][value=GET]',
+          '[name="task[0].input.method"] option[selected][value=GET]',
           'GET is selected by default',
         )
 
       ->send_keys_ok( '[name="task[0].name"]', 'Find the honeybun hideout' )
       ->send_keys_ok( '[name="task[0].description"]', 'Somewhere on Mars...' )
-      ->click_ok( '[name="task[0].args.method"]' )
-      ->click_ok( '[name="task[0].args.method"] option[value=GET]' )
-      ->send_keys_ok( '[name="task[0].args.url"]', 'http://example.com' )
+      ->click_ok( '[name="task[0].input.method"]' )
+      ->click_ok( '[name="task[0].input.method"] option[value=GET]' )
+      ->send_keys_ok( '[name="task[0].input.url"]', 'http://example.com' )
       ;
 
     # Add a test
@@ -84,7 +84,7 @@ subtest 'create a plan' => sub {
 
       ->send_keys_ok( '[name="task[1].name"]', 'Open a hailing channel' )
       ->send_keys_ok( '[name="task[1].description"]', 'For my victory yodel' )
-      ->send_keys_ok( '[name="task[1].args.url"]', 'http://example.com' )
+      ->send_keys_ok( '[name="task[1].input.url"]', 'http://example.com' )
       ;
 
     # Add a test
@@ -131,7 +131,7 @@ subtest 'create a plan' => sub {
     is_deeply
         {
             $got_tasks[0]->%*,
-            args => decode_json( $got_tasks[0]{args} ),
+            input => decode_json( $got_tasks[0]{input} ),
             output => decode_json( $got_tasks[0]{output} ),
         },
         {
@@ -140,7 +140,7 @@ subtest 'create a plan' => sub {
             class =>'Zapp::Task::Request',
             name => 'Find the honeybun hideout',
             description => 'Somewhere on Mars...',
-            args => {
+            input => {
                 method => 'GET',
                 url => 'http://example.com',
                 body => '',
@@ -156,7 +156,7 @@ subtest 'create a plan' => sub {
     is_deeply
         {
             $got_tasks[1]->%*,
-            args => decode_json( $got_tasks[1]{args} ),
+            input => decode_json( $got_tasks[1]{input} ),
             output => decode_json( $got_tasks[1]{output} ),
         },
         {
@@ -165,7 +165,7 @@ subtest 'create a plan' => sub {
             class =>'Zapp::Task::Request',
             name => 'Open a hailing channel',
             description => 'For my victory yodel',
-            args => {
+            input => {
                 method => 'GET',
                 url => 'http://example.com',
                 body => '',
@@ -242,7 +242,7 @@ subtest 'edit a plan' => sub {
             name => 'Deploy the Bomb',
             description => 'Deploy the bomb between the Bart Simpson dolls.',
             class => 'Zapp::Task::Script',
-            args => encode_json({
+            input => encode_json({
                 script => "liftoff;\ndrop the_bomb\n",
             }),
         } ),
@@ -252,7 +252,7 @@ subtest 'edit a plan' => sub {
             name => 'Verify bomb placement',
             description => q{Let's blow it up already!},
             class => 'Zapp::Task::Script',
-            args => encode_json({
+            input => encode_json({
                 script => 'make check',
             }),
         } ),
@@ -299,7 +299,7 @@ subtest 'edit a plan' => sub {
         ->live_value_is( '[name="task[0].task_id"]', $task_ids[0] )
         ->live_value_is( '[name="task[0].name"]', 'Deploy the Bomb' )
         ->live_value_is( '[name="task[0].description"]', 'Deploy the bomb between the Bart Simpson dolls.' )
-        ->live_value_is( '[name="task[0].args.script"]', "liftoff;\ndrop the_bomb\n" )
+        ->live_value_is( '[name="task[0].input.script"]', "liftoff;\ndrop the_bomb\n" )
         ->live_value_is( '[name="task[0].tests[0].test_id"]', $test_ids[0] )
         ->live_value_is( '[name="task[0].tests[0].expr"]', 'exit' )
         ->live_value_is( '[name="task[0].tests[0].op"]', '==' )
@@ -327,8 +327,8 @@ subtest 'edit a plan' => sub {
         ->send_keys_ok( '[name="task[0].name"]', 'Build' )
         ->main::clear_ok( '[name="task[0].description"]' )
         ->send_keys_ok( '[name="task[0].description"]', 'Build a bomb' )
-        ->main::clear_ok( '[name="task[0].args.script"]' )
-        ->send_keys_ok( '[name="task[0].args.script"]', 'make thebomb' )
+        ->main::clear_ok( '[name="task[0].input.script"]' )
+        ->send_keys_ok( '[name="task[0].input.script"]', 'make thebomb' )
         ->main::clear_ok( '[name="task[1].name"]' )
         ->send_keys_ok( '[name="task[1].name"]', 'Verify Bomb' )
         ->main::clear_ok( '[name="task[1].description"]' )
@@ -382,7 +382,7 @@ subtest 'edit a plan' => sub {
         is_deeply
             {
                 $got_tasks[0]->%*,
-                args => decode_json( $got_tasks[0]{args} ),
+                input => decode_json( $got_tasks[0]{input} ),
                 output => decode_json( $got_tasks[0]{output} ),
             },
             {
@@ -391,7 +391,7 @@ subtest 'edit a plan' => sub {
                 task_id => $task_ids[0],
                 name => 'Build',
                 description => 'Build a bomb',
-                args => {
+                input => {
                     script => 'make thebomb',
                 },
                 output => [],
@@ -400,7 +400,7 @@ subtest 'edit a plan' => sub {
         is_deeply
             {
                 $got_tasks[1]->%*,
-                args => decode_json( $got_tasks[1]{args} ),
+                input => decode_json( $got_tasks[1]{input} ),
                 output => decode_json( $got_tasks[0]{output} ),
             },
             {
@@ -409,7 +409,7 @@ subtest 'edit a plan' => sub {
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => {
+                input => {
                     script => 'make check',
                 },
                 output => [],

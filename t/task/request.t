@@ -131,7 +131,7 @@ subtest 'auth' => sub {
 
 };
 
-subtest 'args form' => sub {
+subtest 'input form' => sub {
 
     subtest 'defaults' => sub {
         my $plan = $t->app->create_plan( {
@@ -140,7 +140,7 @@ subtest 'args form' => sub {
                 {
                     name => '',
                     class => 'Zapp::Task::Request',
-                    args => encode_json({}),
+                    input => encode_json({}),
                 },
             ],
         } );
@@ -148,38 +148,38 @@ subtest 'args form' => sub {
         $t->get_ok( '/plan/' . $plan->{plan_id} )
             ->status_is( 200 )
             ->element_exists(
-                '[name="task[0].args.method"]',
+                '[name="task[0].input.method"]',
                 'method input exists',
             )
             ->attr_is(
-                '[name="task[0].args.method"] [selected]',
+                '[name="task[0].input.method"] [selected]',
                 value => 'GET',
                 'GET method selected by default',
             )
             ->element_exists(
-                '[name="task[0].args.url"]',
+                '[name="task[0].input.url"]',
                 'url input exists',
             )
             ->attr_is(
-                '[name="task[0].args.url"]',
+                '[name="task[0].input.url"]',
                 value => '',
                 'url correct value',
             )
             ->element_exists(
-                '[name="task[0].args.auth.type"]',
+                '[name="task[0].input.auth.type"]',
                 'auth type input exists',
             )
             ->attr_is(
-                '[name="task[0].args.auth.type"] [selected]',
+                '[name="task[0].input.auth.type"] [selected]',
                 value => '',
                 'auth type correct option selected',
             )
             ->element_exists(
-                '[name="task[0].args.auth.token"]',
+                '[name="task[0].input.auth.token"]',
                 'auth token input exists',
             )
             ->element_exists_not(
-                '.zapp-visible [name="task[0].args.auth.token"]',
+                '.zapp-visible [name="task[0].input.auth.token"]',
                 'auth token input is not visible',
             )
             ;
@@ -192,7 +192,7 @@ subtest 'args form' => sub {
                 {
                     name => '',
                     class => 'Zapp::Task::Request',
-                    args => encode_json({
+                    input => encode_json({
                         method => 'POST',
                         url => '/foo/bar',
                         auth => {
@@ -207,42 +207,42 @@ subtest 'args form' => sub {
         $t->get_ok( '/plan/' . $plan->{plan_id} )
             ->status_is( 200 )
             ->element_exists(
-                '[name="task[0].args.method"]',
+                '[name="task[0].input.method"]',
                 'method input exists',
             )
             ->attr_is(
-                '[name="task[0].args.method"] [selected]',
+                '[name="task[0].input.method"] [selected]',
                 value => 'POST',
                 'method correct option selected',
             )
             ->element_exists(
-                '[name="task[0].args.url"]',
+                '[name="task[0].input.url"]',
                 'url input exists',
             )
             ->attr_is(
-                '[name="task[0].args.url"]',
+                '[name="task[0].input.url"]',
                 value => '/foo/bar',
                 'url correct value',
             )
             ->element_exists(
-                '[name="task[0].args.auth.type"]',
+                '[name="task[0].input.auth.type"]',
                 'auth type input exists',
             )
             ->attr_is(
-                '[name="task[0].args.auth.type"] [selected]',
+                '[name="task[0].input.auth.type"] [selected]',
                 value => 'bearer',
                 'auth type correct option selected',
             )
             ->element_exists(
-                '[name="task[0].args.auth.token"]',
+                '[name="task[0].input.auth.token"]',
                 'auth token input exists',
             )
             ->element_exists(
-                '.zapp-visible [name="task[0].args.auth.token"]',
+                '.zapp-visible [name="task[0].input.auth.token"]',
                 'auth token input is visible',
             )
             ->attr_is(
-                '[name="task[0].args.auth.token"]',
+                '[name="task[0].input.auth.token"]',
                 value => 'AUTHTOKEN',
                 'auth token input value is correct',
             )

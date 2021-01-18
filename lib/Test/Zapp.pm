@@ -27,14 +27,14 @@ sub run_queue {
 }
 
 sub run_task {
-    my ( $self, $task_class, $args, $name ) = @_;
+    my ( $self, $task_class, $input, $name ) = @_;
     my $plan = $self->{zapp}{plan} = $self->app->create_plan({
         name => $name // $task_class,
         tasks => [
             {
                 name => $task_class,
                 class => $task_class,
-                args => encode_json( $args ),
+                input => encode_json( $input ),
             },
         ],
     });

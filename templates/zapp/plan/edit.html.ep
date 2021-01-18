@@ -139,14 +139,12 @@
         <div class="d-flex my-2 task-tabs">
             <ul class="col-auto flex-column nav nav-pills task-tabs-nav" role="tablist">
                 <li class="nav-item">
-                    <a class="args-tab nav-link active" href="#">Config</a>
+                    <a class="input-tab nav-link active" href="#">Input</a>
                 </li>
                 <li class="nav-item">
                     <a class="tests-tab nav-link" href="#">
                         Tests
-                        (<span class="tests-count">
-                            <%= scalar @{$task->{tests}} %>
-                        </span>)
+                        (<span class="tests-count"><%= scalar @{$task->{tests}} %></span>)
                     </a>
                 </li>
                 <li class="nav-item">
@@ -158,8 +156,8 @@
             </ul>
 
             <div class="col tab-content task-tabs-content">
-                <section class="tab-pane show active all-args">
-                    <div data-args-form></div>
+                <section class="tab-pane show active all-input">
+                    <div data-input-form></div>
                 </section>
 
                 <section class="tab-pane all-tests">
@@ -248,7 +246,7 @@
 
 % for my $class ( @{ stash 'tasks' } ) {
     <template data-class="<%= $class %>">
-        %= include inline => data_section( $class, 'args.html.ep' )
+        %= include inline => data_section( $class, 'input.html.ep' )
     </template>
 % }
 
@@ -308,9 +306,9 @@
             <% for my $task_num ( 0 .. $#{ $plan->{tasks} } ) { %>
                 <section data-task-form class="task pt-2 border-bottom border-secondary"><%
                     my $task = $plan->{tasks}[ $task_num ];
-                    my $args_form = include inline => data_section( $task->{class}, 'args.html.ep' ), args => $task->{args};
-                    my $args_dom = Mojo::DOM->new( $args_form );
-                    $args_dom->find( '[data-zapp-if]' )->each(
+                    my $input_form = include inline => data_section( $task->{class}, 'input.html.ep' ), input => $task->{input};
+                    my $input_dom = Mojo::DOM->new( $input_form );
+                    $input_dom->find( '[data-zapp-if]' )->each(
                         sub {
                             my ( $el ) = @_;
                             my ( $lhs, $op, $rhs ) = split /\s*(==|!=|>|<|>=|<=|eq|ne|gt|lt|ge|le)\s*/, $el->attr( 'data-zapp-if' ), 3;
@@ -319,7 +317,7 @@
                             if ( !$op ) {
                                 # Boolean LHS
                                 my ( $false, $path ) = $lhs =~ /^(!)?\s*(\S+)/;
-                                my $value = get_path_from_data( $path, $task->{args} );
+                                my $value = get_path_from_data( $path, $task->{input} );
                                 if ( ( !$false && $value ) || ( $false && !$value ) ) {
                                     #; say "False: $false; Value: $value";
                                     $el->attr( class => join ' ', $el->attr( 'class' ), 'zapp-visible' );
@@ -331,13 +329,13 @@
                                     $lhs_value =~ s/^['"`]|['"`]$//g;
                                 }
                                 else {
-                                    $lhs_value = get_path_from_data( $lhs, $task->{args} );
+                                    $lhs_value = get_path_from_data( $lhs, $task->{input} );
                                 }
                                 if ( $rhs_value = extract_delimited( $rhs ) ) {
                                     $rhs_value =~ s/^['"`]|['"`]$//g;
                                 }
                                 else {
-                                    $rhs_value = get_path_from_data( $rhs, $task->{args} );
+                                    $rhs_value = get_path_from_data( $rhs, $task->{input} );
                                 }
 
                                 my %ops = (
@@ -351,27 +349,27 @@
                         },
                     );
 
-                    $args_dom->find( 'input,select,textarea' )->each(
+                    $input_dom->find( 'input,select,textarea' )->each(
                         sub {
                             my ( $el ) = @_;
                             my $name = $el->attr( 'name' );
                             my $joiner = $name =~ /^\[/ ? '' : '.';
-                            $el->attr( name => join $joiner, 'args', $name );
+                            $el->attr( name => join $joiner, 'input', $name );
                             $el->attr( id => $el->attr( 'name' ) );
                         },
                     );
-                    $args_dom->find( 'label' )->each(
+                    $input_dom->find( 'label' )->each(
                         sub {
                             my ( $el ) = @_;
                             my $for = $el->attr( 'for' );
                             my $joiner = $for =~ /^\[/ ? '' : '.';
-                            $el->attr( for => join $joiner, 'args', $for );
+                            $el->attr( for => join $joiner, 'input', $for );
                         },
                     );
 
                     my $task_form = $task_tmpl->( $task );
                     my $task_dom = Mojo::DOM->new( $task_form );
-                    $task_dom->at( '[data-args-form]' )->replace( $args_dom );
+                    $task_dom->at( '[data-input-form]' )->replace( $input_dom );
                     $task_dom->find( 'input,select,textarea' )->each(
                         sub {
                             my ( $el ) = @_;
@@ -426,26 +424,26 @@ function addTask( event ) {
         taskIdx = beforeTask ? allTasks.indexOf( beforeTask ) : allTasks.childElementCount,
         taskTmpl = document.querySelector( 'template#task-form' ).content.cloneNode(true),
         taskForm = document.createElement( 'div' ),
-        argsTmpl = document.querySelector( `[data-class="${cls}"]` ).content,
-        argsForm = argsTmpl.cloneNode(true);
+        inputTmpl = document.querySelector( `[data-class="${cls}"]` ).content,
+        inputForm = inputTmpl.cloneNode(true);
     sel.selectedIndex = 0;
 
-    var argsInputs = argsForm.querySelectorAll( inputSelector );
-    argsInputs.forEach( function ( el ) {
+    var inputInputs = inputForm.querySelectorAll( inputSelector );
+    inputInputs.forEach( function ( el ) {
         var sep = el.name.startsWith( '[' ) ? '' : '.';
-        el.name = `args${sep}${el.name}`;
+        el.name = `input${sep}${el.name}`;
         el.id = el.name;
     } );
 
-    var argsLabels = argsForm.querySelectorAll( 'label' );
-    argsLabels.forEach( function ( el ) {
+    var inputLabels = inputForm.querySelectorAll( 'label' );
+    inputLabels.forEach( function ( el ) {
         var sep = el.attributes.for.value.startsWith( '[' ) ? '' : '.';
-        el.attributes.for.value = `args${sep}${el.attributes.for.value}`;
+        el.attributes.for.value = `input${sep}${el.attributes.for.value}`;
     } );
 
     taskForm.dataset.taskForm = true;
     taskForm.appendChild( taskTmpl );
-    taskForm.querySelector( '[data-args-form]' ).replaceWith( argsForm );
+    taskForm.querySelector( '[data-input-form]' ).replaceWith( inputForm );
     var taskTypeLabel = taskForm.querySelector( 'label[for=name]' );
     taskTypeLabel.innerHTML = type;
     var taskClassInput = taskForm.querySelector( 'input[name=class]' );
@@ -623,13 +621,13 @@ function removeInput( event ) {
 }
 
 function checkZappExpressions( event ) {
-    var match = event.target.name.match( /task\[\d+\]\.args\./ );
+    var match = event.target.name.match( /task\[\d+\]\.input\./ );
     if ( !match ) return;
     var task = event.target.closest( '[data-task-form]' ),
-        args = {};
+        input = {};
     task.querySelectorAll( '[name^="' + match[0] + '"]').forEach( function ( el ) {
         var name = el.name, key = name.replace( match[0], '' );
-        args[ key ] = el.value;
+        input[ key ] = el.value;
     } );
 
     // Find all data-zapp-if
@@ -645,14 +643,14 @@ function checkZappExpressions( event ) {
                 lhs = lhs.substring( 1, lhs.length-1 );
             }
             else if ( !lhs.match( /^\d/ ) ) {
-                lhs = args[ lhs ];
+                lhs = input[ lhs ];
             }
 
             if ( rhs.match( /^['"]/ ) ) {
                 rhs = rhs.substring( 1, rhs.length-1 );
             }
             else if ( !rhs.match( /^\d/ ) ) {
-                rhs = args[ rhs ];
+                rhs = input[ rhs ];
             }
 
             var opFunc = {},
@@ -682,7 +680,7 @@ function checkZappExpressions( event ) {
                 expr = expr.replace( /^!/, '' );
             }
             // Find arg value and check for booleans
-            if ( ( !invert && args[ expr ] ) || ( invert && !args[ expr ] ) ) {
+            if ( ( !invert && input[ expr ] ) || ( invert && !input[ expr ] ) ) {
                 el.classList.add( 'zapp-visible' );
             }
             else {
@@ -729,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'click', 'button.input-remove', removeInput );
 });
 
-% for my $js ( grep !!$_, map { data_section( $_, 'args.js.ep' ) } @{ stash 'tasks' } ) {
+% for my $js ( grep !!$_, map { data_section( $_, 'input.js.ep' ) } @{ stash 'tasks' } ) {
     %= include inline => $js
 % }
 % end

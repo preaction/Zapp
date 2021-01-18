@@ -35,7 +35,7 @@ subtest 'execute' => sub {
             {
                 name => 'Plan trip',
                 class => 'Zapp::Task::Echo',
-                args => encode_json({
+                input => encode_json({
                     destination => '{{destination}}',
                 }),
                 tests => [
@@ -52,7 +52,7 @@ subtest 'execute' => sub {
             {
                 name => 'Deliver package',
                 class => 'Zapp::Task::Echo',
-                args => encode_json({
+                input => encode_json({
                     destination => '{{destination}}',
                     delivery_address => 'Certain Doom on {{destination}}',
                 }),
@@ -133,7 +133,7 @@ subtest 'execute' => sub {
                         destination => 'Nude Beach Planet',
                     },
                 ],
-                'job args are interpolated with input';
+                'minion job args are interpolated input';
 
             my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
             is_deeply
@@ -181,7 +181,7 @@ subtest 'execute' => sub {
                         delivery_address => 'Certain Doom on Nude Beach Planet',
                     },
                 ],
-                'job args are interpolated with input';
+                'minion job args are interpolated input';
 
             my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
             is_deeply

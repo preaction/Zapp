@@ -46,20 +46,20 @@ subtest 'auth type: bearer' => sub {
         ->wait_for( '[name="task[0].name"]' )
 
         ->live_element_exists(
-            '[name="task[0].args.auth.type"]',
+            '[name="task[0].input.auth.type"]',
             'auth type select box exists',
         )
         ->live_element_exists_not(
-            '.zapp-visible [name="task[0].args.auth.token"]',
+            '.zapp-visible [name="task[0].input.auth.token"]',
             'auth token input is not visible',
         )
-        ->click_ok( '[name="task[0].args.auth.type"]' )
-        ->click_ok( '[name="task[0].args.auth.type"] option[value="bearer"]' )
-        ->wait_for( '.zapp-visible > [name="task[0].args.auth.token"]' )
-        ->send_keys_ok( '[name="task[0].args.auth.token"]', 'AUTHTOKEN' )
-        ->click_ok( '[name="task[0].args.auth.type"]' )
-        ->click_ok( '[name="task[0].args.auth.type"] option[value=""]' )
-        ->wait_for( ':not(.zapp-visible) > [name="task[0].args.auth.token"]' )
+        ->click_ok( '[name="task[0].input.auth.type"]' )
+        ->click_ok( '[name="task[0].input.auth.type"] option[value="bearer"]' )
+        ->wait_for( '.zapp-visible > [name="task[0].input.auth.token"]' )
+        ->send_keys_ok( '[name="task[0].input.auth.token"]', 'AUTHTOKEN' )
+        ->click_ok( '[name="task[0].input.auth.type"]' )
+        ->click_ok( '[name="task[0].input.auth.type"] option[value=""]' )
+        ->wait_for( ':not(.zapp-visible) > [name="task[0].input.auth.token"]' )
 };
 
 done_testing;

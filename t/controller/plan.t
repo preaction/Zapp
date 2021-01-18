@@ -122,7 +122,7 @@ subtest 'create new plan' => sub {
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
-                'task[0].args.script' => 'make order',
+                'task[0].input.script' => 'make order',
                 'task[0].tests[0].expr' => 'exit',
                 'task[0].tests[0].op' => '==',
                 'task[0].tests[0].value' => '0',
@@ -131,7 +131,7 @@ subtest 'create new plan' => sub {
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify',
                 'task[1].description' => 'Verify freezer',
-                'task[1].args.script' => 'make test',
+                'task[1].input.script' => 'make test',
                 'task[1].tests[0].expr' => 'exit',
                 'task[1].tests[0].op' => '!=',
                 'task[1].tests[0].value' => '1',
@@ -160,7 +160,7 @@ subtest 'create new plan' => sub {
         is_deeply
             {
                 $got_tasks[0]->%*,
-                args => decode_json( $got_tasks[0]{args} ),
+                input => decode_json( $got_tasks[0]{input} ),
                 output => decode_json( $got_tasks[0]{output} ),
             },
             {
@@ -169,7 +169,7 @@ subtest 'create new plan' => sub {
                 class =>'Zapp::Task::Script',
                 name => 'Order pizza',
                 description => 'I.C. Weiner',
-                args => {
+                input => {
                     script => 'make order',
                 },
                 output => [
@@ -180,7 +180,7 @@ subtest 'create new plan' => sub {
         is_deeply
             {
                 $got_tasks[1]->%*,
-                args => decode_json( $got_tasks[1]{args} ),
+                input => decode_json( $got_tasks[1]{input} ),
                 output => decode_json( $got_tasks[1]{output} ),
             },
             {
@@ -189,7 +189,7 @@ subtest 'create new plan' => sub {
                 class =>'Zapp::Task::Script',
                 name => 'Verify',
                 description => 'Verify freezer',
-                args => {
+                input => {
                     script => 'make test',
                 },
                 output => [
@@ -268,7 +268,7 @@ subtest 'edit existing plan' => sub {
                 name => 'Deploy the Bomb',
                 description => 'Deploy the bomb between the Bart Simpson dolls.',
                 class => 'Zapp::Task::Script',
-                args => encode_json({
+                input => encode_json({
                     script => "liftoff;\ndrop the_bomb\n",
                 }),
                 tests => [
@@ -286,7 +286,7 @@ subtest 'edit existing plan' => sub {
                 name => 'Activate the Bomb',
                 description => q{Let's blow it up already!},
                 class => 'Zapp::Task::Script',
-                args => encode_json({
+                input => encode_json({
                     script => "make explosion",
                 }),
                 tests => [
@@ -525,11 +525,11 @@ subtest 'edit existing plan' => sub {
             );
 
             $t->element_exists(
-                'textarea[name="task[0].args.script"]',
+                'textarea[name="task[0].input.script"]',
                 'task script textarea exists',
             );
             $t->text_is(
-                'textarea[name="task[0].args.script"]',
+                'textarea[name="task[0].input.script"]',
                 "liftoff;\ndrop the_bomb\n",
                 'first plan task description textarea value correct',
             );
@@ -663,11 +663,11 @@ subtest 'edit existing plan' => sub {
             );
 
             $t->element_exists(
-                '[name="task[1].args.script"]',
+                '[name="task[1].input.script"]',
                 'second plan task script arg exists',
             );
             $t->text_is(
-                '[name="task[1].args.script"]',
+                '[name="task[1].input.script"]',
                 'make explosion',
                 'second plan task script arg value correct',
             );
@@ -822,7 +822,7 @@ subtest 'edit existing plan' => sub {
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
                 'task[0].description' => 'Build a bomb',
-                'task[0].args.script' => 'make thebomb',
+                'task[0].input.script' => 'make thebomb',
                 'task[0].tests[0].expr' => 'bomb.timer',
                 'task[0].tests[0].op' => '==',
                 'task[0].tests[0].value' => '25:00',
@@ -834,7 +834,7 @@ subtest 'edit existing plan' => sub {
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args.script' => 'make check',
+                'task[1].input.script' => 'make check',
                 'task[1].tests[0].expr' => 'bomb.orientation',
                 'task[1].tests[0].op' => '!=',
                 'task[1].tests[0].value' => 'reverse',
@@ -862,7 +862,7 @@ subtest 'edit existing plan' => sub {
         is_deeply
             {
                 $got_tasks[0]->%*,
-                args => decode_json( $got_tasks[0]{args} ),
+                input => decode_json( $got_tasks[0]{input} ),
                 output => decode_json( $got_tasks[0]{output} ),
             },
             {
@@ -871,7 +871,7 @@ subtest 'edit existing plan' => sub {
                 task_id => $task_ids[0],
                 name => 'Build',
                 description => 'Build a bomb',
-                args => {
+                input => {
                     script => 'make thebomb',
                 },
                 output => [
@@ -883,7 +883,7 @@ subtest 'edit existing plan' => sub {
         is_deeply
             {
                 $got_tasks[1]->%*,
-                args => decode_json( $got_tasks[1]{args} ),
+                input => decode_json( $got_tasks[1]{input} ),
                 output => decode_json( $got_tasks[1]{output} ),
             },
             {
@@ -892,7 +892,7 @@ subtest 'edit existing plan' => sub {
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => {
+                input => {
                     script => 'make check',
                 },
                 output => [
@@ -982,16 +982,16 @@ subtest 'edit existing plan' => sub {
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
                 'task[0].description' => 'Build a bomb',
-                'task[0].args.script' => 'make thebomb',
+                'task[0].input.script' => 'make thebomb',
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Transit',
                 'task[1].description' => 'Fly to garbage ball',
-                'task[1].args.script' => 'make flight',
+                'task[1].input.script' => 'make flight',
                 'task[2].task_id' => $task_ids[1],
                 'task[2].class' => 'Zapp::Task::Script',
                 'task[2].name' => 'Verify Bomb',
                 'task[2].description' => 'Make sure this time',
-                'task[2].args.script' => 'make check',
+                'task[2].input.script' => 'make check',
                 'task[2].tests[0].expr' => 'bomb.orientation',
                 'task[2].tests[0].op' => '!=',
                 'task[2].tests[0].value' => 'reverse',
@@ -1013,7 +1013,7 @@ subtest 'edit existing plan' => sub {
         is_deeply
             {
                 $got_tasks[0]->%*,
-                args => decode_json( $got_tasks[0]{args} ),
+                input => decode_json( $got_tasks[0]{input} ),
                 output => decode_json( $got_tasks[0]{output} ),
             },
             {
@@ -1022,7 +1022,7 @@ subtest 'edit existing plan' => sub {
                 task_id => $task_ids[0],
                 name => 'Build',
                 description => 'Build a bomb',
-                args => {
+                input => {
                     script => 'make thebomb',
                 },
                 output => [],
@@ -1032,7 +1032,7 @@ subtest 'edit existing plan' => sub {
         is_deeply
             {
                 $got_tasks[2]->%*,
-                args => decode_json( $got_tasks[2]{args} ),
+                input => decode_json( $got_tasks[2]{input} ),
                 output => decode_json( $got_tasks[2]{output} ),
             },
             {
@@ -1041,7 +1041,7 @@ subtest 'edit existing plan' => sub {
                 task_id => $got_tasks[2]{task_id},
                 name => 'Transit',
                 description => 'Fly to garbage ball',
-                args => {
+                input => {
                     script => 'make flight',
                 },
                 output => [],
@@ -1051,7 +1051,7 @@ subtest 'edit existing plan' => sub {
         is_deeply
             {
                 $got_tasks[1]->%*,
-                args => decode_json( $got_tasks[1]{args} ),
+                input => decode_json( $got_tasks[1]{input} ),
                 output => decode_json( $got_tasks[1]{output} ),
             },
             {
@@ -1060,7 +1060,7 @@ subtest 'edit existing plan' => sub {
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => {
+                input => {
                     script => 'make check',
                 },
                 output => [],
@@ -1158,12 +1158,12 @@ subtest 'edit existing plan' => sub {
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
                 'task[0].description' => 'Build a bomb',
-                'task[0].args.script' => 'make thebomb',
+                'task[0].input.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args.script' => 'make check',
+                'task[1].input.script' => 'make check',
                 'task[1].tests[0].expr' => 'bomb.orientation',
                 'task[1].tests[0].op' => '!=',
                 'task[1].tests[0].value' => 'reverse',
@@ -1185,7 +1185,7 @@ subtest 'edit existing plan' => sub {
         is_deeply
             {
                 $got_tasks[0]->%*,
-                args => decode_json( $got_tasks[0]{args} ),
+                input => decode_json( $got_tasks[0]{input} ),
                 output => decode_json( $got_tasks[0]{output} ),
             },
             {
@@ -1194,7 +1194,7 @@ subtest 'edit existing plan' => sub {
                 task_id => $task_ids[0],
                 name => 'Build',
                 description => 'Build a bomb',
-                args => {
+                input => {
                     script => 'make thebomb',
                 },
                 output => [],
@@ -1204,7 +1204,7 @@ subtest 'edit existing plan' => sub {
         is_deeply
             {
                 $got_tasks[1]->%*,
-                args => decode_json( $got_tasks[1]{args} ),
+                input => decode_json( $got_tasks[1]{input} ),
                 output => decode_json( $got_tasks[1]{output} ),
             },
             {
@@ -1213,7 +1213,7 @@ subtest 'edit existing plan' => sub {
                 task_id => $task_ids[1],
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
-                args => {
+                input => {
                     script => 'make check',
                 },
                 output => [],
@@ -1273,12 +1273,12 @@ subtest 'edit existing plan' => sub {
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
                 'task[0].description' => 'Build a bomb',
-                'task[0].args.script' => 'make thebomb',
+                'task[0].input.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args.script' => 'make check',
+                'task[1].input.script' => 'make check',
                 'task[1].tests[0].expr' => 'bomb.orientation',
                 'task[1].tests[0].op' => '!=',
                 'task[1].tests[0].value' => 'reverse',
@@ -1322,12 +1322,12 @@ subtest 'edit existing plan' => sub {
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
                 'task[0].description' => 'Build a bomb',
-                'task[0].args.script' => 'make thebomb',
+                'task[0].input.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
-                'task[1].args.script' => 'make check',
+                'task[1].input.script' => 'make check',
                 'task[1].tests[0].expr' => 'bomb.orientation',
                 'task[1].tests[0].op' => '!=',
                 'task[1].tests[0].value' => 'reverse',
@@ -1419,7 +1419,7 @@ subtest 'run a plan' => sub {
             {
                 name => 'Plan trip',
                 class => 'Zapp::Task::Echo',
-                args => encode_json({
+                input => encode_json({
                     destination => 'Chapek 9',
                 }),
                 tests => [
@@ -1433,7 +1433,7 @@ subtest 'run a plan' => sub {
             {
                 name => 'Deliver package',
                 class => 'Zapp::Task::Echo',
-                args => encode_json({
+                input => encode_json({
                     delivery_address => 'Certain Doom',
                 }),
                 tests => [
@@ -1555,14 +1555,14 @@ subtest 'view run status' => sub {
             {
                 name => 'Watch',
                 class => 'Zapp::Task::Echo',
-                args => encode_json({
+                input => encode_json({
                     character => '{{Character}}',
                 }),
             },
             {
                 name => 'Experience Ironic Consequences',
                 class => 'Zapp::Task::Echo',
-                args => encode_json({
+                input => encode_json({
                     character => '{{Character}}',
                 }),
             },
@@ -1591,9 +1591,9 @@ subtest 'view run status' => sub {
             ->text_is( '[data-task-started]', 'N/A', 'run started is correct' )
             ->text_is( '[data-task-finished]', 'N/A', 'run finished is correct' )
             ->text_is( "[data-task=$run->{tasks}[0]{task_id}] [data-task-state]", 'inactive', 'first task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task args are interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task input are interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'inactive', 'second task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/\{\{Character\}\}/, 'second task args are not yet interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/\{\{Character\}\}/, 'second task input are not yet interpolated' )
     };
 
     $t->run_queue;
@@ -1605,9 +1605,9 @@ subtest 'view run status' => sub {
             ->text_like( '[data-task-started]', qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run started is formatted correctly' )
             ->text_like( '[data-task-finished]',  qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run finished is formatted correctly' )
             ->text_is( "[data-task=$run->{tasks}[0]{task_id}] [data-task-state]", 'finished', 'first task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task args are interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task input are interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'finished', 'second task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/Zanthor/, 'second task args are interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/Zanthor/, 'second task input are interpolated' )
     };
 };
 
@@ -1618,7 +1618,7 @@ subtest 'delete plan' => sub {
             {
                 name => 'Get Ceremonial Oversized Scissors',
                 class => 'Zapp::Task::Echo',
-                args => encode_json({}),
+                input => encode_json({}),
                 tests => [
                     {
                         expr => 'sharpness',

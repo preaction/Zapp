@@ -3,7 +3,7 @@ use Mojo::Base 'Zapp::Task', -signatures;
 
 sub schema( $class ) {
     return {
-        args => {
+        input => {
             type => 'object',
             required => [qw( script )],
             properties => {
@@ -19,11 +19,11 @@ sub schema( $class ) {
 1;
 __DATA__
 
-@@ args.html.ep
-% my $args = stash( 'args' ) // { script => '' };
+@@ input.html.ep
+% my $input = stash( 'input' ) // { script => '' };
 <div>
     <label for="script">Script</label>
-    <%= text_area 'script', begin %><%= $args->{script} %><% end %>
+    <%= text_area 'script', begin %><%= $input->{script} %><% end %>
 </div>
 
 @@ output.html.ep

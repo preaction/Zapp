@@ -15,7 +15,7 @@ sub _get_plan( $self, $plan_id ) {
             $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id }, { order_by => 'task_id' } ),
         ];
         for my $task ( @$tasks ) {
-            $task->{args} = decode_json( $task->{args} );
+            $task->{input} = decode_json( $task->{input} );
             $task->{output} = decode_json( $task->{output} // '[]' );
             $task->{tests} = [
                 $self->yancy->list(
@@ -49,15 +49,27 @@ sub _get_run( $self, $run_id ) {
         for my $task ( @{ $plan->{tasks} } ) {
             my $task_id = $task->{task_id};
             my ( $job ) = $self->yancy->list( zapp_run_jobs => { run_id => $run_id, task_id => $task_id } );
-            if ( $job->{context} ) {
-                $job->{context} = decode_json( $job->{context} );
-                $job->{args} = fill_input( $job->{context}, $task->{args} );
-            }
-            push $run->{tasks}->@*, {
+            my $minion_job = $self->minion->job( $job->{minion_job_id} );
+
+            # The task run information should be all the Zapp task
+            # information and all the Minion job information except for
+            # args and result (renamed input and output respectively)
+            my $run_task = {
                 $self->yancy->get( zapp_plan_tasks => $task_id )->%*,
-                $self->minion->job( $job->{minion_job_id} )->info->%*,
+                $minion_job->info->%*,
                 %$job,
             };
+
+            delete $run_task->{args};
+            $run_task->{input} = decode_json( $run_task->{input} );
+            if ( $run_task->{context} ) {
+                $run_task->{context} = decode_json( $run_task->{context} );
+                $run_task->{input} = fill_input( $run_task->{context}, $run_task->{input} );
+            }
+
+            $run_task->{output} = delete $run_task->{result};
+
+            push $run->{tasks}->@*, $run_task;
         }
 
         my $inputs = $plan->{inputs} = [
@@ -174,7 +186,7 @@ sub save_plan( $self ) {
 
         $task->{output} //= [];
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        for my $json_field ( qw( args output ) ) {
+        for my $json_field ( qw( input output ) ) {
             $task->{ $json_field } = encode_json( $task->{ $json_field } );
         }
 

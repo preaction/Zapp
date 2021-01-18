@@ -197,7 +197,7 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
                 $job_opts{ parents } = [ map $task_jobs{ $_ }, @$parents ];
             }
 
-            my $args = decode_json( $task->{args} );
+            my $args = decode_json( $task->{input} );
             if ( ref $args ne 'ARRAY' ) {
                 $args = [ $args ];
             }
@@ -248,7 +248,7 @@ CREATE TABLE zapp_plan_tasks (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     class VARCHAR(255) NOT NULL,
-    args JSON,
+    input JSON,
     output JSON,
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -330,7 +330,7 @@ CREATE TABLE zapp_plan_tasks (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     class VARCHAR(255) NOT NULL,
-    args JSON,
+    input JSON,
     output JSON
 );
 

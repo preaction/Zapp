@@ -76,7 +76,7 @@ sub finish( $self, $output=undef ) {
 
 sub schema( $class ) {
     return {
-        args => {
+        input => {
             type => 'array',
         },
         output => {
