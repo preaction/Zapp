@@ -13,6 +13,7 @@ use Mojo::JSON qw( decode_json encode_json );
 
 my $mysqld = Test::mysqld->new(
     my_cnf => {
+        sql_mode => 'ANSI,TRADITIONAL',
         # Needed for Minion::Backend::mysql
         log_bin_trust_function_creators => 1,
     },
@@ -1386,6 +1387,8 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run' )
         ->element_exists( '.plans-list > :nth-child(1) a.edit', 'edit button exists' )
         ->attr_is( '.plans-list > :nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} )
+        ->element_exists( '.plans-list > :nth-child(1) a.delete', 'delete button exists' )
+        ->attr_is( '.plans-list > :nth-child(1) a.delete', href => '/plan/' . $plans[0]{plan_id} . '/delete' )
 
         ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
         ->text_like( '.plans-list > :nth-child(2) .description', qr{Of any remains of the crew} )
@@ -1393,6 +1396,8 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run' )
         ->element_exists( '.plans-list > :nth-child(2) a.edit', 'edit button exists' )
         ->attr_is( '.plans-list > :nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} )
+        ->element_exists( '.plans-list > :nth-child(2) a.delete', 'delete button exists' )
+        ->attr_is( '.plans-list > :nth-child(2) a.delete', href => '/plan/' . $plans[1]{plan_id} . '/delete' )
 
         ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
         ->text_like( '.plans-list > :nth-child(3) .description', qr{After their inevitable deaths} )
@@ -1400,6 +1405,8 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run' )
         ->element_exists( '.plans-list > :nth-child(3) a.edit', 'edit button exists' )
         ->attr_is( '.plans-list > :nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} )
+        ->element_exists( '.plans-list > :nth-child(3) a.delete', 'delete button exists' )
+        ->attr_is( '.plans-list > :nth-child(3) a.delete', href => '/plan/' . $plans[2]{plan_id} . '/delete' )
         ;
 };
 
@@ -1602,6 +1609,58 @@ subtest 'view run status' => sub {
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'finished', 'second task state is correct' )
             ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/Zanthor/, 'second task args are interpolated' )
     };
+};
+
+subtest 'delete plan' => sub {
+    my $plan = $t->app->create_plan({
+        name => 'Cut Ribbon at DOOP Headquarters',
+        tasks => [
+            {
+                name => 'Get Ceremonial Oversized Scissors',
+                class => 'Zapp::Task::Echo',
+                args => encode_json({}),
+                tests => [
+                    {
+                        expr => 'sharpness',
+                        op => '>',
+                        value => 'dull',
+                    },
+                ],
+            },
+        ],
+        inputs => [
+            {
+                name => 'color',
+                type => 'string',
+                description => 'What color of scissors',
+                default_value => encode_json( 'White' ),
+            },
+        ],
+    });
+    my $plan_id = $plan->{plan_id};
+    $t->get_ok( "/plan/$plan_id/delete" )->status_is( 200 )
+        ->content_like( qr{Cut Ribbon at DOOP Headquarters}, 'content contains plan name' )
+        ->element_exists( '.alert form', 'form exists in alert' )
+        ->attr_is( '.alert form', action => "/plan/$plan_id/delete", 'form url is correct' )
+        ->attr_is( '.alert form', method => 'POST', 'form method is correct' )
+        ->element_exists( 'a[href].cancel', 'cancel link exists' )
+        ->attr_is( 'a[href].cancel', href => '/', 'cancel link href correct (back to plan list)' )
+        ;
+    ok $t->app->yancy->get( zapp_plans => $plan_id ), 'plan still exists';
+    ok $t->app->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } ), 'plan tasks still exist';
+    ok $t->app->yancy->list( zapp_plan_inputs => { plan_id => $plan_id } ), 'plan inputs still exist';
+    ok $t->app->yancy->list( zapp_plan_tests => { plan_id => $plan_id } ), 'plan tests still exist';
+
+    $t->post_ok( "/plan/$plan_id/delete" )->status_is( 302, 'delete success redirects' )
+        ->header_is( Location => '/', 'redirects to plan list' )
+        ;
+    ok !$t->app->yancy->get( zapp_plans => $plan_id ), 'plan does not exist';
+    ok !$t->app->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } ), 'plan tasks deleted'
+        or diag explain $t->app->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
+    ok !$t->app->yancy->list( zapp_plan_inputs => { plan_id => $plan_id } ), 'plan inputs deleted'
+        or diag explain $t->app->yancy->list( zapp_plan_inputs => { plan_id => $plan_id } );
+    ok !$t->app->yancy->list( zapp_plan_tests => { plan_id => $plan_id } ), 'plan tests deleted'
+        or diag explain $t->app->yancy->list( zapp_plan_tests => { plan_id => $plan_id } );
 };
 
 subtest 'error - input name invalid' => sub {

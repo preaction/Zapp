@@ -73,6 +73,10 @@ sub startup( $self ) {
         ->to( 'plan#edit_plan' )->name( 'zapp.edit_plan' );
     $self->routes->post( '/plan/:plan_id', { plan_id => undef } )
         ->to( 'plan#save_plan' )->name( 'zapp.save_plan' );
+    $self->routes->get( '/plan/:plan_id/delete' )
+        ->to( 'plan#delete_plan' )->name( 'zapp.delete_plan' );
+    $self->routes->post( '/plan/:plan_id/delete' )
+        ->to( 'plan#delete_plan' )->name( 'zapp.delete_plan_confirm' );
 
     # Create/view runs
     $self->routes->get( '/' )
@@ -240,63 +244,75 @@ CREATE TABLE zapp_plans (
 
 CREATE TABLE zapp_plan_tasks (
     task_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    plan_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     class VARCHAR(255) NOT NULL,
     args JSON,
-    results JSON
+    results JSON,
+    CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_task_parents (
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
     parent_task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE RESTRICT,
-    PRIMARY KEY ( task_id, parent_task_id )
+    PRIMARY KEY ( task_id, parent_task_id ),
+    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
+    CONSTRAINT FOREIGN KEY ( parent_task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE
 );
 
 CREATE TABLE zapp_plan_inputs (
-    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    plan_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
     type ENUM( 'string', 'number', 'integer', 'boolean' ) NOT NULL,
     description TEXT,
     default_value JSON,
-    PRIMARY KEY ( plan_id, name )
+    PRIMARY KEY ( plan_id, name ),
+    CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_runs (
     run_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    plan_id BIGINT REFERENCES zapp_plans ( plan_id ),
+    plan_id BIGINT NULL,
     description TEXT,
-    input_values JSON
+    input_values JSON,
+    CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_run_jobs (
     minion_job_id BIGINT NOT NULL,
-    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
+    run_id BIGINT NOT NULL,
+    task_id BIGINT NULL,
     context JSON,
-    PRIMARY KEY ( minion_job_id )
+    PRIMARY KEY ( minion_job_id ),
+    CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
 );
 
 CREATE TABLE zapp_plan_tests (
     test_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
+    plan_id BIGINT NOT NULL,
+    task_id BIGINT NOT NULL,
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
-    value VARCHAR(255) NOT NULL
+    value VARCHAR(255) NOT NULL,
+    CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_run_tests (
-    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    test_id BIGINT REFERENCES zapp_plan_tests ( test_id ),
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
+    run_id BIGINT NOT NULL,
+    test_id BIGINT NULL,
+    task_id BIGINT NULL,
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
     value VARCHAR(255) NOT NULL,
     expr_value VARCHAR(255) DEFAULT NULL,
     pass BOOLEAN DEFAULT NULL,
-    PRIMARY KEY ( run_id, test_id )
+    UNIQUE KEY ( run_id, test_id ),
+    CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    CONSTRAINT FOREIGN KEY ( test_id ) REFERENCES zapp_plan_tests ( test_id ) ON DELETE SET NULL,
+    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 @@ migrations.sqlite.sql
@@ -336,7 +352,7 @@ CREATE TABLE zapp_plan_inputs (
 
 CREATE TABLE zapp_runs (
     run_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    plan_id BIGINT REFERENCES zapp_plans ( plan_id ),
+    plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL,
     description TEXT,
     input_values JSON
 );
@@ -344,7 +360,7 @@ CREATE TABLE zapp_runs (
 CREATE TABLE zapp_run_jobs (
     minion_job_id BIGINT NOT NULL,
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
+    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
     context JSON,
     PRIMARY KEY ( minion_job_id )
 );
@@ -360,8 +376,8 @@ CREATE TABLE zapp_plan_tests (
 
 CREATE TABLE zapp_run_tests (
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    test_id BIGINT REFERENCES zapp_plan_tests ( test_id ),
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ),
+    test_id BIGINT REFERENCES zapp_plan_tests ( test_id ) ON DELETE SET NULL,
+    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
     value VARCHAR(255) NOT NULL,

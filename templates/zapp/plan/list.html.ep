@@ -12,13 +12,18 @@
     <section data-plan-id="<%= $plan->{plan_id} %>">
         <h2><%= $plan->{name} %></h2>
         <p class="description"><%= $plan->{description} %></p>
-        <div class="buttons">
+        <div class="buttons d-flex justify-content-between">
             %= link_to 'zapp.new_run', $plan, class => 'btn btn-primary run', begin
                 <i class="fa fa-arrow-right"></i> Run...
             % end
-            %= link_to 'zapp.edit_plan', $plan, class => 'btn btn-outline-secondary edit', begin
-                <i class="fa fa-pencil"></i> Edit
-            % end
+            <div>
+                %= link_to 'zapp.edit_plan', $plan, class => 'btn btn-outline-secondary edit', begin
+                    <i class="fa fa-pencil"></i> Edit
+                % end
+                %= link_to 'zapp.delete_plan', $plan, class => 'btn btn-outline-danger delete', begin
+                    <i class="fa fa-times-circle"></i> Delete...
+                % end
+            </div>
         </div>
     </section>
 % }

@@ -272,6 +272,19 @@ sub save_plan( $self ) {
     $self->redirect_to( 'zapp.edit_plan' => { plan_id => $plan_id } );
 }
 
+sub delete_plan( $self ) {
+    my $plan_id = $self->stash( 'plan_id' );
+    my $plan = $self->yancy->get( zapp_plans => $plan_id );
+    if ( $self->req->method eq 'GET' ) {
+        return $self->render(
+            'zapp/plan/delete',
+            plan => $plan,
+        );
+    }
+    $self->yancy->delete( zapp_plans => $plan_id );
+    $self->redirect_to( 'zapp.list_plans' );
+}
+
 sub list_plans( $self ) {
     my @plans = $self->yancy->list( zapp_plans => {}, {} );
     $self->render( 'zapp/plan/list', plans => \@plans );
