@@ -192,12 +192,20 @@ sub save_plan( $self ) {
         if ( $parent_task_id ) {
             my ( @existing_parents ) = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
             for my $parent ( @existing_parents ) {
+                # We're supposed to have this row, so ignore it
+                next if grep { $parent->{parent_task_id} eq $_ } ( $parent_task_id );
+                # We're not supposed to have this row, so delete it
                 $self->yancy->backend->delete( zapp_task_parents => [ $parent->@{qw( task_id parent_task_id )} ] );
             }
-            $self->yancy->backend->create( zapp_task_parents => {
-                task_id => $task_id,
-                parent_task_id => $parent_task_id,
-            });
+            for my $new_parent ( $parent_task_id ) {
+                # We already have this row, so ignore it
+                next if grep { $new_parent eq $_->{parent_task_id} } @existing_parents;
+                # We don't have this row, so create it
+                $self->yancy->backend->create( zapp_task_parents => {
+                    task_id => $task_id,
+                    parent_task_id => $parent_task_id,
+                });
+            }
         }
         $parent_task_id = $task_id;
 

@@ -1066,9 +1066,14 @@ subtest 'edit existing plan' => sub {
             },
             'task 2 is correct';
 
-        my @got_parents = $t->app->yancy->list( zapp_task_parents => {
-            task_id => [ map { $_->{task_id} } @got_tasks ],
-        });
+        my @got_parents = $t->app->yancy->list( zapp_task_parents =>
+            {
+                task_id => [ map { $_->{task_id} } @got_tasks ],
+            },
+            {
+                order_by => 'task_id',
+            },
+        );
         is scalar @got_parents, 2, 'got 2 relationships for plan';
 
         is_deeply $got_parents[0], {
