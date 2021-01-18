@@ -1,7 +1,7 @@
 package Zapp::Controller::Plan;
 use Mojo::Base 'Mojolicious::Controller', -signatures;
 use Mojo::JSON qw( decode_json encode_json );
-use List::Util qw( first );
+use List::Util qw( first uniqstr );
 use Time::Piece;
 use Zapp::Util qw( fill_input );
 
@@ -80,7 +80,7 @@ sub edit_plan( $self ) {
     my @tasks =
         sort grep { !ref $_ && eval { $_->isa('Zapp::Task') } }
         values $self->minion->tasks->%*;
-    my $plan = $self->_get_plan( $self->stash( 'plan_id' ) );
+    my $plan = $self->stash( 'plan' ) || $self->_get_plan( $self->stash( 'plan_id' ) );
     return $self->render(
         'zapp/plan/edit',
         plan => $plan,
@@ -124,6 +124,34 @@ sub save_plan( $self ) {
         map { $_ => $self->param( $_ ) }
         qw( name description ),
     };
+    my $tasks = $self->build_data_from_params( 'task' );
+    my $form_inputs = $self->build_data_from_params( 'input' );
+
+    # Validate all incoming data.
+    my @errors;
+    for my $i ( 0..$#$form_inputs ) {
+        my $input = $form_inputs->[ $i ];
+        if ( $input->{name} =~ /\P{Word}/ ) {
+            my @chars = uniqstr sort $input->{name} =~ /\P{Word}/g;
+            push @errors, {
+                name => "input[$i].name",
+                error => qq{Input name "$input->{name}" has invalid characters: }
+                    . join( '', map { "<kbd>$_</kbd>" } @chars ),
+            };
+        }
+    }
+    if ( @errors ) {
+        $self->stash(
+            status => 400,
+            plan => {
+                %$plan,
+                tasks => $tasks,
+                inputs => $form_inputs,
+            },
+            errors => \@errors,
+        );
+        return $self->edit_plan;
+    }
 
     # XXX: Create transaction routine for Yancy::Backend
     # XXX: Create sync routine for Yancy::Backend that takes a set of
@@ -136,7 +164,6 @@ sub save_plan( $self ) {
         $plan_id = $self->yancy->backend->create( zapp_plans => $plan );
     }
 
-    my $tasks = $self->build_data_from_params( 'task' );
     my %tasks_to_delete
         = map { $_->{task_id} => 1 }
         $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
@@ -209,7 +236,6 @@ sub save_plan( $self ) {
     }
 
     my %input_to_delete = map { $_->{name} => $_ } $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id } );
-    my $form_inputs = $self->build_data_from_params( 'input' );
     for my $form_input ( @$form_inputs ) {
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         for my $json_field ( qw( default_value ) ) {

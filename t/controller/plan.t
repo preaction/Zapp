@@ -1599,6 +1599,24 @@ subtest 'view run status' => sub {
     };
 };
 
+subtest 'error - input name invalid' => sub {
+    $t->post_ok( "/plan",
+        form => {
+            name => 'Get Rich Quick x7q',
+            'input[0].name' => '}h3l:(){',
+            'input[0].type' => 'string',
+        },
+    )
+        ->status_is( 400 )
+        ->text_like( '.alert.alert-danger li:nth-child(1)' => qr/Input name "\}h3l:\(\)\{" has invalid characters:/ )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(1)' => '(' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(2)' => ')' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(3)' => ':' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(4)' => '{' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(5)' => '}' )
+        ;
+};
+
 done_testing;
 
 sub Test::Yancy::clear_backend {

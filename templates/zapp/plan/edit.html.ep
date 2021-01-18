@@ -249,6 +249,16 @@
             <i class="fa fa-arrow-left"></i> Back to Plans
         % end
     </header>
+    % if ( my $errors = stash 'errors' ) {
+        <div class="alert alert-danger">
+            There are some errors in your plan.
+            <ul>
+                % for my $error ( @$errors ) {
+                <li><%== $error->{error} %></li>
+                % }
+            </ul>
+        </div>
+    % }
     <div class="form-group">
         <label class="mb-1" for="name">Plan Name</label>
         <input id="name" class="form-control" name="name" type="text" placeholder="Plan Name" value="<%= $plan->{name} %>">

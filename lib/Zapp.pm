@@ -236,7 +236,7 @@ CREATE TABLE zapp_plans (
     plan_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT
-);
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_plan_tasks (
     task_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -246,7 +246,7 @@ CREATE TABLE zapp_plan_tasks (
     class VARCHAR(255) NOT NULL,
     args JSON,
     results JSON
-);
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_task_parents (
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
@@ -261,14 +261,14 @@ CREATE TABLE zapp_plan_inputs (
     description TEXT,
     default_value JSON,
     PRIMARY KEY ( plan_id, name )
-);
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_runs (
     run_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ),
     description TEXT,
     input_values JSON
-);
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_run_jobs (
     minion_job_id BIGINT NOT NULL,
@@ -285,7 +285,7 @@ CREATE TABLE zapp_plan_tests (
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
     value VARCHAR(255) NOT NULL
-);
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_run_tests (
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
@@ -297,7 +297,7 @@ CREATE TABLE zapp_run_tests (
     expr_value VARCHAR(255) DEFAULT NULL,
     pass BOOLEAN DEFAULT NULL,
     PRIMARY KEY ( run_id, test_id )
-);
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 @@ migrations.sqlite.sql
 
