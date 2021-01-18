@@ -145,18 +145,16 @@ Enqueue a plan.
 sub enqueue( $self, $plan_id, $input, %opt ) {
     $opt{queue} ||= 'zapp';
 
+    # Create the run in the database
     my $run = {
         plan_id => $plan_id,
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         input_values => encode_json( $input ),
     };
-
     my $run_id = $run->{run_id} = $self->yancy->create( zapp_runs => $run );
-
-    # Create Minion jobs for this run
     my @tasks = $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
-    my %task_parents;
-    for my $task_id ( map $_->{task_id}, @tasks ) {
+    for my $task ( @tasks ) {
+        my $task_id = $task->{task_id};
         # Copy tests for the run
         my @tests = $self->yancy->list( zapp_plan_tests => { task_id => $task_id }, { order_by => 'test_id' } );
         for my $test ( @tests ) {
@@ -165,11 +163,19 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
                 $test->%{qw( task_id test_id expr op value )},
             } );
         }
+        $task->{tests} = \@tests;
+    }
+    $run->{tasks} = \@tasks;
+
+    # Calculate the parent/child relationships
+    my %task_parents;
+    for my $task_id ( map $_->{task_id}, @tasks ) {
         my @parents = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
         next unless @parents;
         $task_parents{ $task_id } = [ map $_->{parent_task_id}, @parents ];
     }
 
+    # Create Minion jobs for this run
     my %task_jobs;
     # Loop over tasks, making the job if the task's parents are made.
     # Stop the loop once all tasks have jobs.

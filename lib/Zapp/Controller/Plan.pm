@@ -1,6 +1,9 @@
 package Zapp::Controller::Plan;
 use Mojo::Base 'Mojolicious::Controller', -signatures;
 use Mojo::JSON qw( decode_json encode_json );
+use List::Util qw( first );
+use Time::Piece;
+use Zapp::Util qw( fill_input );
 
 # Zapp: Now, like all great plans, my strategy is so simple an idiot
 # could have devised it.
@@ -46,11 +49,14 @@ sub _get_run( $self, $run_id ) {
         for my $task ( @{ $plan->{tasks} } ) {
             my $task_id = $task->{task_id};
             my ( $job ) = $self->yancy->list( zapp_run_jobs => { run_id => $run_id, task_id => $task_id } );
-            $job->{context} = decode_json( $job->{context} );
+            if ( $job->{context} ) {
+                $job->{context} = decode_json( $job->{context} );
+                $job->{args} = fill_input( $job->{context}, $task->{args} );
+            }
             push $run->{tasks}->@*, {
                 $self->yancy->get( zapp_plan_tasks => $task_id )->%*,
-                %$job,
                 $self->minion->job( $job->{minion_job_id} )->info->%*,
+                %$job,
             };
         }
 
@@ -62,6 +68,11 @@ sub _get_run( $self, $run_id ) {
             $input->{value} = $run->{input_values}{ $input->{name} };
         }
     }
+
+    $run->{started} = $run->{tasks}[0]{started};
+    $run->{finished} = $run->{tasks}[-1]{finished};
+    $run->{state} = ( first { $_ ne 'finished' } map { $_->{state} } @{ $run->{tasks} } ) // 'finished';
+
     return $run;
 }
 
@@ -262,6 +273,14 @@ sub save_run( $self ) {
 sub get_run( $self ) {
     my $run_id = $self->stash( 'run_id' );
     my $run = $self->_get_run( $run_id );
+
+    if ( $run->{started} ) {
+        $run->{started} = Time::Piece->new( $run->{started} )->strftime( '%Y-%m-%d %H:%M:%S' );
+    }
+    if ( $run->{finished} ) {
+        $run->{finished} = Time::Piece->new( $run->{finished} )->strftime( '%Y-%m-%d %H:%M:%S' );
+    }
+
     $self->render( 'zapp/run/view', run => $run );
 }
 

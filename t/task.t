@@ -36,7 +36,7 @@ subtest 'execute' => sub {
                 name => 'Plan trip',
                 class => 'Zapp::Task::Echo',
                 args => encode_json({
-                    destination => '{destination}',
+                    destination => '{{destination}}',
                 }),
                 tests => [
                     {
@@ -53,8 +53,8 @@ subtest 'execute' => sub {
                 name => 'Deliver package',
                 class => 'Zapp::Task::Echo',
                 args => encode_json({
-                    destination => '{destination}',
-                    delivery_address => 'Certain Doom on {destination}',
+                    destination => '{{destination}}',
+                    delivery_address => 'Certain Doom on {{destination}}',
                 }),
                 tests => [
                     {

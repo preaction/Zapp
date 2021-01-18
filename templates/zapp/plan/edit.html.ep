@@ -245,12 +245,15 @@
 %= form_for 'zapp.save_plan', id => 'plan', begin
     <header class="form-row align-items-center">
         <h1 class="col-auto mb-0">Edit Plan</h1>
-        <div class="col">
-            <label class="mb-1" for="name">Plan Name</label>
-            <input id="name" class="form-control" name="name" type="text" placeholder="Plan Name" value="<%= $plan->{name} %>">
-            <!-- XXX: Add folders to organize plans -->
-        </div>
+        %= link_to 'zapp.list_plans', class => 'btn btn-secondary', begin
+            <i class="fa fa-arrow-left"></i> Back to Plans
+        % end
     </header>
+    <div class="form-group">
+        <label class="mb-1" for="name">Plan Name</label>
+        <input id="name" class="form-control" name="name" type="text" placeholder="Plan Name" value="<%= $plan->{name} %>">
+        <!-- XXX: Add folders to organize plans -->
+    </div>
     <div class="form-group">
         <label for="description">Plan Description</label>
         <div class="grow-wrap">

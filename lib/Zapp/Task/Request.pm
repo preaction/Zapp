@@ -188,9 +188,8 @@ __DATA__
 @@ result.html.ep
 %= include 'zapp/task-bar', synopsis => begin
     <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
-    %# XXX: Normalize to remove single-item array ref
-    <%= $task->{args}[0]{method} %>
-    <%= $task->{args}[0]{url} %>
+    <%= $task->{args}{method} %>
+    <%= $task->{args}{url} %>
 % end
 <%
     use Mojo::JSON qw( decode_json );
@@ -201,7 +200,7 @@ __DATA__
 %>
 <div class="ml-4">
     <h4>Request</h4>
-    <pre class="bg-light border border-secondary p-1"><%= $task->{args}[0]{method} %> <%= $task->{args}[0]{url} %></pre>
+    <pre class="bg-light border border-secondary p-1"><%= $task->{args}{method} %> <%= $task->{args}{url} %></pre>
     <h4>Response</h4>
     <dl>
         <dt>Code</dt>

@@ -1,7 +1,7 @@
 package Zapp::Task;
 use Mojo::Base 'Minion::Job', -signatures;
 use Mojo::JSON qw( decode_json encode_json );
-use Zapp::Util qw( get_path_from_data );
+use Zapp::Util qw( get_path_from_data fill_input );
 
 sub execute( $self, @args ) {
     my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
@@ -9,7 +9,7 @@ sub execute( $self, @args ) {
 
     # Interpolate arguments
     # XXX: Does this mean we can't work with existing Minion tasks?
-    $self->args( $self->_interpolate_args( $self->args, $context ) );
+    $self->args( fill_input( $context, $self->args ) );
 
     return $self->SUPER::execute( @args );
 }
@@ -83,25 +83,6 @@ sub schema( $class ) {
             type => 'string',
         },
     };
-}
-
-sub _interpolate_args( $self, $args, $vars ) {
-    if ( !ref $args ) {
-        return scalar $args =~ s{(?<!\\)\{([^\s\}]+)\}}{$vars->{$1}}reg
-    }
-    elsif ( ref $args eq 'ARRAY' ) {
-        return [
-            map { $self->_interpolate_args( $_, $vars ) }
-            $args->@*
-        ];
-    }
-    elsif ( ref $args eq 'HASH' ) {
-        return {
-            map { $_ => $self->_interpolate_args( $args->{$_}, $vars ) }
-            keys $args->%*
-        };
-    }
-    die "Unknown ref type for args: " . ref $args;
 }
 
 1;

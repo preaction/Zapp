@@ -1,7 +1,5 @@
 <%
-    use List::Util qw( first );
     use Mojo::Loader qw( data_section );
-    use Time::Piece;
     layout 'zapp';
 %>
 
@@ -14,11 +12,11 @@
 
 <dl>
     <dt>Started: </dt>
-    <dd><%= Time::Piece->new( $run->{tasks}[0]{started} )->strftime( '%Y-%m-%d %H:%M:%S' ) %></dd>
+    <dd data-task-started><%= $run->{started} // 'N/A' %></dd>
     <dt>Finished: </dt>
-    <dd><%= Time::Piece->new( $run->{tasks}[-1]{finished} )->strftime( '%Y-%m-%d %H:%M:%S' ) %></dd>
+    <dd data-task-finished><%= $run->{finished} // 'N/A' %></dd>
     <dt>State: </dt>
-    <dd><%= ( first { $_->{state} ne 'finished' } @{ $run->{tasks} } ) // 'finished' %></dd>
+    <dd data-task-state><%= $run->{state} %></dd>
 </dl>
 
 % if ( @{ $run->{inputs} // [] } ) {
@@ -28,7 +26,7 @@
 
 <h2>Tasks</h2>
 % for my $task ( @{ $run->{tasks} } ) {
-    <div>
+    <div data-task="<%= $task->{task_id} %>">
         %= include inline => data_section( $task->{class}, 'result.html.ep' ), task => $task;
     </div>
 % }

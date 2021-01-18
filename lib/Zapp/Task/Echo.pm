@@ -10,5 +10,10 @@ __DATA__
 @@ args.html.ep
 This is for testing only (for now).
 @@ result.html.ep
-This is for testing only (for now). It may be used in the future to
-write an arbitrary report to the output.
+%= include 'zapp/task-bar', synopsis => begin
+    <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
+% end
+<div class="ml-4">
+    <h4>Echo</h4>
+    <pre class="bg-light border border-secondary p-1"><%= dumper $task->{args} %></pre>
+</div>

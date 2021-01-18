@@ -14,6 +14,18 @@ sub new {
     return $class->SUPER::new( @_ );
 }
 
+sub run_queue {
+    my ( $self ) = @_;
+    # Run all tasks on the queue
+    my $worker = $self->app->minion->worker->register;
+    while ( my $job = $worker->dequeue ) {
+        my $e = $job->execute;
+        $self->test( 'ok', !$e, 'job executed successfully' );
+        $self->or( sub { diag "Job error: ", explain $e } );
+    }
+    $worker->unregister;
+}
+
 sub run_task {
     my ( $self, $task_class, $args, $name ) = @_;
     my $plan = $self->{zapp}{plan} = $self->app->create_plan({
@@ -33,6 +45,7 @@ sub run_task {
     my $e = $job->execute;
     $self->test( 'ok', !$e, 'job executed successfully' );
     $self->or( sub { diag "Job error: ", explain $e } );
+    $worker->unregister;
     return $self;
 }
 

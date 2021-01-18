@@ -6,7 +6,7 @@ This tests Zapp::Controller::Plan (except for the JavaScript involved).
 =cut
 
 use Mojo::Base -strict, -signatures;
-use Test::Mojo;
+use Test::Zapp;
 use Test::More;
 use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
@@ -18,7 +18,7 @@ my $mysqld = Test::mysqld->new(
     },
 ) or plan skip_all => $Test::mysqld::errstr;
 
-my $t = Test::Mojo->new( 'Zapp', {
+my $t = Test::Zapp->new( 'Zapp', {
     backend => {
         mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
     },
@@ -1534,16 +1534,69 @@ subtest 'run a plan' => sub {
         # XXX: Test job attributes
     };
 
-    subtest 'view run status' => sub {
-        subtest 'before execution' => sub {
-            pass 'todo';
-        };
+};
 
-        subtest 'after execution' => sub {
-            pass 'todo';
-        };
+subtest 'view run status' => sub {
+    my $plan = $t->app->create_plan({
+        name => 'Watch the What If Machine',
+        tasks => [
+            {
+                name => 'Watch',
+                class => 'Zapp::Task::Echo',
+                args => encode_json({
+                    character => '{{Character}}',
+                }),
+            },
+            {
+                name => 'Experience Ironic Consequences',
+                class => 'Zapp::Task::Echo',
+                args => encode_json({
+                    character => '{{Character}}',
+                }),
+            },
+        ],
+        inputs => [
+            {
+                name => 'character',
+                type => 'string',
+                description => 'Which character should ask the question?',
+                default_value => encode_json( 'Leela' ),
+            },
+        ],
+    });
+    my $plan_id = $plan->{plan_id};
+    my $run = $t->app->enqueue(
+        $plan_id,
+        {
+            Character => 'Zanthor',
+        },
+    );
+
+    subtest 'before execution' => sub {
+        $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
+            ->element_exists( '[href=/]', 'link back to plans exists' )
+            ->text_is( '[data-task-state]', 'inactive', 'run state is correct' )
+            ->text_is( '[data-task-started]', 'N/A', 'run started is correct' )
+            ->text_is( '[data-task-finished]', 'N/A', 'run finished is correct' )
+            ->text_is( "[data-task=$run->{tasks}[0]{task_id}] [data-task-state]", 'inactive', 'first task state is correct' )
+            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task args are interpolated' )
+            ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'inactive', 'second task state is correct' )
+            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/\{\{Character\}\}/, 'second task args are not yet interpolated' )
     };
 
+    $t->run_queue;
+
+    subtest 'after execution' => sub {
+        $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
+            ->element_exists( '[href=/]', 'link back to plans exists' )
+            ->text_is( '[data-task-state]', 'finished', 'run state is correct' )
+            ->text_like( '[data-task-started]', qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run started is formatted correctly' )
+            ->text_like( '[data-task-finished]',  qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run finished is formatted correctly' )
+            ->text_is( "[data-task=$run->{tasks}[0]{task_id}] [data-task-state]", 'finished', 'first task state is correct' )
+            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task args are interpolated' )
+            ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'finished', 'second task state is correct' )
+            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/Zanthor/, 'second task args are interpolated' )
+    };
 };
 
 done_testing;

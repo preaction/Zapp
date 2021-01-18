@@ -6,7 +6,7 @@
     my $default_bg = 'bg-secondary';
 %>
 <div class="task-bar">
-    <div class="<%= $state_bg{ $task->{state} } // $default_bg %>"><%= $task->{state} %></div>
+    <div data-task-state class="<%= $state_bg{ $task->{state} } // $default_bg %>"><%= $task->{state} %></div>
     % if ( my $synopsis = stash( 'synopsis' ) ) {
         <div>
             %= ref $synopsis eq 'CODE' ? $synopsis->() : $synopsis
