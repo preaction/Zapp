@@ -121,9 +121,24 @@
         <input type="hidden" name="task_id" value="<%= $task->{task_id} // '' %>" />
         <input type="hidden" name="class" value="<%= $task->{class} %>" />
         <header class="form-row align-items-center justify-content-between">
-            <h3 class="col-auto">
+            <h3 class="col-auto" data-task-type>
                 <%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>
             </h3>
+            <div class="col-auto align-self-start btn-toolbar" role="toolbar">
+                <div class="btn-group btn-group-sm mr-2" role="group" aria-label="Move Task">
+                    <button type="button" class="btn btn-sm btn-outline-secondary task-move-up" aria-label="Move Task Up">
+                        <i class="fa fa-chevron-up"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary task-move-down" aria-label="Move Task Down">
+                        <i class="fa fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-danger task-remove" aria-label="Remove task">
+                        <i class="fa fa-times-circle"></i>
+                    </button>
+                </div>
+            </div>
         </header>
         <div class="form-group">
             <label class="mb-1" for="name">Task Name</label>
@@ -449,8 +464,8 @@ function addTask( event ) {
     taskForm.dataset.taskForm = true;
     taskForm.appendChild( taskTmpl );
     taskForm.querySelector( '[data-input-form]' ).replaceWith( inputForm );
-    var taskTypeLabel = taskForm.querySelector( 'label[for=name]' );
-    taskTypeLabel.innerHTML = type;
+    var taskType = taskForm.querySelector( '[data-task-type]' );
+    taskType.innerHTML = type;
     var taskClassInput = taskForm.querySelector( 'input[name=class]' );
     taskClassInput.value = cls;
     var taskInputs = taskForm.querySelectorAll( inputSelector );
@@ -465,20 +480,61 @@ function addTask( event ) {
 
     if ( beforeTask ) {
         beforeTask.insertAdjacentElement( 'beforebegin', taskForm );
+        // XXX: Re-index all subsequent tasks
     }
     else {
         allTasks.appendChild( taskForm );
     }
 
-    if ( beforeTask ) {
-        // XXX: Re-index all subsequent tasks
-    }
+    taskForm.scrollIntoView({block: "start", inline: "nearest"});
 }
 
 function removeTask( event ) {
+    var button = event.target,
+        task = button.closest( '[data-task-form]' ),
+        allTasks = document.getElementById( 'all-tasks' );
+    allTasks.removeChild( task );
+    reindexTasks();
 }
 
-function moveTask( event ) {
+// Reindex all tasks
+function reindexTasks() {
+    var allTasks = document.getElementById( 'all-tasks' );
+    allTasks.querySelectorAll( '[data-task-form]' ).forEach( function ( taskForm, i ) {
+        var taskInputs = taskForm.querySelectorAll( 'input,select,textarea' );
+        taskInputs.forEach( function ( el ) {
+            el.name = el.name.replace( /^task\[\d+\]/, `task[${i}]` );
+            el.id = el.name;
+        } );
+        var taskLabels = taskForm.querySelectorAll( 'label' );
+        taskLabels.forEach( function ( el ) {
+            el.attributes.for.value = el.attributes.for.value.replace( /^task\[\d+\]/, `task[${i}]` );
+        } );
+    } );
+}
+
+function moveTaskUp( event ) {
+    var button = event.target,
+        task = button.closest( '[data-task-form]' ),
+        prevTask = task.previousElementSibling;
+    if ( !prevTask ) {
+        return;
+    }
+    prevTask.insertAdjacentElement( 'beforebegin', task );
+    reindexTasks();
+    task.scrollIntoView({block: "start", inline: "nearest"});
+}
+
+function moveTaskDown( event ) {
+    var button = event.target,
+        task = button.closest( '[data-task-form]' ),
+        nextTask = task.nextElementSibling;
+    if ( !nextTask ) {
+        return;
+    }
+    nextTask.insertAdjacentElement( 'afterend', task );
+    reindexTasks();
+    task.scrollIntoView({block: "start", inline: "nearest"});
 }
 
 function addTest( event ) {
@@ -626,7 +682,7 @@ function removeInput( event ) {
 }
 
 function checkZappExpressions( event ) {
-    var match = event.target.name.match( /task\[\d+\]\.input\./ );
+    var match = event.target.name.match( /^task\[\d+\]\.input\./ );
     if ( !match ) return;
     var task = event.target.closest( '[data-task-form]' ),
         input = {};
@@ -722,6 +778,9 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
         el.parentNode.dataset.replicatedValue = el.value;
     } );
     delegateEvent( 'change', 'select.add-task', addTask );
+    delegateEvent( 'click', 'button.task-remove', removeTask );
+    delegateEvent( 'click', 'button.task-move-up', moveTaskUp );
+    delegateEvent( 'click', 'button.task-move-down', moveTaskDown );
     delegateEvent( 'click', 'button.test-add', addTest );
     delegateEvent( 'click', 'button.test-remove', removeTest );
     delegateEvent( 'click', 'button.output-add', addOutput );
