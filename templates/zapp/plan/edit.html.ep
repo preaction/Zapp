@@ -80,7 +80,7 @@
             <input type="text" name="tests[<%= $i %>].value" value="<%= $test->{value} %>" class="form-control">
         </div>
         <div class="col-auto align-self-end">
-            <button type="button" class="test-remove btn btn-danger"
+            <button type="button" class="test-remove btn btn-outline-danger"
                 aria-label="Delete test"
             >
                 <i class="fa fa-times-circle"></i>
@@ -105,7 +105,7 @@
             <input type="text" name="output[<%= $i %>].expr" value="<%= $output->{expr} %>" class="form-control">
         </div>
         <div class="col-auto align-self-end">
-            <button type="button" class="output-remove btn btn-danger"
+            <button type="button" class="output-remove btn btn-outline-danger"
                 aria-label="Delete output"
             >
                 <i class="fa fa-times-circle"></i>
@@ -210,7 +210,7 @@
             %= text_field "input[$input_num].default_value", $input->{default_value}, placeholder => 'Default value', class => 'form-control'
         </div>
         <div class="col-auto align-self-end">
-            <button type="button" class="delete input-remove btn btn-danger"
+            <button type="button" class="delete input-remove btn btn-outline-danger"
                 aria-label="Delete input"
             >
                 <i class="fa fa-times-circle"></i>
