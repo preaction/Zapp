@@ -104,23 +104,26 @@ __DATA__
 @@ input.html.ep
 % my $input = stash( 'input' ) // {};
 <!-- XXX: A form this simple should be auto-generated from the schema -->
-<div>
+<div class="form-group">
     <label for="endpoint">Endpoint</label>
-    %= url_field 'endpoint', value => $input->{endpoint}
+    %= url_field 'endpoint', value => $input->{endpoint}, class => 'form-control'
 </div>
-<div>
+<div class="form-group">
     <label for="client_id">Client ID</label>
-    %= text_field 'client_id', value => $input->{client_id}
+    %= text_field 'client_id', value => $input->{client_id}, class => 'form-control'
 </div>
-<div>
+<div class="form-group">
     <label for="client_secret">Client Secret</label>
-    %= text_field 'client_secret', value => $input->{client_secret}
+    %= text_field 'client_secret', value => $input->{client_secret}, class => 'form-control'
 </div>
-<div>
+<div class="form-group">
     <label for="scope">Scope</label>
-    %= text_field 'scope', value => $input->{scope}
+    %= text_field 'scope', value => $input->{scope}, class => 'form-control'
 </div>
 
 @@ output.html.ep
-%= dumper $output
+%= include 'zapp/task-bar', synopsis => begin
+    <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
+    <%= $task->{input}{scope} %>
+% end
 
