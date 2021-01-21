@@ -3,7 +3,7 @@ use Mojo::Base 'Mojolicious::Controller', -signatures;
 use Mojo::JSON qw( decode_json encode_json );
 use List::Util qw( first uniqstr );
 use Time::Piece;
-use Zapp::Util qw( fill_input );
+use Zapp::Util qw( fill_input get_path_from_data );
 
 # Zapp: Now, like all great plans, my strategy is so simple an idiot
 # could have devised it.
@@ -51,17 +51,33 @@ sub _get_run( $self, $run_id ) {
             my ( $job ) = $self->yancy->list( zapp_run_jobs => { run_id => $run_id, task_id => $task_id } );
             my $minion_job = $self->minion->job( $job->{minion_job_id} );
 
+            my $plan_task = $self->yancy->get( zapp_plan_tasks => $task_id );
+            $plan_task->{input} = decode_json( $plan_task->{input} );
+            if ( $plan_task->{output} ) {
+                $plan_task->{output} = decode_json( $plan_task->{output} );
+            }
+
             # The task run information should be all the Zapp task
             # information and all the Minion job information except for
             # args and result (renamed input and output respectively)
             my $run_task = {
-                $self->yancy->get( zapp_plan_tasks => $task_id )->%*,
+                %$plan_task,
                 $minion_job->info->%*,
                 %$job,
+                tests => [
+                    $self->app->yancy->list( zapp_run_tests =>
+                        {
+                            run_id => $run_id,
+                            task_id => $task_id,
+                        },
+                        {
+                            order_by => 'test_id',
+                        },
+                    ),
+                ],
             };
 
             delete $run_task->{args};
-            $run_task->{input} = decode_json( $run_task->{input} );
             if ( $run_task->{context} ) {
                 $run_task->{context} = decode_json( $run_task->{context} );
                 $run_task->{input} = fill_input( $run_task->{context}, $run_task->{input} );
