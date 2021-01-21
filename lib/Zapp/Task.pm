@@ -15,13 +15,19 @@ sub execute( $self, @args ) {
 }
 
 sub finish( $self, $output=undef ) {
+    return $self->SUPER::finish if !defined $output; # XXX: Minion calls this again after we do inside the task?
     my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
     # Verify tests
     my @tests = $self->app->yancy->list( zapp_run_tests => { run_id => $run_id, task_id => $task_id }, { order_by => 'test_id' } );
     for my $test ( @tests ) {
-        my $expr_value = $test->{ expr_value } = $output->{ $test->{expr} }; # XXX Support ./[0] syntax (or JSONPath instead?)
+        # Stringify whatever data we get because the value to test
+        # against can only ever be a string.
+        # XXX: Support JSON comparisons?
+        my $expr_value = $test->{ expr_value } = "".get_path_from_data( $test->{expr}, $output );
+        # XXX: Add good, robust logging to help debug job problems
+        #; $self->app->log->debug( sprintf 'Test expr %s has value %s (%s %s)', $test->@{qw( expr expr_value op value )} );
         my $pass;
         if ( $test->{op} eq '==' ) {
             $pass = ( $expr_value eq $test->{value} );
