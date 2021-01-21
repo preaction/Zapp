@@ -1,0 +1,111 @@
+{
+   "abstract" : "Write a sentence about what it does",
+   "author" : [
+      "Doug Bell <preaction@cpan.org>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Dist::Zilla version 6.012, CPAN::Meta::Converter version 2.150010",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : 2
+   },
+   "name" : "Zapp",
+   "no_index" : {
+      "directory" : [
+         "eg",
+         "examples",
+         "inc",
+         "share",
+         "t",
+         "xt"
+      ]
+   },
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Minion" : "10.14",
+            "Minion::Backend::SQLite" : "v5.0.3",
+            "Mojolicious" : "8.65",
+            "Yancy" : "1.067",
+            "perl" : "5.028"
+         }
+      },
+      "test" : {
+         "recommends" : {
+            "CPAN::Meta" : "2.120900"
+         },
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0",
+            "File::Spec" : "0",
+            "IO::Handle" : "0",
+            "IPC::Open3" : "0",
+            "Minion::Backend::mysql" : "0.21",
+            "Test::More" : "0",
+            "Test::mysqld" : "1.0013"
+         }
+      }
+   },
+   "provides" : {
+      "Test::Zapp" : {
+         "file" : "lib/Test/Zapp.pm",
+         "version" : "0.001"
+      },
+      "Zapp" : {
+         "file" : "lib/Zapp.pm",
+         "version" : "0.001"
+      },
+      "Zapp::Controller::Plan" : {
+         "file" : "lib/Zapp/Controller/Plan.pm",
+         "version" : "0.001"
+      },
+      "Zapp::Task" : {
+         "file" : "lib/Zapp/Task.pm",
+         "version" : "0.001"
+      },
+      "Zapp::Task::Echo" : {
+         "file" : "lib/Zapp/Task/Echo.pm",
+         "version" : "0.001"
+      },
+      "Zapp::Task::GetOAuth2Token" : {
+         "file" : "lib/Zapp/Task/GetOAuth2Token.pm",
+         "version" : "0.001"
+      },
+      "Zapp::Task::Request" : {
+         "file" : "lib/Zapp/Task/Request.pm",
+         "version" : "0.001"
+      },
+      "Zapp::Task::Script" : {
+         "file" : "lib/Zapp/Task/Script.pm",
+         "version" : "0.001"
+      },
+      "Zapp::Util" : {
+         "file" : "lib/Zapp/Util.pm",
+         "version" : "0.001"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/preaction/Zapp/issues"
+      },
+      "homepage" : "https://github.com/preaction/Zapp",
+      "repository" : {
+         "type" : "git",
+         "url" : "https://github.com/preaction/Zapp.git",
+         "web" : "https://github.com/preaction/Zapp"
+      }
+   },
+   "version" : "0.001",
+   "x_authority" : "cpan:PREACTION",
+   "x_generated_by_perl" : "v5.28.0",
+   "x_serialization_backend" : "Cpanel::JSON::XS version 4.06"
+}
+

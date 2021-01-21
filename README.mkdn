@@ -1,0 +1,39 @@
+[![Build Status](https://travis-ci.org/preaction/Zapp.svg?branch=master)](https://travis-ci.org/preaction/Zapp)
+[![Coverage Status](https://coveralls.io/repos/preaction/Zapp/badge.svg?branch=master)](https://coveralls.io/r/preaction/Zapp?branch=master)
+
+# NAME
+
+Zapp - Write a sentence about what it does
+
+# VERSION
+
+version 0.001
+
+# SYNOPSIS
+
+# DESCRIPTION
+
+# METHODS
+
+## create\_plan
+
+Create a new plan and all related data.
+
+## enqueue
+
+Enqueue a plan.
+
+# SEE ALSO
+
+[Minion](https://metacpan.org/pod/Minion), [Mojolicious::Plugin::Minion::Admin](https://metacpan.org/pod/Mojolicious::Plugin::Minion::Admin)
+
+# AUTHOR
+
+Doug Bell <preaction@cpan.org>
+
+# COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2020 by Doug Bell.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
