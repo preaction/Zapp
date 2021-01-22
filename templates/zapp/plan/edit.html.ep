@@ -160,15 +160,15 @@
                     <a class="input-tab nav-link active" href="#">Input</a>
                 </li>
                 <li class="nav-item">
-                    <a class="tests-tab nav-link" href="#">
-                        Tests
-                        (<span class="tests-count"><%= scalar @{$task->{tests}} %></span>)
+                    <a class="tests-tab nav-link d-flex justify-content-between align-items-center" href="#">
+                        <span>Tests</span>
+                        <span data-test-count class="ml-2 border border-dark badge badge-light"><%= scalar @{$task->{tests}} %></span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="output-tab nav-link" href="#">
-                        Output
-                        (<span class="output-count"><%= scalar @{$task->{output}} %></span>)
+                    <a class="output-tab nav-link d-flex justify-content-between align-items-center" href="#">
+                        <span>Output</span>
+                        <span data-output-count class="ml-2 border border-dark badge badge-light"><%= scalar @{$task->{output}} %></span>
                     </a>
                 </li>
             </ul>
@@ -403,6 +403,14 @@
                             $el->attr( for => 'task[' . $task_num . '].' . $el->attr( 'for' ) );
                         },
                     );
+                    if ( $task_num == 0 ) {
+                        my $btn = $task_dom->at( '.task-move-up' );
+                        $btn->attr( class => join ' ', $btn->attr( 'class' ), 'disabled' );
+                    }
+                    if ( $task_num == $#{ $plan->{tasks} } ) {
+                        my $btn = $task_dom->at( '.task-move-down' );
+                        $btn->attr( class => join ' ', $btn->attr( 'class' ), 'disabled' );
+                    }
                     %><%== $task_dom %></section><%
             } %>
         </div>
@@ -510,6 +518,19 @@ function reindexTasks() {
         taskLabels.forEach( function ( el ) {
             el.attributes.for.value = el.attributes.for.value.replace( /^task\[\d+\]/, `task[${i}]` );
         } );
+
+        if ( i == 0 ) {
+            taskForm.querySelector( '.task-move-up' ).classList.add( 'disabled' );
+        }
+        else {
+            taskForm.querySelector( '.task-move-up' ).classList.remove( 'disabled' );
+        }
+        if ( i == allTasks.children.length - 1 ) {
+            taskForm.querySelector( '.task-move-down' ).classList.add( 'disabled' );
+        }
+        else {
+            taskForm.querySelector( '.task-move-down' ).classList.remove( 'disabled' );
+        }
     } );
 }
 
@@ -566,12 +587,19 @@ function addTest( event ) {
     newRow.appendChild( newTest );
     list.appendChild( newRow );
 
-    // XXX: Focus test expression field
-    // XXX: Increment test count
+    // Increment test count
+    var testCount = task.querySelector( '[data-test-count]' );
+    var count = parseInt( testCount.innerHTML );
+    count++;
+    testCount.innerHTML = count;
+
+    // Focus test expression field
+    newRow.querySelector( '[name$="expr"]' ).focus();
 }
 
 function removeTest( event ) {
     var button = event.target,
+        task = button.closest( '.task-form' ),
         row = button.closest( '.test-form' ).parentNode,
         list = row.parentElement;
 
@@ -584,7 +612,12 @@ function removeTest( event ) {
         });
         // XXX: Labels
     } );
-    // XXX: Decrement test count
+
+    // Decrement test count
+    var testCount = task.querySelector( '[data-test-count]' );
+    var count = parseInt( testCount.innerHTML );
+    count--;
+    testCount.innerHTML = count;
 }
 
 function addOutput( event ) {
@@ -616,12 +649,19 @@ function addOutput( event ) {
     newRow.appendChild( newOutput );
     list.appendChild( newRow );
 
-    // XXX: Focus output name field
-    // XXX: Increment output count
+    // Increment output count
+    var outputCount = task.querySelector( '[data-output-count]' );
+    var count = parseInt( outputCount.innerHTML );
+    count++;
+    outputCount.innerHTML = count;
+
+    // Focus output name field
+    newRow.querySelector( '[name$="name"]' ).focus();
 }
 
 function removeOutput( event ) {
     var button = event.target,
+        task = button.closest( '.task-form' ),
         row = button.closest( '.output-form' ).parentNode,
         list = row.parentElement;
 
@@ -634,7 +674,12 @@ function removeOutput( event ) {
         });
         // XXX: Labels
     } );
-    // XXX: Decrement output count
+
+    // Decrement output count
+    var outputCount = task.querySelector( '[data-output-count]' );
+    var count = parseInt( outputCount.innerHTML );
+    count--;
+    outputCount.innerHTML = count;
 }
 
 function addInput( event ) {
@@ -755,7 +800,7 @@ function checkZappExpressions( event ) {
 function changeTaskTab( event ) {
     event.preventDefault();
     var tabNavItem = event.target,
-        tabNavListItem = tabNavItem.parentNode,
+        tabNavListItem = tabNavItem.closest( 'li' ),
         tabContainer = tabNavItem.closest( '.task-tabs' ),
         tabNav = tabContainer.querySelector( '.task-tabs-nav' ),
         tabIndex = Array.prototype.indexOf.call( tabNav.childNodes, tabNavListItem ),

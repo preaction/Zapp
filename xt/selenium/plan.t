@@ -49,6 +49,15 @@ subtest 'create a plan' => sub {
       ->send_keys_ok( '[name=description]', 'Stop the femolution!' )
       ;
 
+    # Add an input
+    $t->click_ok( 'select.add-input' )
+      ->click_ok( 'select.add-input option[value=integer]' )
+      ->wait_for( '[name="input[0].name"]' )
+      ->send_keys_ok( '[name="input[0].name"]', 'Felony_Count' )
+      ->send_keys_ok( '[name="input[0].default_value"]', '0' )
+      ->send_keys_ok( '[name="input[0].description"]', 'The number of felonies perpetrated by the Feministas' )
+      ;
+
     # Add a Request
     $t->click_ok( 'select.add-task' )
       ->click_ok( 'select.add-task option[value="Zapp::Task::Request"]' )
@@ -71,6 +80,8 @@ subtest 'create a plan' => sub {
       ->wait_for( '#all-tasks > :nth-child(1) .all-tests.active' )
       ->click_ok( '#all-tasks > :nth-child(1) button.test-add' )
       ->wait_for( '[name="task[0].tests[0].expr"]' )
+      ->active_element_is( '[name="task[0].tests[0].expr"]' )
+      ->live_text_is( '#all-tasks > :nth-child(1) [data-test-count]', 1, 'test count updated' )
       ->send_keys_ok( '[name="task[0].tests[0].expr"]', 'frequency' )
       ->click_ok( '[name="task[0].tests[0].op"]' )
       ->click_ok( '[name="task[0].tests[0].op"] option[value="=="]' )
@@ -88,10 +99,15 @@ subtest 'create a plan' => sub {
       ;
 
     # Add a test
-    $t->click_ok( '#all-tasks > :nth-child(2) .tests-tab' )
+    $t->click_ok(
+        '#all-tasks > :nth-child(2) .tests-tab [data-test-count]',
+        'can click on test count to switch tabs',
+      )
       ->wait_for( '#all-tasks > :nth-child(2) .all-tests.active' )
       ->click_ok( '#all-tasks > :nth-child(2) button.test-add' )
       ->wait_for( '[name="task[1].tests[0].expr"]' )
+      ->active_element_is( '[name="task[1].tests[0].expr"]' )
+      ->live_text_is( '#all-tasks > :nth-child(2) [data-test-count]', 1, 'test count updated' )
       ->send_keys_ok( '[name="task[1].tests[0].expr"]', 'frequency' )
       ->click_ok( '[name="task[1].tests[0].op"]' )
       ->click_ok( '[name="task[1].tests[0].op"] option[value="=="]' )
@@ -100,6 +116,8 @@ subtest 'create a plan' => sub {
 
     $t->click_ok( '#all-tasks > :nth-child(2) button.test-add' )
       ->wait_for( '[name="task[1].tests[1].expr"]' )
+      ->active_element_is( '[name="task[1].tests[1].expr"]' )
+      ->live_text_is( '#all-tasks > :nth-child(2) [data-test-count]', 2, 'test count updated' )
       ->send_keys_ok( '[name="task[1].tests[1].expr"]', 'volume' )
       ->click_ok( '[name="task[1].tests[1].op"]' )
       ->click_ok( '[name="task[1].tests[1].op"] option[value=">"]' )
@@ -118,6 +136,26 @@ subtest 'create a plan' => sub {
     ok $got_plan, 'found plan';
     is $got_plan->{name}, 'Capture the Feministas', 'plan name correct';
     is $got_plan->{description}, 'Stop the femolution!', 'plan description correct';
+
+    my @got_inputs = $t->app->yancy->list(
+        zapp_plan_inputs =>
+        {
+            plan_id => $plan_id,
+        },
+        {
+            order_by => 'name',
+        },
+    );
+    is scalar @got_inputs, 1, 'got 1 input for plan';
+    is_deeply $got_inputs[0],
+        {
+            plan_id => $plan_id,
+            name => 'Felony_Count',
+            type => 'integer',
+            default_value => q{"0"}, # json-encoded
+            description => 'The number of felonies perpetrated by the Feministas',
+        },
+        'input is correct';
 
     my @got_tasks = $t->app->yancy->list(
         zapp_plan_tasks => {
@@ -316,6 +354,16 @@ subtest 'edit a plan' => sub {
         ->live_value_is( '[name="task[1].tests[1].expr"]', 'bomb.rotation' )
         ->live_value_is( '[name="task[1].tests[1].op"]', '==' )
         ->live_value_is( '[name="task[1].tests[1].value"]', '180' )
+        ->live_text_is( '#all-tasks > :nth-child(1) [data-test-count]', 1, 'test count for task 1 correct' )
+        ->live_text_is( '#all-tasks > :nth-child(2) [data-test-count]', 2, 'test count for task 2 correct' )
+        ->live_element_exists(
+            '#all-tasks > :first-child button.task-move-up.disabled',
+            q{Can't click button to move up at the top},
+        )
+        ->live_element_exists(
+            '#all-tasks > :last-child button.task-move-down.disabled',
+            q{Can't click button to move down at the bottom},
+        )
         ;
 
     # Update existing task information
@@ -348,6 +396,7 @@ subtest 'edit a plan' => sub {
         ->wait_for( '#all-tasks > :nth-child(1) .all-tests.active' )
         ->click_ok( '#all-tasks > :nth-child(1) button.test-add' )
         ->wait_for( '[name="task[0].tests[1].expr"]' )
+        ->live_text_is( '#all-tasks > :nth-child(1) [data-test-count]', 2, 'test count updated' )
         ->send_keys_ok( '[name="task[0].tests[1].expr"]', 'bomb.timer' )
         ->click_ok( '[name="task[0].tests[1].op"]' )
         ->click_ok( '[name="task[0].tests[1].op"] option[value="=="]' )
@@ -358,7 +407,43 @@ subtest 'edit a plan' => sub {
     $t->click_ok( '#all-tasks > :nth-child(1) .all-tests > ul > :nth-child(2) button.test-remove' )
         ;
 
-    # XXX: Insert a new task in the middle
+    # Move the second task up
+    $t->click_ok( '#all-tasks > :nth-child(2) button.task-move-up' )
+        ->wait_for( qq{#all-tasks > :nth-child(1) [name="task[0].task_id"][value="$task_ids[1]"]} )
+        ->live_value_is( '[name="task[1].class"]', 'Zapp::Task::Script' )
+        ->live_value_is( '[name="task[1].task_id"]', $task_ids[0] )
+        ->live_value_is( '[name="task[1].name"]', 'Build' )
+        ->live_value_is( '[name="task[0].class"]', 'Zapp::Task::Script' )
+        ->live_value_is( '[name="task[0].task_id"]', $task_ids[1] )
+        ->live_value_is( '[name="task[0].name"]', 'Verify Bomb' )
+        ->live_element_exists(
+            '#all-tasks > :first-child button.task-move-up.disabled',
+            q{Can't click button to move up at the top},
+        )
+        ->live_element_exists(
+            '#all-tasks > :last-child button.task-move-down.disabled',
+            q{Can't click button to move down at the bottom},
+        )
+        ;
+
+    # Move the first task down
+    $t->click_ok( '#all-tasks > :nth-child(1) button.task-move-down' )
+        ->wait_for( qq{#all-tasks > :nth-child(2) [name="task[1].task_id"][value="$task_ids[1]"]} )
+        ->live_value_is( '[name="task[0].class"]', 'Zapp::Task::Script' )
+        ->live_value_is( '[name="task[0].task_id"]', $task_ids[0] )
+        ->live_value_is( '[name="task[0].name"]', 'Build' )
+        ->live_value_is( '[name="task[1].class"]', 'Zapp::Task::Script' )
+        ->live_value_is( '[name="task[1].task_id"]', $task_ids[1] )
+        ->live_value_is( '[name="task[1].name"]', 'Verify Bomb' )
+        ->live_element_exists(
+            '#all-tasks > :first-child button.task-move-up.disabled',
+            q{Can't click button to move up at the top},
+        )
+        ->live_element_exists(
+            '#all-tasks > :last-child button.task-move-down.disabled',
+            q{Can't click button to move down at the bottom},
+        )
+        ;
 
     # Save
     $t->click_ok( '[name=save-plan]' )
