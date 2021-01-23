@@ -50,8 +50,24 @@ sub run_task {
 }
 
 sub task_output_is {
-    my ( $self, $output, $name ) = @_;
-    $self->test( 'is_deeply', $self->{zapp}{job}->info->{result}, $output, $name );
+    my ( $self, $key, $output, $name ) = @_;
+    my $result = $self->{zapp}{job}->info->{result};
+    if ( !ref $key ) {
+        $result = $result->{ $key };
+    }
+    else {
+        $name = $output;
+        $output = $key;
+        undef $key;
+    }
+
+    $self->test( 'is_deeply', $result, $output, $name );
+}
+
+sub task_output_like {
+    my ( $self, $key, $output, $name ) = @_;
+    my $result = $self->{zapp}{job}->info->{result}{$key};
+    $self->test( 'like', $result, $output, $name );
 }
 
 sub task_info_is {
