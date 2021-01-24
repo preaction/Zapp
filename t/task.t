@@ -34,43 +34,42 @@ subtest 'execute' => sub {
         tasks => [
             {
                 name => 'Plan trip',
-                class => 'Zapp::Task::Echo',
+                class => 'Zapp::Task::Script',
                 input => encode_json({
-                    destination => '{{destination}}',
+                    script => 'echo {{destination}}',
                 }),
                 tests => [
                     {
-                        expr => 'destination',
+                        expr => 'output',
                         op => '!=',
-                        value => '',
+                        value => "\n",
                     },
                 ],
                 output => encode_json([
-                    { name => 'initial_destination', expr => 'destination' },
+                    { name => 'initial_destination', expr => 'output' },
                 ]),
             },
             {
                 name => 'Deliver package',
-                class => 'Zapp::Task::Echo',
+                class => 'Zapp::Task::Script',
                 input => encode_json({
-                    destination => '{{destination}}',
-                    delivery_address => 'Certain Doom on {{destination}}',
+                    script => 'echo Certain Doom on {{destination}}',
                 }),
                 tests => [
                     {
-                        expr => 'destination',
+                        expr => 'output',
                         op => '!=',
-                        value => '',
+                        value => "\n",
                     },
                     {
-                        expr => 'delivery_address',
-                        op => '!=',
-                        value => '',
+                        expr => 'exit',
+                        op => '==',
+                        value => '0',
                     },
                 ],
                 output => encode_json([
-                    { name => 'final_destination', expr => 'destination' },
-                    { name => 'final_address', expr => 'delivery_address' },
+                    { name => 'final_destination', expr => 'output' },
+                    { name => 'deaths', expr => 'exit' },
                 ]),
             },
         ],
@@ -130,7 +129,7 @@ subtest 'execute' => sub {
             is_deeply $job->args,
                 [
                     {
-                        destination => 'Nude Beach Planet',
+                        script => 'echo Nude Beach Planet',
                     },
                 ],
                 'minion job args are interpolated input';
@@ -163,7 +162,7 @@ subtest 'execute' => sub {
                     context => {
                         destination => 'Nude Beach Planet',
                         unused_value => 'Should be passed through',
-                        initial_destination => 'Nude Beach Planet',
+                        initial_destination => "Nude Beach Planet\n",
                     },
                 },
                 'second job run entry is correct';
@@ -177,8 +176,7 @@ subtest 'execute' => sub {
             is_deeply $job->args,
                 [
                     {
-                        destination => 'Nude Beach Planet',
-                        delivery_address => 'Certain Doom on Nude Beach Planet',
+                        script => 'echo Certain Doom on Nude Beach Planet',
                     },
                 ],
                 'minion job args are interpolated input';
@@ -211,7 +209,7 @@ subtest 'execute' => sub {
                     context => {
                         destination => 'Nude Beach Planet',
                         unused_value => 'Should be passed through',
-                        initial_destination => 'Nude Beach Planet',
+                        initial_destination => "Nude Beach Planet\n",
                     },
                 },
                 'second job run entry is correct';
@@ -225,10 +223,10 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[0]{task_id},
                 test_id => $plan->{tasks}[0]{tests}[0]{test_id},
-                expr => 'destination',
+                expr => 'output',
                 op => '!=',
-                value => '',
-                expr_value => 'Nude Beach Planet',
+                value => "\n",
+                expr_value => "Nude Beach Planet\n",
                 pass => 1,
             },
             'task 1 test 1 result correct'
@@ -238,10 +236,10 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[1]{task_id},
                 test_id => $plan->{tasks}[1]{tests}[0]{test_id},
-                expr => 'destination',
+                expr => 'output',
                 op => '!=',
-                value => '',
-                expr_value => 'Nude Beach Planet',
+                value => "\n",
+                expr_value => "Certain Doom on Nude Beach Planet\n",
                 pass => 1,
             },
             'task 2 test 1 result correct'
@@ -251,10 +249,10 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[1]{task_id},
                 test_id => $plan->{tasks}[1]{tests}[1]{test_id},
-                expr => 'delivery_address',
-                op => '!=',
-                value => '',
-                expr_value => 'Certain Doom on Nude Beach Planet',
+                expr => 'exit',
+                op => '==',
+                value => '0',
+                expr_value => '0',
                 pass => 1,
             },
             'task 2 test 2 result correct'
@@ -283,10 +281,10 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[0]{task_id},
                 test_id => $plan->{tasks}[0]{tests}[0]{test_id},
-                expr => 'destination',
+                expr => 'output',
                 op => '!=',
-                value => '',
-                expr_value => '',
+                value => "\n",
+                expr_value => "\n",
                 pass => 0,
             },
             'task 1 test 1 result correct'
@@ -296,9 +294,9 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[1]{task_id},
                 test_id => $plan->{tasks}[1]{tests}[0]{test_id},
-                expr => 'destination',
+                expr => 'output',
                 op => '!=',
-                value => '',
+                value => "\n",
                 expr_value => undef,
                 pass => undef,
             },
@@ -309,9 +307,9 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[1]{task_id},
                 test_id => $plan->{tasks}[1]{tests}[1]{test_id},
-                expr => 'delivery_address',
-                op => '!=',
-                value => '',
+                expr => 'exit',
+                op => '==',
+                value => '0',
                 expr_value => undef,
                 pass => undef,
             },

@@ -80,15 +80,6 @@ subtest 'create new plan' => sub {
                 'placeholder for add task dropdown is correct',
             )
             ->element_exists(
-                'select.add-task option[value=Zapp::Task::Echo]',
-                'Echo task appears in task list',
-            )
-            ->text_is(
-                'select.add-task option[value=Zapp::Task::Echo]',
-                'Echo',
-                'Echo task option text is correct',
-            )
-            ->element_exists(
                 'select.add-task option[value=Zapp::Task::Request]',
                 'Request task appears in task list',
             )
@@ -376,15 +367,6 @@ subtest 'edit existing plan' => sub {
                 'select.add-task option:nth-child(1)',
                 'Add Task...',
                 'placeholder for add task dropdown is correct',
-            )
-            ->element_exists(
-                'select.add-task option[value=Zapp::Task::Echo]',
-                'Echo task appears in task list',
-            )
-            ->text_is(
-                'select.add-task option[value=Zapp::Task::Echo]',
-                'Echo',
-                'Echo task option text is correct',
             )
             ->element_exists(
                 'select.add-task option[value=Zapp::Task::Request]',
@@ -1418,13 +1400,13 @@ subtest 'run a plan' => sub {
         tasks => [
             {
                 name => 'Plan trip',
-                class => 'Zapp::Task::Echo',
+                class => 'Zapp::Task::Script',
                 input => encode_json({
-                    destination => 'Chapek 9',
+                    script => 'echo Chapek 9',
                 }),
                 tests => [
                     {
-                        expr => 'destination',
+                        expr => 'output',
                         op => '!=',
                         value => '',
                     },
@@ -1432,20 +1414,20 @@ subtest 'run a plan' => sub {
             },
             {
                 name => 'Deliver package',
-                class => 'Zapp::Task::Echo',
+                class => 'Zapp::Task::Script',
                 input => encode_json({
-                    delivery_address => 'Certain Doom',
+                    script => 'echo Certain Doom',
                 }),
                 tests => [
                     {
-                        expr => 'destination',
+                        expr => 'output',
                         op => '!=',
                         value => '',
                     },
                     {
-                        expr => 'delivery_address',
-                        op => '!=',
-                        value => '',
+                        expr => 'exit',
+                        op => '==',
+                        value => '0',
                     },
                 ],
             },
@@ -1504,7 +1486,7 @@ subtest 'run a plan' => sub {
                 run_id => $run_id,
                 task_id => $jobs[0]{task_id},
                 test_id => $plan->{tasks}[0]{tests}[0]{test_id},
-                expr => 'destination',
+                expr => 'output',
                 op => '!=',
                 value => '',
                 pass => undef,
@@ -1516,7 +1498,7 @@ subtest 'run a plan' => sub {
                 run_id => $run_id,
                 task_id => $jobs[1]{task_id},
                 test_id => $plan->{tasks}[1]{tests}[0]{test_id},
-                expr => 'destination',
+                expr => 'output',
                 op => '!=',
                 value => '',
                 pass => undef,
@@ -1528,9 +1510,9 @@ subtest 'run a plan' => sub {
                 run_id => $run_id,
                 task_id => $jobs[1]{task_id},
                 test_id => $plan->{tasks}[1]{tests}[1]{test_id},
-                expr => 'delivery_address',
-                op => '!=',
-                value => '',
+                expr => 'exit',
+                op => '==',
+                value => '0',
                 pass => undef,
                 expr_value => undef,
             },
@@ -1554,16 +1536,16 @@ subtest 'view run status' => sub {
         tasks => [
             {
                 name => 'Watch',
-                class => 'Zapp::Task::Echo',
+                class => 'Zapp::Task::Script',
                 input => encode_json({
-                    character => '{{Character}}',
+                    script => 'echo {{Character}}',
                 }),
             },
             {
                 name => 'Experience Ironic Consequences',
-                class => 'Zapp::Task::Echo',
+                class => 'Zapp::Task::Script',
                 input => encode_json({
-                    character => '{{Character}}',
+                    script => 'echo {{Character}}',
                 }),
             },
         ],
@@ -1591,9 +1573,9 @@ subtest 'view run status' => sub {
             ->text_is( '[data-task-started]', 'N/A', 'run started is correct' )
             ->text_is( '[data-task-finished]', 'N/A', 'run finished is correct' )
             ->text_is( "[data-task=$run->{tasks}[0]{task_id}] [data-task-state]", 'inactive', 'first task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task input are interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] code", qr/Zanthor/, 'first task input are interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'inactive', 'second task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/\{\{Character\}\}/, 'second task input are not yet interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] code", qr/\{\{Character\}\}/, 'second task input are not yet interpolated' )
     };
 
     $t->run_queue;
@@ -1605,9 +1587,9 @@ subtest 'view run status' => sub {
             ->text_like( '[data-task-started]', qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run started is formatted correctly' )
             ->text_like( '[data-task-finished]',  qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run finished is formatted correctly' )
             ->text_is( "[data-task=$run->{tasks}[0]{task_id}] [data-task-state]", 'finished', 'first task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] pre", qr/Zanthor/, 'first task input are interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] code", qr/Zanthor/, 'first task input are interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'finished', 'second task state is correct' )
-            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] pre", qr/Zanthor/, 'second task input are interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] code", qr/Zanthor/, 'second task input are interpolated' )
     };
 };
 
@@ -1617,8 +1599,10 @@ subtest 'delete plan' => sub {
         tasks => [
             {
                 name => 'Get Ceremonial Oversized Scissors',
-                class => 'Zapp::Task::Echo',
-                input => encode_json({}),
+                class => 'Zapp::Task::Script',
+                input => encode_json({
+                    script => 'echo What makes a man turn neutral?',
+                }),
                 tests => [
                     {
                         expr => 'sharpness',

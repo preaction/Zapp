@@ -96,5 +96,10 @@ __DATA__
     <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
     <%= $task->{name} %>
 % end
-<pre class="ml-4 m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
+<div class="ml-4">
+    <h3>Script</h3>
+    <pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
+    <h3>Output</h3>
+    <pre class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
+</div>
 
