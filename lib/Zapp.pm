@@ -87,6 +87,8 @@ sub startup( $self ) {
         ->to( 'plan#save_run' )->name( 'zapp.create_run' );
     $self->routes->get( '/run/:run_id' )
         ->to( 'plan#get_run' )->name( 'zapp.get_run' );
+    $self->routes->get( '/run/:run_id/task/:task_id' )
+        ->to( 'plan#get_run_task' )->name( 'zapp.get_run_task' );
     # $self->routes->get( '/run/:run_id/edit' )
     # ->to( 'plan#edit_run' )->name( 'zapp.edit_run' );
     # $self->routes->post( '/run/:run_id/edit' )

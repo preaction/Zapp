@@ -2,6 +2,7 @@ package Zapp::Controller::Plan;
 use Mojo::Base 'Mojolicious::Controller', -signatures;
 use Mojo::JSON qw( decode_json encode_json );
 use List::Util qw( first uniqstr );
+use Mojo::Loader qw( data_section );
 use Time::Piece;
 use Zapp::Util qw( fill_input get_path_from_data );
 
@@ -40,53 +41,54 @@ sub _get_plan( $self, $plan_id ) {
     return $plan;
 }
 
+sub _get_run_task( $self, $run_id, $task_id ) {
+    my ( $job ) = $self->yancy->list( zapp_run_jobs => { run_id => $run_id, task_id => $task_id } );
+    my $minion_job = $self->minion->job( $job->{minion_job_id} );
+
+    my $plan_task = $self->yancy->get( zapp_plan_tasks => $task_id );
+    $plan_task->{input} = decode_json( $plan_task->{input} );
+    if ( $plan_task->{output} ) {
+        $plan_task->{output} = decode_json( $plan_task->{output} );
+    }
+
+    # The task run information should be all the Zapp task
+    # information and all the Minion job information except for
+    # args and result (renamed input and output respectively)
+    my $run_task = {
+        %$plan_task,
+        $minion_job->info->%*,
+        %$job,
+        tests => [
+            $self->app->yancy->list( zapp_run_tests =>
+                {
+                    run_id => $run_id,
+                    task_id => $task_id,
+                },
+                {
+                    order_by => 'test_id',
+                },
+            ),
+        ],
+    };
+
+    delete $run_task->{args};
+    if ( $run_task->{context} ) {
+        $run_task->{context} = decode_json( $run_task->{context} );
+        $run_task->{input} = fill_input( $run_task->{context}, $run_task->{input} );
+    }
+
+    $run_task->{output} = delete $run_task->{result};
+
+    return $run_task;
+}
+
 sub _get_run( $self, $run_id ) {
     my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
     if ( my $run_id = $run->{run_id } ) {
         $run->{input_values} = decode_json( $run->{input_values} );
 
         my $plan = $run->{plan} = $self->_get_plan( $run->{plan_id} );
-        for my $task ( @{ $plan->{tasks} } ) {
-            my $task_id = $task->{task_id};
-            my ( $job ) = $self->yancy->list( zapp_run_jobs => { run_id => $run_id, task_id => $task_id } );
-            my $minion_job = $self->minion->job( $job->{minion_job_id} );
-
-            my $plan_task = $self->yancy->get( zapp_plan_tasks => $task_id );
-            $plan_task->{input} = decode_json( $plan_task->{input} );
-            if ( $plan_task->{output} ) {
-                $plan_task->{output} = decode_json( $plan_task->{output} );
-            }
-
-            # The task run information should be all the Zapp task
-            # information and all the Minion job information except for
-            # args and result (renamed input and output respectively)
-            my $run_task = {
-                %$plan_task,
-                $minion_job->info->%*,
-                %$job,
-                tests => [
-                    $self->app->yancy->list( zapp_run_tests =>
-                        {
-                            run_id => $run_id,
-                            task_id => $task_id,
-                        },
-                        {
-                            order_by => 'test_id',
-                        },
-                    ),
-                ],
-            };
-
-            delete $run_task->{args};
-            if ( $run_task->{context} ) {
-                $run_task->{context} = decode_json( $run_task->{context} );
-                $run_task->{input} = fill_input( $run_task->{context}, $run_task->{input} );
-            }
-
-            $run_task->{output} = delete $run_task->{result};
-
-            push $run->{tasks}->@*, $run_task;
-        }
+        $run->{tasks} = [ map { $self->_get_run_task( $run_id, $_->{task_id} ) } $plan->{tasks}->@* ];
 
         my $inputs = $plan->{inputs} = [
             $self->yancy->list( zapp_plan_inputs => { plan_id => $run->{plan_id} }, { order_by => 'name' } ),
@@ -359,5 +361,11 @@ sub get_run( $self ) {
     $self->render( 'zapp/run/view', run => $run );
 }
 
+sub get_run_task( $self ) {
+    my $run_task = $self->_get_run_task( $self->stash( 'run_id' ), $self->stash( 'task_id' ) )
+        or return $self->reply->not_found;
+    my $template = data_section( $run_task->{class}, 'output.html.ep' );
+    return $self->render( inline => $template, task => $run_task );
+}
 
 1;

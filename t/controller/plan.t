@@ -1576,6 +1576,21 @@ subtest 'view run status' => sub {
             ->text_like( "[data-task=$run->{tasks}[0]{task_id}] code", qr/Zanthor/, 'first task input are interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'inactive', 'second task state is correct' )
             ->text_like( "[data-task=$run->{tasks}[1]{task_id}] code", qr/\{\{Character\}\}/, 'second task input are not yet interpolated' )
+            ;
+
+        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
+            ->status_is( 200 )
+            ->element_exists_not( 'body', 'not inside layout' )
+            ->text_is( "[data-task-state]", 'inactive', 'first task state is correct' )
+            ->text_like( "code", qr/Zanthor/, 'first task input are interpolated' )
+            ;
+
+        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )
+            ->status_is( 200 )
+            ->element_exists_not( 'body', 'not inside layout' )
+            ->text_is( "[data-task-state]", 'inactive', 'second task state is correct' )
+            ->text_like( "code", qr/\{\{Character\}\}/, 'second task input are not interpolated' )
+            ;
     };
 
     $t->run_queue;
@@ -1590,6 +1605,21 @@ subtest 'view run status' => sub {
             ->text_like( "[data-task=$run->{tasks}[0]{task_id}] code", qr/Zanthor/, 'first task input are interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'finished', 'second task state is correct' )
             ->text_like( "[data-task=$run->{tasks}[1]{task_id}] code", qr/Zanthor/, 'second task input are interpolated' )
+            ;
+
+        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
+            ->status_is( 200 )
+            ->element_exists_not( 'body', 'not inside layout' )
+            ->text_is( "[data-task-state]", 'finished', 'first task state is correct' )
+            ->text_like( "code", qr/Zanthor/, 'first task input are interpolated' )
+            ;
+
+        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )
+            ->status_is( 200 )
+            ->element_exists_not( 'body', 'not inside layout' )
+            ->text_is( "[data-task-state]", 'finished', 'second task state is correct' )
+            ->text_like( "code", qr/Zanthor/, 'second task input are interpolated' )
+            ;
     };
 };
 
