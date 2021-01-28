@@ -188,8 +188,8 @@ __DATA__
 @@ output.html.ep
 %= include 'zapp/task-bar', synopsis => begin
     <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
-    <%= $task->{input}{method} %>
-    <%= $task->{input}{url} %>
+    <%= $task->{args}{method} %>
+    <%= $task->{args}{url} %>
 % end
 <%
     use Mojo::JSON qw( decode_json );

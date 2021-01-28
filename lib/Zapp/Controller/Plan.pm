@@ -4,7 +4,7 @@ use Mojo::JSON qw( decode_json encode_json );
 use List::Util qw( first uniqstr );
 use Mojo::Loader qw( data_section );
 use Time::Piece;
-use Zapp::Util qw( fill_input get_path_from_data );
+use Zapp::Util qw( get_slot_from_data fill_input get_path_from_data );
 
 # Zapp: Now, like all great plans, my strategy is so simple an idiot
 # could have devised it.
@@ -74,7 +74,14 @@ sub _get_run_task( $self, $run_id, $task_id ) {
     delete $run_task->{args};
     if ( $run_task->{context} ) {
         $run_task->{context} = decode_json( $run_task->{context} );
-        $run_task->{input} = fill_input( $run_task->{context}, $run_task->{input} );
+        my %values;
+        for my $name ( keys %{ $run_task->{context} } ) {
+            my $input = $run_task->{context}{ $name };
+            my $type = $self->app->zapp->types->{ $input->{type} }
+                or die qq{Could not find type "$input->{type}"};
+            $values{ $name } = $type->task_input( { run_id => $run_id }, { task_id => $task_id }, $input->{value} );
+        }
+        $run_task->{input} = fill_input( \%values, $run_task->{input} );
     }
 
     $run_task->{output} = delete $run_task->{result};
@@ -119,32 +126,25 @@ sub edit_plan( $self ) {
 }
 
 sub build_data_from_params( $self, $prefix ) {
+    my $data = '';
     # XXX: Move to Yancy (Util? Controller?)
-    my @params = grep /^$prefix(?:\[\d+\]|\.\w+)/, $self->req->body_params->names->@*;
-    my $data;
+    my @params = grep /^$prefix(?:\[\d+\]|\.\w+)/, $self->req->params->names->@*;
     for my $param ( @params ) {
+        ; $self->log->debug( "Param: $param" );
         my $value = $self->param( $param );
         my $path = $param =~ s/^$prefix//r;
-        my $slot = \( $data ||= '' );
-        for my $part ( $path =~ m{((?:\w+|\[\d+\]))(?=\.|\[|$)}g ) {
-            if ( $part =~ /^\[(\d+)\]$/ ) {
-                my $part_i = $1;
-                if ( !ref $$slot ) {
-                    $$slot = [];
-                }
-                $slot = \( $$slot->[ $part_i ] );
-                next;
-            }
-            else {
-                if ( !ref $$slot ) {
-                    $$slot = {};
-                }
-                $slot = \( $$slot->{ $part } );
-            }
-        }
+        my $slot = get_slot_from_data( $path, \$data );
         $$slot = $value;
     }
-    return $data;
+    my @uploads = grep $_->name =~ /^$prefix(?:\[\d+\]|\.\w+)/, $self->req->uploads->@*;
+    for my $upload ( @uploads ) {
+        ; $self->log->debug( "Upload: " . $upload->name );
+        my $path = $upload->name =~ s/^$prefix//r;
+        my $slot = get_slot_from_data( $path, \$data );
+        $$slot = $upload;
+    }
+    ; $self->log->debug( "Build data: " . $self->dumper( $data ) );
+    return $data ne '' ? $data : undef;
 }
 
 sub save_plan( $self ) {
@@ -156,6 +156,15 @@ sub save_plan( $self ) {
     };
     my $tasks = $self->build_data_from_params( 'task' );
     my $form_inputs = $self->build_data_from_params( 'input' );
+
+    # XXX: Create transaction routine for Yancy::Backend
+    if ( $plan_id ) {
+        $self->yancy->backend->set( zapp_plans => $plan_id, $plan );
+    }
+    else {
+        $plan_id = $self->yancy->backend->create( zapp_plans => $plan );
+    }
+    $plan->{plan_id} = $plan_id;
 
     # Validate all incoming data.
     my @errors;
@@ -169,8 +178,20 @@ sub save_plan( $self ) {
                     . join( '', map { "<kbd>$_</kbd>" } @chars ),
             };
         }
+        my $type = $self->app->zapp->types->{ $input->{type} }
+            or die qq{Could not find type "$input->{type}"};
+        eval {
+            $input->{default_value} = $type->plan_input( $self, $plan, $input->{default_value} );
+        };
+        if ( $@ ) {
+            push @errors, {
+                name => "input[$i].name",
+                error => qq{Error validating input "$input->{name}" type "$input->{type}" value "$input->{default_value}": $@},
+            };
+        }
     }
     if ( @errors ) {
+        $self->log->error( "Error saving plan: " . $self->dumper( \@errors ) );
         $self->stash(
             status => 400,
             plan => {
@@ -183,17 +204,9 @@ sub save_plan( $self ) {
         return $self->edit_plan;
     }
 
-    # XXX: Create transaction routine for Yancy::Backend
     # XXX: Create sync routine for Yancy::Backend that takes a set of
     # items and updates the schema to look exactly like that (deleting,
     # updating, inserting as needed)
-    if ( $plan_id ) {
-        $self->yancy->backend->set( zapp_plans => $plan_id, $plan );
-    }
-    else {
-        $plan_id = $self->yancy->backend->create( zapp_plans => $plan );
-    }
-
     my %tasks_to_delete
         = map { $_->{task_id} => 1 }
         $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
@@ -275,6 +288,7 @@ sub save_plan( $self ) {
 
     my %input_to_delete = map { $_->{name} => $_ } $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id } );
     for my $form_input ( @$form_inputs ) {
+        ; $self->log->debug( "Input: " . $self->dumper( $form_input ) );
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         for my $json_field ( qw( default_value ) ) {
             $form_input->{ $json_field } = encode_json( $form_input->{ $json_field } );
@@ -329,17 +343,27 @@ sub save_run( $self ) {
     my $plan_id = $self->stash( 'plan_id' );
     my $plan = $self->_get_plan( $plan_id );
 
-    my $input = $self->build_data_from_params( 'input' );
+    my $input_fields = $self->build_data_from_params( 'input' );
+    my $input_values = {};
+    for my $input ( @$input_fields ) {
+        my $type = $self->app->zapp->types->{ $input->{type} }
+            or die qq{Could not find type "$input->{type}"};
+        $input_values->{ $input->{name} } = {
+            type => $input->{type},
+            value => $type->run_input( $self, { run_id => time }, $input->{value} ),
+        };
+    }
+
     my $run_id = $self->stash( 'run_id' );
     if ( !$run_id ) {
-        my $run = $self->app->enqueue( $plan_id, $input );
+        my $run = $self->app->enqueue( $plan_id, $input_values );
         $run_id = $run->{run_id};
     }
     else {
         my $run = {
             plan_id => $plan_id,
             # XXX: Auto-encode/-decode JSON fields in Yancy schema
-            input_values => encode_json( $input ),
+            input_values => encode_json( $input_values ),
         };
         $self->yancy->set( zapp_runs => $run_id, $run );
     }

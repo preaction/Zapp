@@ -1,7 +1,9 @@
 <%
     use Mojo::Loader qw( data_section );
-    use Zapp::Util qw( get_path_from_data );
-    use Text::Balanced qw( extract_delimited );
+    use Zapp::Util qw(
+        get_path_from_data prefix_field rename_field
+        parse_zapp_attrs
+    );
     layout 'zapp';
     my $plan = stash( 'plan' ) // {};
 %>
@@ -226,7 +228,18 @@
             </div>
             <div class="col">
                 <label for="input[<%= $input_num %>].default_value">Default Value</label>
-                %= text_field "input[$input_num].default_value", $input->{default_value}, placeholder => 'Default value', class => 'form-control'
+                <div>
+                    <% if ( my $type_name = $input->{type} ) {
+                        my $type = $c->zapp->types->{ $type_name }
+                            or die qq{Could not find type "$type_name"};
+                        my $input_field = include inline => $type->input_field( $c, $input->{default_value} ), self => $type, input => $input;
+                        my $input_dom = rename_field( $input_field, value => 'default_value' );
+                        $input_dom = prefix_field( $input_dom, "input[$input_num]" );
+                        %><%== $input_dom %><%
+                    } else {
+                        %><span data-input-value></span><%
+                    } %>
+                </div>
             </div>
             <div class="col-auto align-self-end">
                 <button type="button" class="delete input-remove btn btn-outline-danger"
@@ -265,8 +278,14 @@
 </template>
 
 % for my $class ( @{ stash 'tasks' } ) {
-    <template data-class="<%= $class %>">
+    <template data-task-class="<%= $class %>">
         %= include inline => data_section( $class, 'input.html.ep' )
+    </template>
+% }
+% for my $type_name ( keys $c->zapp->types->%* ) {
+    % my $type = $c->zapp->types->{ $type_name };
+    <template data-type-input="<%= $type_name %>">
+        %= include inline => $type->input_field( $c ), input => {}, self => $type
     </template>
 % }
 
@@ -308,14 +327,14 @@
             % for my $input_num ( 0 .. $#{ $plan->{inputs} } ) {
                 % my $input = $plan->{inputs}[ $input_num ];
                 <li>
-                    %= $input_tmpl->( $input_num, $input )
+                    %= $input_tmpl->( $input_num, { %$input, value => $input->{default_value} } )
                 </li>
             % }
         </ul>
         <select class="add-input form-control col-auto">
             <option>Add Input...</option>
-            % for my $type ( qw( string number integer boolean ) ) {
-                %= tag option => ( value => $type ), ucfirst $type
+            % for my $type_name ( keys $c->zapp->types->%* ) {
+                %= tag option => ( value => $type_name ), ucfirst $type_name
             % }
         </select>
     </div>
@@ -328,81 +347,13 @@
                     my $task = $plan->{tasks}[ $task_num ];
                     my $input_form = include inline => data_section( $task->{class}, 'input.html.ep' ), input => $task->{input};
                     my $input_dom = Mojo::DOM->new( $input_form );
-                    $input_dom->find( '[data-zapp-if]' )->each(
-                        sub {
-                            my ( $el ) = @_;
-                            my ( $lhs, $op, $rhs ) = split /\s*(==|!=|>|<|>=|<=|eq|ne|gt|lt|ge|le)\s*/, $el->attr( 'data-zapp-if' ), 3;
-                            #; say "Expr: " . $el->attr( 'data-zapp-if' );
-                            #; say "LHS: $lhs; OP: $op; RHS: $rhs";
-                            if ( !$op ) {
-                                # Boolean LHS
-                                my ( $false, $path ) = $lhs =~ /^(!)?\s*(\S+)/;
-                                my $value = get_path_from_data( $path, $task->{input} );
-                                if ( ( !$false && $value ) || ( $false && !$value ) ) {
-                                    #; say "False: $false; Value: $value";
-                                    $el->attr( class => join ' ', $el->attr( 'class' ), 'zapp-visible' );
-                                }
-                            }
-                            else {
-                                my ( $lhs_value, $rhs_value );
-                                if ( $lhs_value = extract_delimited( $lhs ) ) {
-                                    $lhs_value =~ s/^['"`]|['"`]$//g;
-                                }
-                                else {
-                                    $lhs_value = get_path_from_data( $lhs, $task->{input} );
-                                }
-                                if ( $rhs_value = extract_delimited( $rhs ) ) {
-                                    $rhs_value =~ s/^['"`]|['"`]$//g;
-                                }
-                                else {
-                                    $rhs_value = get_path_from_data( $rhs, $task->{input} );
-                                }
-
-                                my %ops = (
-                                    map { $_ => eval "sub { shift $_ shift }" } qw( == != > < >= <= eq ne gt lt ge le ),
-                                );
-                                #; say "LHS: $lhs_value ($lhs); OP: $op; RHS: $rhs_value ($rhs)";
-                                if ( $ops{ $op } && $ops{ $op }->( $lhs_value, $rhs_value ) ) {
-                                    $el->attr( class => join ' ', $el->attr( 'class' )//(), 'zapp-visible' );
-                                }
-                            }
-                        },
-                    );
-
-                    $input_dom->find( 'input,select,textarea' )->each(
-                        sub {
-                            my ( $el ) = @_;
-                            my $name = $el->attr( 'name' );
-                            my $joiner = $name =~ /^\[/ ? '' : '.';
-                            $el->attr( name => join $joiner, 'input', $name );
-                            $el->attr( id => $el->attr( 'name' ) );
-                        },
-                    );
-                    $input_dom->find( 'label' )->each(
-                        sub {
-                            my ( $el ) = @_;
-                            my $for = $el->attr( 'for' );
-                            my $joiner = $for =~ /^\[/ ? '' : '.';
-                            $el->attr( for => join $joiner, 'input', $for );
-                        },
-                    );
+                    $input_dom = parse_zapp_attrs( $input_dom, $task->{input} );
+                    $input_dom = prefix_field( $input_dom, 'input' );
 
                     my $task_form = $task_tmpl->( $task );
                     my $task_dom = Mojo::DOM->new( $task_form );
                     $task_dom->at( '[data-input-form]' )->replace( $input_dom );
-                    $task_dom->find( 'input,select,textarea' )->each(
-                        sub {
-                            my ( $el ) = @_;
-                            $el->attr( name => 'task[' . $task_num . '].' . $el->attr( 'name' ) );
-                            $el->attr( id => $el->attr( 'name' ) );
-                        },
-                    );
-                    $task_dom->find( 'label' )->each(
-                        sub {
-                            my ( $el ) = @_;
-                            $el->attr( for => 'task[' . $task_num . '].' . $el->attr( 'for' ) );
-                        },
-                    );
+                    $task_dom = prefix_field( $task_dom, "task[$task_num]" );
                     if ( $task_num == 0 ) {
                         my $btn = $task_dom->at( '.task-move-up' );
                         $btn->attr( class => join ' ', $btn->attr( 'class' ), 'disabled' );
@@ -440,6 +391,23 @@ function delegateEvent( eventName, elementSelector, handler ) {
     }, false);
 }
 
+function prefixField( el, prefix ) {
+    var inputs = el.querySelectorAll( 'input,select,textarea' );
+    inputs.forEach( function ( el ) {
+        var sep = el.name.startsWith( '[' ) ? '' : '.';
+        el.name = `${prefix}${sep}${el.name}`;
+        el.id = el.name;
+    } );
+
+    var labels = el.querySelectorAll( 'label' );
+    labels.forEach( function ( el ) {
+        var sep = el.attributes.for.value.startsWith( '[' ) ? '' : '.';
+        el.attributes.for.value = `${prefix}${sep}${el.attributes.for.value}`;
+    } );
+
+    return el;
+}
+
 function addTask( event ) {
     // XXX: Focus on task name element after adding form
     var inputSelector = 'input,select,textarea',
@@ -452,23 +420,11 @@ function addTask( event ) {
         taskIdx = beforeTask ? allTasks.indexOf( beforeTask ) : allTasks.childElementCount,
         taskTmpl = document.querySelector( 'template#task-form' ).content.cloneNode(true),
         taskForm = document.createElement( 'div' ),
-        inputTmpl = document.querySelector( `[data-class="${cls}"]` ).content,
+        inputTmpl = document.querySelector( `[data-task-class="${cls}"]` ).content,
         inputForm = inputTmpl.cloneNode(true);
     sel.selectedIndex = 0;
 
-    var inputInputs = inputForm.querySelectorAll( inputSelector );
-    inputInputs.forEach( function ( el ) {
-        var sep = el.name.startsWith( '[' ) ? '' : '.';
-        el.name = `input${sep}${el.name}`;
-        el.id = el.name;
-    } );
-
-    var inputLabels = inputForm.querySelectorAll( 'label' );
-    inputLabels.forEach( function ( el ) {
-        var sep = el.attributes.for.value.startsWith( '[' ) ? '' : '.';
-        el.attributes.for.value = `input${sep}${el.attributes.for.value}`;
-    } );
-
+    prefixField( inputForm, 'input' );
     taskForm.dataset.taskForm = true;
     taskForm.appendChild( taskTmpl );
     taskForm.querySelector( '[data-input-form]' ).replaceWith( inputForm );
@@ -476,15 +432,7 @@ function addTask( event ) {
     taskType.innerHTML = type;
     var taskClassInput = taskForm.querySelector( 'input[name=class]' );
     taskClassInput.value = cls;
-    var taskInputs = taskForm.querySelectorAll( inputSelector );
-    taskInputs.forEach( function ( el ) {
-        el.name = `task[${taskIdx}].${el.name}`;
-        el.id = el.name;
-    } );
-    var taskLabels = taskForm.querySelectorAll( 'label' );
-    taskLabels.forEach( function ( el ) {
-        el.attributes.for.value = `task[${taskIdx}].${el.attributes.for.value}`;
-    } );
+    prefixField( taskForm, `task[${taskIdx}]` );
 
     if ( beforeTask ) {
         beforeTask.insertAdjacentElement( 'beforebegin', taskForm );
@@ -689,7 +637,23 @@ function addInput( event ) {
         list = select.previousElementSibling,
         input = select.parentNode,
         newInput = document.querySelector( 'template#input-form' ).content.cloneNode(true),
-        newIndex = list.querySelectorAll('li').length;
+        newIndex = list.querySelectorAll('li').length,
+        valueTmpl = document.querySelector( `[data-type-input="${inputType}"]` ).content,
+        valueForm = valueTmpl.cloneNode(true);
+        ;
+
+    valueForm.querySelectorAll( 'input,select,textarea' ).forEach(
+        function( el ) {
+            el.name = el.name.replace( /^value/, 'default_value' );
+        }
+    );
+    valueForm.querySelectorAll( 'label' ).forEach(
+        function( el ) {
+            el.for = el.for.replace( /^value/, 'default_value' );
+        }
+    );
+    prefixField( valueForm, 'input[0]' );
+    newInput.querySelector( '[data-input-value]' ).replaceWith( valueForm );
 
     // Set type
     newInput.querySelector( '[name="input[0].type"]' ).attributes.getNamedItem( 'value' ).value = inputType;

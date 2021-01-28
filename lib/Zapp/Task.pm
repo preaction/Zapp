@@ -1,15 +1,23 @@
 package Zapp::Task;
 use Mojo::Base 'Minion::Job', -signatures;
 use Mojo::JSON qw( decode_json encode_json );
-use Zapp::Util qw( get_path_from_data fill_input );
+use Zapp::Util qw( get_path_from_data get_path_from_schema fill_input );
 
 sub execute( $self, @args ) {
     my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
     my $context = decode_json( $run_job->{context} );
+    ; $self->app->log->debug( "Got context: " . $self->app->dumper( $context ) );
+    my %values;
+    for my $name ( keys %$context ) {
+        my $input = $context->{ $name };
+        my $type = $self->app->zapp->types->{ $input->{type} }
+            or die qq{Could not find type "$input->{type}"};
+        $values{ $name } = $type->task_input( { run_id => $run_job->{run_id} }, { task_id => $run_job->{task_id} }, $input->{value} );
+    }
 
     # Interpolate arguments
     # XXX: Does this mean we can't work with existing Minion tasks?
-    $self->args( fill_input( $context, $self->args ) );
+    $self->args( fill_input( \%values, $self->args ) );
 
     return $self->SUPER::execute( @args );
 }
@@ -20,6 +28,7 @@ sub finish( $self, $output=undef ) {
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
     # Verify tests
+    ; $self->app->log->info( 'Running tests' );
     my @tests = $self->app->yancy->list( zapp_run_tests => { run_id => $run_id, task_id => $task_id }, { order_by => 'test_id' } );
     for my $test ( @tests ) {
         # Stringify whatever data we get because the value to test
@@ -58,17 +67,34 @@ sub finish( $self, $output=undef ) {
             },
         );
         if ( !$pass ) {
+            $self->app->log->debug(
+                sprintf "Run %s failed test %s %s %s with value %s",
+                    $test->@{qw( run_id expr op value expr_value )},
+            );
             return $self->fail( $output );
         }
     }
 
+    ; $self->app->log->info( 'Saving context' );
     # Save assignments to child contexts
     my $task = $self->app->yancy->get( zapp_plan_tasks => $task_id );
     my $output_saves = decode_json( $task->{output} // '[]' );
     my $context = decode_json( $run_job->{context} // '{}' );
     for my $save ( @$output_saves ) {
-        $context->{ $save->{name} } = get_path_from_data( $save->{expr}, $output );
+        ; $self->app->log->debug( "Saving: " . $self->app->dumper( $save ) );
+        my $schema = get_path_from_schema( $save->{expr}, $self->schema->{output} );
+        my $type_name = $save->{type} || $schema->{type};
+        my $type = $self->app->zapp->types->{ $type_name }
+            or die "Could not find type name $type_name";
+        my $value = get_path_from_data( $save->{expr}, $output );
+        ; $self->app->log->debug( "Got schema: " . $self->app->dumper( $schema ) );
+
+        $context->{ $save->{name} } = {
+            value => $type->task_output( { run_id => $run_id }, { task_id => $task_id }, $value ),
+            type => $type_name,
+        };
     }
+    $self->app->log->debug( "Saving context: " . $self->app->dumper( $context ) );
     for my $minion_job_id ( @{ $self->info->{children} } ) {
         $self->app->yancy->backend->set(
             zapp_run_jobs => $minion_job_id => {

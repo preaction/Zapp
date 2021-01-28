@@ -1446,7 +1446,7 @@ subtest 'run a plan' => sub {
     subtest 'create run form' => sub {
         $t->get_ok( "/plan/$plan_id/run" )->status_is( 200 )
             ->element_exists( "form[action=/plan/$plan_id/run]", 'form exists' )
-            ->element_exists( '[name=input.destination]', 'input field exists' )
+            ->element_exists( '[name="input[0].value"]', 'input field exists' )
             ;
     };
 
@@ -1454,7 +1454,9 @@ subtest 'run a plan' => sub {
         $t->post_ok(
             "/plan/$plan_id/run",
             form => {
-                'input.destination' => 'Galaxy of Terror',
+                'input[0].name' => 'destination',
+                'input[0].type' => 'string',
+                'input[0].value' => 'Galaxy of Terror',
             } )
             ->status_is( 302 )->or( $dump_debug )
             ->header_like( Location => qr{/run/\d+} )
@@ -1464,7 +1466,13 @@ subtest 'run a plan' => sub {
         # Recorded in Zapp
         my $run = $t->app->yancy->get( zapp_runs => $run_id );
         is $run->{plan_id}, $plan_id, 'run plan_id is correct';
-        is_deeply decode_json( $run->{input_values} ), { destination => 'Galaxy of Terror' },
+        is_deeply decode_json( $run->{input_values} ),
+            {
+                destination => {
+                    type => 'string',
+                    value => 'Galaxy of Terror',
+                },
+            },
             'run input is correct';
 
         # Record all enqueued jobs so we can keep track of which Minion
@@ -1551,7 +1559,7 @@ subtest 'view run status' => sub {
         ],
         inputs => [
             {
-                name => 'character',
+                name => 'Character',
                 type => 'string',
                 description => 'Which character should ask the question?',
                 default_value => encode_json( 'Leela' ),
@@ -1562,7 +1570,10 @@ subtest 'view run status' => sub {
     my $run = $t->app->enqueue(
         $plan_id,
         {
-            Character => 'Zanthor',
+            Character => {
+                type => 'string',
+                value => 'Zanthor',
+            },
         },
     );
 

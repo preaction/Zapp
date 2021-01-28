@@ -46,7 +46,7 @@ subtest 'execute' => sub {
                     },
                 ],
                 output => encode_json([
-                    { name => 'initial_destination', expr => 'output' },
+                    { name => 'initial_destination', type => 'string', expr => 'output' },
                 ]),
             },
             {
@@ -68,8 +68,8 @@ subtest 'execute' => sub {
                     },
                 ],
                 output => encode_json([
-                    { name => 'final_destination', expr => 'output' },
-                    { name => 'deaths', expr => 'exit' },
+                    { name => 'final_destination', type => 'string', expr => 'output' },
+                    { name => 'deaths', type => 'integer', expr => 'exit' },
                 ]),
             },
         ],
@@ -85,8 +85,14 @@ subtest 'execute' => sub {
 
     subtest 'tests pass' => sub {
         my $input = {
-            destination => 'Nude Beach Planet',
-            unused_value => 'Should be passed through',
+            destination => {
+                type => 'string',
+                value => 'Nude Beach Planet',
+            },
+            unused_value => {
+                type => 'string',
+                value => 'Should be passed through',
+            },
         };
 
         my $run = $t->app->enqueue( $plan->{plan_id}, $input );
@@ -103,8 +109,14 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[0]{task_id},
                 context => {
-                    destination => 'Nude Beach Planet',
-                    unused_value => 'Should be passed through',
+                    destination => {
+                        type => 'string',
+                        value => 'Nude Beach Planet',
+                    },
+                    unused_value => {
+                        type => 'string',
+                        value => 'Should be passed through',
+                    },
                 },
             },
             'first job run entry is correct';
@@ -145,8 +157,14 @@ subtest 'execute' => sub {
                     run_id => $run->{run_id},
                     task_id => $plan->{tasks}[0]{task_id},
                     context => {
-                        destination => 'Nude Beach Planet',
-                        unused_value => 'Should be passed through',
+                        destination => {
+                            type => 'string',
+                            value => 'Nude Beach Planet',
+                        },
+                        unused_value => {
+                            type => 'string',
+                            value => 'Should be passed through',
+                        },
                     },
                 },
                 'first job run entry is correct';
@@ -160,9 +178,18 @@ subtest 'execute' => sub {
                     run_id => $run->{run_id},
                     task_id => $plan->{tasks}[1]{task_id},
                     context => {
-                        destination => 'Nude Beach Planet',
-                        unused_value => 'Should be passed through',
-                        initial_destination => "Nude Beach Planet\n",
+                        destination => {
+                            type => 'string',
+                            value => 'Nude Beach Planet',
+                        },
+                        unused_value => {
+                            type => 'string',
+                            value => 'Should be passed through',
+                        },
+                        initial_destination => {
+                            type => 'string',
+                            value => "Nude Beach Planet\n",
+                        },
                     },
                 },
                 'second job run entry is correct';
@@ -192,8 +219,14 @@ subtest 'execute' => sub {
                     run_id => $run->{run_id},
                     task_id => $plan->{tasks}[0]{task_id},
                     context => {
-                        destination => 'Nude Beach Planet',
-                        unused_value => 'Should be passed through',
+                        destination => {
+                            type => 'string',
+                            value => 'Nude Beach Planet',
+                        },
+                        unused_value => {
+                            type => 'string',
+                            value => 'Should be passed through',
+                        },
                     },
                 },
                 'first job run entry is correct';
@@ -207,9 +240,18 @@ subtest 'execute' => sub {
                     run_id => $run->{run_id},
                     task_id => $plan->{tasks}[1]{task_id},
                     context => {
-                        destination => 'Nude Beach Planet',
-                        unused_value => 'Should be passed through',
-                        initial_destination => "Nude Beach Planet\n",
+                        destination => {
+                            type => 'string',
+                            value => 'Nude Beach Planet',
+                        },
+                        unused_value => {
+                            type => 'string',
+                            value => 'Should be passed through',
+                        },
+                        initial_destination => {
+                            type => 'string',
+                            value => "Nude Beach Planet\n",
+                        },
                     },
                 },
                 'second job run entry is correct';
@@ -261,7 +303,10 @@ subtest 'execute' => sub {
 
     subtest 'tests fail' => sub {
         my $input = {
-            destination => '',
+            destination => {
+                type => 'string',
+                value => '',
+            },
         };
 
         my $run = $t->app->enqueue( $plan->{plan_id}, $input );

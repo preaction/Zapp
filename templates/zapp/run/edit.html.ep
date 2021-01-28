@@ -11,30 +11,22 @@
 %= form_for 'zapp.create_run' => begin
     % if ( @{ $plan->{inputs} // [] } ) {
         <h2>Input</h2>
-        % for my $input ( @{ $plan->{inputs} // [] } ) {
+        % for my $input_num ( 0..$#{ $plan->{inputs} // [] } ) {
+            % my $input = $plan->{inputs}[$input_num];
             <div class="form-group">
+                %# These hidden fields will allow us to create runs for
+                %# unsaved, ad-hoc plans
+                %= hidden_field "input[$input_num].type", $input->{type}
+                %= hidden_field "input[$input_num].name", $input->{name}
                 <%
-                    my $field_name = 'input.' . $input->{name};
-                    my %common_input = (
-                        class => 'form-control',
-                        id => $field_name,
-                        'aria-describedby' => $field_name . '-description',
-                    );
-                %>
-                <label for="<%= $common_input{id} %>"><%= $input->{name} =~ s/_/ /gr %></label>
-                % if ( $input->{type} eq 'boolean' ) {
-                    %= check_box $field_name, ( $input->{default_value} ? ( 'selected' => 'selected' ) : () ), %common_input
-                % }
-                % elsif ( $input->{type} eq 'number' ) {
-                    %= number_field $field_name, value => $input->{default_value}, %common_input
-                % }
-                % elsif ( $input->{type} eq 'integer' ) {
-                    %= number_field $field_name, value => $input->{default_value}, step => 1, %common_input
-                % }
-                % else {
-                    %= text_field $field_name, value => $input->{default_value}, %common_input
-                % }
-                <small class="form-text" id="<%= $common_input{'aria-describedby'} %>">
+                    my $type_name = $input->{type};
+                    my $type = $c->zapp->types->{ $type_name }
+                        or die qq{Could not find type "$type_name"};
+                    my $input_field = include inline => $type->input_field( $c, $input->{default_value} ), self => $type, input => $input;
+                    my $input_dom = prefix_field( $input_field, "input[$input_num]" );
+                    $input_dom->children->[0]->attr( 'aria-describedby', "input[$input_num].description" );
+                %><%== $input_dom %>
+                <small class="form-text" id="input[<%= $input_num %>].description">
                     %= $input->{description}
                 </small>
             </div>

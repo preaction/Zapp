@@ -22,6 +22,15 @@ sub schema( $class ) {
                     type => 'string',
                     format => 'textarea',
                 },
+                pid => {
+                    type => 'integer',
+                },
+                exit => {
+                    type => 'integer',
+                },
+                info => {
+                    type => 'string',
+                },
             },
         },
     };

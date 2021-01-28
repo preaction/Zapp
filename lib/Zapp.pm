@@ -66,6 +66,34 @@ sub startup( $self ) {
         },
     );
 
+    # Add basic types
+    my %base_types = (
+        string => 'Zapp::Type::Text',
+        number => 'Zapp::Type::Text',
+        integer => 'Zapp::Type::Text',
+        boolean => 'Zapp::Type::Text',
+        file => 'Zapp::Type::File',
+    );
+    $self->helper( 'zapp.types' => sub( $c ) { state %types; \%types } );
+    $self->helper( 'zapp.add_type' => sub( $c, $name, $type ) {
+        my $obj = blessed( $type ) ? $type : undef;
+        if ( !defined $obj ) {
+            if ( my $e = load_class( $type ) ) {
+                die "Could not load type class $type: $e\n";
+            }
+            $obj = $type->new( app => $c->app );
+        }
+        else {
+            $obj->app( $c->app );
+        }
+        $c->zapp->types->{ $name } = $obj;
+    });
+    for my $type_name ( keys %base_types ) {
+        $self->zapp->add_type( $type_name, $base_types{ $type_name } );
+    }
+
+    # XXX: Add config file for adding types
+
     # Create/edit plans
     # XXX: Make Yancy support this basic CRUD with relationships?
     # XXX: Otherwise, add custom JSON API
@@ -266,7 +294,7 @@ CREATE TABLE zapp_task_parents (
 CREATE TABLE zapp_plan_inputs (
     plan_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    type ENUM( 'string', 'number', 'integer', 'boolean' ) NOT NULL,
+    type VARCHAR(255) NOT NULL,
     description TEXT,
     default_value JSON,
     PRIMARY KEY ( plan_id, name ),
@@ -345,8 +373,7 @@ CREATE TABLE zapp_task_parents (
 CREATE TABLE zapp_plan_inputs (
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    -- SQLite lacks ENUM, but we can fake it in a way Yancy can parse
-    type VARCHAR(7) NOT NULL CHECK(type IN ('string', 'number', 'integer', 'boolean')),
+    type VARCHAR(255) NOT NULL,
     description TEXT,
     default_value JSON,
     PRIMARY KEY ( plan_id, name )

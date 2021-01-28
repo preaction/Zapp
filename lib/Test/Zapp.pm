@@ -18,10 +18,11 @@ sub run_queue {
     my ( $self ) = @_;
     # Run all tasks on the queue
     my $worker = $self->app->minion->worker->register;
-    while ( my $job = $worker->dequeue ) {
+    while ( my $job = $worker->dequeue(0) ) {
         my $e = $job->execute;
         $self->test( 'ok', !$e, 'job executed successfully' );
         $self->or( sub { diag "Job error: ", explain $e } );
+        last if $e;
     }
     $worker->unregister;
 }
