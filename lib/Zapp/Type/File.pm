@@ -7,6 +7,7 @@ has path => sub( $self ) { $self->app->home->child( 'uploads' ) };
 # "die" for validation errors
 
 sub _input( $self, $c, $type, $type_id, $upload ) {
+    return undef if !defined $upload->filename || $upload->filename eq '';
     my ( $input_num ) = $upload->name =~ m{^input\[(\d+)\]};
     ; $c->log->debug( "Type: $type, $type_id, $input_num" );
     my $dir = $self->path->child( $type, $type_id, 'input', $input_num );

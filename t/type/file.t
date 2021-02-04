@@ -43,6 +43,16 @@ subtest 'plan_input' => sub {
     my $file = $temp->child( 'uploads', split m{/}, $type_value );
     ok -e $file, 'file exists';
     is $file->slurp, 'Hello, World!', 'file content is correct';
+
+    subtest 'no default' => sub {
+        my $upload = Mojo::Upload->new(
+            filename => '',
+            asset => Mojo::Asset::Memory->new->add_chunk( '' ),
+            name => 'input[0].value',
+        );
+        my $type_value = $type->plan_input( $c, { plan_id => 1 }, $upload );
+        is $type_value, undef, 'blank value is undef';
+    };
 };
 
 subtest 'run_input' => sub {
