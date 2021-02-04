@@ -289,7 +289,7 @@
     </template>
 % }
 
-%= form_for 'zapp.save_plan', id => 'plan', begin
+%= form_for 'zapp.save_plan', id => 'plan', enctype => 'multipart/form-data', begin
     <header class="form-row align-items-center">
         <h1 class="col-auto">Edit Plan</h1>
         %= link_to 'zapp.list_plans', class => 'btn btn-secondary', begin

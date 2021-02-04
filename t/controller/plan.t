@@ -40,6 +40,7 @@ subtest 'create new plan' => sub {
         $t->get_ok( '/plan' )->status_is( 200 )
             ->or( $dump_debug )
             ->element_exists( 'form#plan', 'form exists' )
+            ->attr_is( 'form#plan', enctype => 'multipart/form-data', 'form enctype correct' )
             ->element_exists(
                 'label[for=name]',
                 'name label exists',
@@ -1446,6 +1447,7 @@ subtest 'run a plan' => sub {
     subtest 'create run form' => sub {
         $t->get_ok( "/plan/$plan_id/run" )->status_is( 200 )
             ->element_exists( "form[action=/plan/$plan_id/run]", 'form exists' )
+            ->attr_is( "form[action=/plan/$plan_id/run]", enctype => 'multipart/form-data', 'form allows uploads' )
             ->element_exists( '[name="input[0].value"]', 'input field exists' )
             ;
     };

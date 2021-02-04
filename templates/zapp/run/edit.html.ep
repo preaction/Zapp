@@ -8,7 +8,7 @@
 </header>
 <div style="white-space: pre-line" class="mb-3"><%= $plan->{description} %></div>
 
-%= form_for 'zapp.create_run' => begin
+%= form_for 'zapp.create_run', enctype => 'multipart/form-data' => begin
     % if ( @{ $plan->{inputs} // [] } ) {
         <h2>Input</h2>
         % for my $input_num ( 0..$#{ $plan->{inputs} // [] } ) {
