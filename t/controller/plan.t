@@ -1449,6 +1449,11 @@ subtest 'run a plan' => sub {
             ->element_exists( "form[action=/plan/$plan_id/run]", 'form exists' )
             ->attr_is( "form[action=/plan/$plan_id/run]", enctype => 'multipart/form-data', 'form allows uploads' )
             ->element_exists( '[name="input[0].value"]', 'input field exists' )
+            ->attr_is( '[name="input[0].value"]', value => 'Chapek 9', 'input value is correct' )
+            ->element_exists( '[name="input[0].name"]', 'input name exists' )
+            ->attr_is( '[name="input[0].name"]', value => 'destination', 'input name is correct' )
+            ->element_exists( '[name="input[0].type"]', 'input type exists' )
+            ->attr_is( '[name="input[0].type"]', value => 'string', 'input type is correct' )
             ;
     };
 
@@ -1484,6 +1489,37 @@ subtest 'run a plan' => sub {
             { order_by => { -asc => 'minion_job_id' } },
         );
         is scalar @jobs, 2, 'two run jobs created';
+        is_deeply
+            {
+                $jobs[0]->%*,
+                context => decode_json( $jobs[0]{context} ),
+            },
+            {
+                $jobs[0]->%{qw( minion_job_id )},
+                context => {
+                    destination => {
+                        type => 'string',
+                        value => 'Galaxy of Terror',
+                    },
+                },
+                run_id => $run_id,
+                task_id => $plan->{tasks}[0]{task_id},
+            },
+            'first job is correct'
+                or diag explain $jobs[0];
+        is_deeply
+            {
+                $jobs[1]->%*,
+                context => decode_json( $jobs[1]{context} ),
+            },
+            {
+                $jobs[1]->%{qw( minion_job_id )},
+                context => {},
+                run_id => $run_id,
+                task_id => $plan->{tasks}[1]{task_id},
+            },
+            'second job is correct'
+                or diag explain $jobs[1];
 
         # Tests are copied to allow modifying job
         my @tests = $t->app->yancy->list(
