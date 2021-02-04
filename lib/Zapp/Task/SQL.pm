@@ -1,0 +1,118 @@
+package Zapp::Task::SQL;
+use Mojo::Base 'Zapp::Task', -signatures;
+use Mojo::File qw( tempdir tempfile );
+
+sub schema( $class ) {
+    return {
+        input => {
+            type => 'object',
+            required => [qw( sql )],
+            properties => {
+                dsn => {
+                    type => 'string',
+                },
+                username => {
+                    type => 'string',
+                },
+                password => {
+                    type => 'string',
+                    format => 'password',
+                },
+                sql => {
+                    type => 'string',
+                    format => 'textarea',
+                },
+            },
+        },
+        output => {
+            type => 'object',
+            required => [qw( rows count )],
+            properties => {
+                rows => {
+                    type => 'array',
+                    items => {
+                        type => 'object',
+                        additionalProperties => {
+                            type => 'string',
+                        },
+                    },
+                },
+                count => {
+                    type => 'integer',
+                },
+            },
+        },
+    };
+}
+
+sub run( $self, $input ) {
+    my $dbh = DBI->connect( $input->@{qw( dsn username password )} );
+    my $rows = $dbh->selectall_arrayref( $input->{sql}, { Slice => {} } );
+    $self->finish({
+        rows => $rows,
+        count => scalar @$rows,
+    });
+}
+
+1;
+__DATA__
+
+@@ input.html.ep
+% my $input = stash( 'input' ) // { script => '' };
+<div class="form-group">
+    <label for="dsn">Data Source Name (DSN)</label>
+    %= text_field dsn => $input->{dsn}, class => 'form-control'
+</div>
+<div class="form-row">
+    <div class="form-group">
+        <label for="username">Username</label>
+        %= text_field username => $input->{username}, class => 'form-control'
+    </div>
+    <div class="form-group">
+        <label for="password">Password</label>
+        %= text_field password => $input->{password}, class => 'form-control'
+    </div>
+</div>
+<div class="form-group">
+    <label for="sql">SQL</label>
+    <div class="grow-wrap">
+        <!-- XXX: support markdown -->
+        <%= text_area "sql", $input->{sql},
+            oninput => 'this.parentNode.dataset.replicatedValue = this.value',
+            placeholder => 'SQL',
+        %>
+    </div>
+</div>
+
+@@ output.html.ep
+%= include 'zapp/task-bar', synopsis => begin
+    <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
+    <%= $task->{name} %>
+% end
+<div class="ml-4">
+    <h3>SQL</h3>
+    <pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{sql} %></code></pre>
+    <h3>Output</h3>
+    % if ( my @rows = @{ $task->{output}{rows} // [] } ) {
+    <table class="table table-striped table-hover">
+        % my @cols = sort keys %{ $rows[0] };
+        <thead>
+            <tr>
+                % for my $col ( @cols ) {
+                <th><%= $col %></th>
+                % }
+            </tr>
+        </thead>
+        <tbody>
+            % for my $row ( @rows ) {
+            <tr>
+                % for my $col ( @cols ) {
+                <td><%= $row->{ $col } %></td>
+                % }
+            </tr>
+        % }
+        </tbody>
+    </table>
+    % }
+</div>
+
