@@ -1448,6 +1448,7 @@ subtest 'run a plan' => sub {
         $t->get_ok( "/plan/$plan_id/run" )->status_is( 200 )
             ->element_exists( "form[action=/plan/$plan_id/run]", 'form exists' )
             ->attr_is( "form[action=/plan/$plan_id/run]", enctype => 'multipart/form-data', 'form allows uploads' )
+            ->text_is( '[data-input=0] [data-input-name]', 'destination', 'input label correct' )
             ->element_exists( '[name="input[0].value"]', 'input field exists' )
             ->attr_is( '[name="input[0].value"]', value => 'Chapek 9', 'input value is correct' )
             ->element_exists( '[name="input[0].name"]', 'input name exists' )

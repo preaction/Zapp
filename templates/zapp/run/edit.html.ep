@@ -17,7 +17,8 @@
         <h2>Input</h2>
         % for my $input_num ( 0..$#{ $plan->{inputs} // [] } ) {
             % my $input = $plan->{inputs}[$input_num];
-            <div class="form-group">
+            <div class="form-group" data-input="<%= $input_num %>">
+                <h4 data-input-name><%= $input->{name} =~ s/_/ /gr %></h4>
                 %# These hidden fields will allow us to create runs for
                 %# unsaved, ad-hoc plans
                 %= hidden_field "input[$input_num].type", $input->{type}
