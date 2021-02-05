@@ -101,14 +101,8 @@ __DATA__
 </div>
 
 @@ output.html.ep
-%= include 'zapp/task-bar', synopsis => begin
-    <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
-    <%= $task->{name} %>
-% end
-<div class="ml-4">
-    <h3>Script</h3>
-    <pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
-    <h3>Output</h3>
-    <pre class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
-</div>
+<h3>Script</h3>
+<pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
+<h3>Output</h3>
+<pre class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
 

@@ -124,9 +124,3 @@ __DATA__
     %= text_field 'scope', value => $input->{scope}, class => 'form-control'
 </div>
 
-@@ output.html.ep
-%= include 'zapp/task-bar', synopsis => begin
-    <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
-    <%= $task->{input}{scope} %>
-% end
-

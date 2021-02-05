@@ -85,34 +85,28 @@ __DATA__
 </div>
 
 @@ output.html.ep
-%= include 'zapp/task-bar', synopsis => begin
-    <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %>: </b>
-    <%= $task->{name} %>
-% end
-<div class="ml-4">
-    <h3>SQL</h3>
-    <pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{sql} %></code></pre>
-    <h3>Output</h3>
-    % if ( my @rows = @{ $task->{output}{rows} // [] } ) {
-    <table class="table table-striped table-hover">
-        % my @cols = sort keys %{ $rows[0] };
-        <thead>
-            <tr>
-                % for my $col ( @cols ) {
-                <th><%= $col %></th>
-                % }
-            </tr>
-        </thead>
-        <tbody>
-            % for my $row ( @rows ) {
-            <tr>
-                % for my $col ( @cols ) {
-                <td><%= $row->{ $col } %></td>
-                % }
-            </tr>
-        % }
-        </tbody>
-    </table>
+<h4>SQL</h4>
+<pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{sql} %></code></pre>
+<h4>Output</h4>
+% if ( my @rows = @{ $task->{output}{rows} // [] } ) {
+<table class="table table-striped table-hover">
+    % my @cols = sort keys %{ $rows[0] };
+    <thead>
+        <tr>
+            % for my $col ( @cols ) {
+            <th><%= $col %></th>
+            % }
+        </tr>
+    </thead>
+    <tbody>
+        % for my $row ( @rows ) {
+        <tr>
+            % for my $col ( @cols ) {
+            <td><%= $row->{ $col } %></td>
+            % }
+        </tr>
     % }
-</div>
+    </tbody>
+</table>
+% }
 

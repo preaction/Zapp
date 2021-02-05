@@ -1,6 +1,12 @@
 <%
     use Mojo::Loader qw( data_section );
     layout 'zapp';
+    my %state_bg = (
+        active => 'bg-info',
+        finished => 'bg-success text-white',
+        failed => 'bg-danger text-white',
+    );
+    my $default_bg = 'bg-secondary text-white';
 %>
 
 <header>
@@ -12,11 +18,11 @@
 
 <dl>
     <dt>Started: </dt>
-    <dd data-task-started><%= $run->{started} // 'N/A' %></dd>
+    <dd data-run-started><%= $run->{started} // 'N/A' %></dd>
     <dt>Finished: </dt>
-    <dd data-task-finished><%= $run->{finished} // 'N/A' %></dd>
+    <dd data-run-finished><%= $run->{finished} // 'N/A' %></dd>
     <dt>State: </dt>
-    <dd data-task-state><%= $run->{state} %></dd>
+    <dd data-run-state><%= $run->{state} %></dd>
 </dl>
 
 % if ( @{ $run->{inputs} // [] } ) {
@@ -27,31 +33,41 @@
 <h2>Tasks</h2>
 % for my $task ( @{ $run->{tasks} } ) {
     <div data-task="<%= $task->{task_id} %>">
-        %= include inline => data_section( $task->{class}, 'output.html.ep' ), task => $task;
-        % if ( my @tests = @{ $task->{tests} // [] } ) {
-            <h3>Tests</h3>
-            <table class="table table-sm table-borderless">
-                <thead>
-                    <tr>
-                        <th>Test Expression</th>
-                        <th>Got Value</th>
-                        <th>Op</th>
-                        <th>Expect Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    % for my $test ( @tests ) {
-                        <tr class="<%= !defined $test->{pass} ? 'table-secondary' : $test->{pass} ? 'table-success' : 'table-danger' %>">
-                            %= tag td => $test->{expr}
-                            %= tag td => $test->{expr_value} // ''
-                            %= tag td => $test->{op}
-                            %= tag td => $test->{value}
+        <div class="task-bar">
+            <div data-task-state class="text-white <%= $state_bg{ $task->{state} } // $default_bg %>"><%= $task->{state} %></div>
+            <div>
+                <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %></b>
+                % if ( $task->{name} ) {
+                    - <%= $task->{name} %>
+                % }
+            </div>
+        </div>
+        <div class="ml-4">
+            %= include inline => data_section( $task->{class}, 'output.html.ep' ) // '', task => $task;
+            % if ( my @tests = @{ $task->{tests} // [] } ) {
+                <h3>Tests</h3>
+                <table class="table table-sm table-borderless">
+                    <thead>
+                        <tr>
+                            <th>Test Expression</th>
+                            <th>Got Value</th>
+                            <th>Op</th>
+                            <th>Expect Value</th>
                         </tr>
-                    % }
-                </tbody>
-            </table>
-        % }
-        %# XXX: Show what values are saved to the context from the output
+                    </thead>
+                    <tbody>
+                        % for my $test ( @tests ) {
+                            <tr class="<%= !defined $test->{pass} ? 'table-secondary' : $test->{pass} ? 'table-success' : 'table-danger' %>">
+                                %= tag td => $test->{expr}
+                                %= tag td => $test->{expr_value} // ''
+                                %= tag td => $test->{op}
+                                %= tag td => $test->{value}
+                            </tr>
+                        % }
+                    </tbody>
+                </table>
+            % }
+            %# XXX: Show what values are saved to the context from the output
     </div>
 % }
 
