@@ -1,4 +1,8 @@
-% layout 'zapp';
+<%
+    layout 'zapp';
+    use Zapp::Util qw( prefix_field );
+%>
+
 
 <header>
     <h1>Run Plan: <%= $plan->{name} %></h1>
