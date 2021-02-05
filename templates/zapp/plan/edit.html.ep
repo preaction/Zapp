@@ -212,19 +212,31 @@
     % my ( $input_num, $input ) = @_;
 
     <div class="input-form bg-light border border-secondary rounded p-3 mt-3 shadow">
+        <header class="form-row align-items-center justify-content-between">
+            <h3 class="col-auto" data-input-type>
+                <%= $input->{type} %>
+            </h3>
+            %= hidden_field "input[$input_num].type", $input->{type}
+            <div class="col-auto align-self-start btn-toolbar" role="toolbar">
+                <div class="btn-group btn-group-sm mr-2" role="group" aria-label="Move Input">
+                    <button type="button" class="btn btn-sm btn-outline-secondary input-move-up" aria-label="Move Input Up">
+                        <i class="fa fa-chevron-up"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary input-move-down" aria-label="Move Input Down">
+                        <i class="fa fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-danger input-remove" aria-label="Remove input">
+                        <i class="fa fa-times-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
         <div class="form-row">
             <div class="col-auto">
                 <label for="input[<%= $input_num %>].name">Name</label>
                 %= text_field "input[$input_num].name", $input->{name}, placeholder => 'Name', class => 'form-control'
-            </div>
-            <div class="col-auto">
-                <!-- Type is hidden so that in the future we can have different
-                    input elements for different types. That is much easier if we do not
-                    have to be able to mutate the form (though, [data-zapp-if] could
-                    solve that problem...) -->
-                %= hidden_field "input[$input_num].type", $input->{type}
-                <label>Type</label>
-                <span class="input-type form-control-plaintext"><%= $input->{type} %></span>
             </div>
             <div class="col">
                 <label for="input[<%= $input_num %>].default_value">Default Value</label>
@@ -240,13 +252,6 @@
                         %><span data-input-value></span><%
                     } %>
                 </div>
-            </div>
-            <div class="col-auto align-self-end">
-                <button type="button" class="delete input-remove btn btn-outline-danger"
-                    aria-label="Delete input"
-                >
-                    <i class="fa fa-times-circle"></i>
-                </button>
             </div>
         </div>
         <div class="form-row">
@@ -326,8 +331,19 @@
         <ul id="all-inputs" class="list-unstyled">
             % for my $input_num ( 0 .. $#{ $plan->{inputs} } ) {
                 % my $input = $plan->{inputs}[ $input_num ];
-                <li>
-                    %= $input_tmpl->( $input_num, { %$input, value => $input->{default_value} } )
+                <li data-input-form>
+                    <%
+                        my $input_form = $input_tmpl->( $input_num, { %$input, value => $input->{default_value} } );
+                        my $input_dom = Mojo::DOM->new( $input_form );
+                        if ( $input_num == 0 ) {
+                            my $btn = $input_dom->at( '.input-move-up' );
+                            $btn->attr( class => join ' ', $btn->attr( 'class' ), 'disabled' );
+                        }
+                        if ( $input_num == $#{ $plan->{inputs} } ) {
+                            my $btn = $input_dom->at( '.input-move-down' );
+                            $btn->attr( class => join ' ', $btn->attr( 'class' ), 'disabled' );
+                        }
+                    %><%== $input_dom %>
                 </li>
             % }
         </ul>
@@ -436,12 +452,12 @@ function addTask( event ) {
 
     if ( beforeTask ) {
         beforeTask.insertAdjacentElement( 'beforebegin', taskForm );
-        // XXX: Re-index all subsequent tasks
     }
     else {
         allTasks.appendChild( taskForm );
     }
 
+    reindexTasks();
     taskForm.scrollIntoView({block: "start", inline: "nearest"});
 }
 
@@ -657,7 +673,7 @@ function addInput( event ) {
 
     // Set type
     newInput.querySelector( '[name="input[0].type"]' ).attributes.getNamedItem( 'value' ).value = inputType;
-    newInput.querySelector( '.input-type' ).innerHTML = inputType;
+    newInput.querySelector( '[data-input-type]' ).innerHTML = inputType;
 
     // Fix indexes
     newInput.querySelectorAll( 'input,select,textarea' ).forEach( function (el) {
@@ -667,11 +683,14 @@ function addInput( event ) {
 
     // Append
     var newRow = document.createElement( 'li' );
+    newRow.dataset.inputForm = true;
     newRow.appendChild( newInput );
     list.appendChild( newRow );
 
     select.selectedIndex = 0;
     // XXX: Focus input name field
+    reindexInputs();
+    newRow.scrollIntoView({block: "start", inline: "nearest"});
 }
 
 function removeInput( event ) {
@@ -681,13 +700,59 @@ function removeInput( event ) {
         list = row.parentElement;
 
     row.parentNode.removeChild( row );
-    // Reset indexes in remaining test rows
-    list.querySelectorAll( 'li' ).forEach( function (row, i) {
-        row.querySelectorAll( 'input,select,textarea' ).forEach( function (el) {
-            el.name = el.name.replace( /input\[\d+\]/, 'input[' + i + ']' );
+    reindexInputs();
+}
+
+function reindexInputs() {
+    var allInputs = document.getElementById( 'all-inputs' );
+    allInputs.querySelectorAll( '[data-input-form]' ).forEach( function ( inputForm, i ) {
+        var inputInputs = inputForm.querySelectorAll( 'input,select,textarea' );
+        inputInputs.forEach( function ( el ) {
+            el.name = el.name.replace( /^input\[\d+\]/, `input[${i}]` );
             el.id = el.name;
-        });
+        } );
+        var inputLabels = inputForm.querySelectorAll( 'label' );
+        inputLabels.forEach( function ( el ) {
+            el.attributes.for.value = el.attributes.for.value.replace( /^input\[\d+\]/, `input[${i}]` );
+        } );
+
+        if ( i == 0 ) {
+            inputForm.querySelector( '.input-move-up' ).classList.add( 'disabled' );
+        }
+        else {
+            inputForm.querySelector( '.input-move-up' ).classList.remove( 'disabled' );
+        }
+        if ( i == allInputs.children.length - 1 ) {
+            inputForm.querySelector( '.input-move-down' ).classList.add( 'disabled' );
+        }
+        else {
+            inputForm.querySelector( '.input-move-down' ).classList.remove( 'disabled' );
+        }
     } );
+}
+
+function moveInputUp( event ) {
+    var button = event.target,
+        input = button.closest( '[data-input-form]' ),
+        prevInput = input.previousElementSibling;
+    if ( !prevInput ) {
+        return;
+    }
+    prevInput.insertAdjacentElement( 'beforebegin', input );
+    reindexInputs();
+    input.scrollIntoView({block: "start", inline: "nearest"});
+}
+
+function moveInputDown( event ) {
+    var button = event.target,
+        input = button.closest( '[data-input-form]' ),
+        nextInput = input.nextElementSibling;
+    if ( !nextInput ) {
+        return;
+    }
+    nextInput.insertAdjacentElement( 'afterend', input );
+    reindexInputs();
+    input.scrollIntoView({block: "start", inline: "nearest"});
 }
 
 function checkZappExpressions( event ) {
@@ -797,6 +862,8 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'change', '*', checkZappExpressions );
     delegateEvent( 'click', '.task-tabs > .task-tabs-nav .nav-link', changeTaskTab );
     delegateEvent( 'change', 'select.add-input', addInput );
+    delegateEvent( 'click', 'button.input-move-up', moveInputUp );
+    delegateEvent( 'click', 'button.input-move-down', moveInputDown );
     delegateEvent( 'click', 'button.input-remove', removeInput );
 });
 
