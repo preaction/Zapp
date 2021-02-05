@@ -24,6 +24,9 @@ sub schema( $class ) {
             },
             additionalProperties => false,
         },
+        # XXX: There should be output that is required to be configured,
+        # so that users don't forget that they need to store the token
+        # somewhere in order to use it.
         output => {
             type => 'object',
             required => [qw( access_token token_type )],

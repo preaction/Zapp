@@ -43,6 +43,25 @@ $t->app->routes->get( '/test/unauthorized' )
     $c->res->code( 401 );
     $c->render( text => 'You are not authorized' );
   } );
+$t->app->routes->get( '/test/json' )
+  ->to( cb => sub( $c ) {
+    $last_request = $c->tx->req;
+    $c->res->headers->content_type( 'application/json' );
+    $c->render( json => { status => 'Success' } );
+  } );
+$t->app->routes->get( '/test/file' )
+  ->to( cb => sub( $c ) {
+    $last_request = $c->tx->req;
+    $c->res->headers->content_type( 'application/octet-stream' );
+    $c->render( data => 'Success' );
+  } );
+$t->app->routes->get( '/test/file/attachment' )
+  ->to( cb => sub( $c ) {
+    $last_request = $c->tx->req;
+    $c->res->headers->content_type( 'application/octet-stream' );
+    $c->res->headers->content_disposition( 'attachment; filename="test-file-filename.txt"' );
+    $c->render( data => 'Success' );
+  } );
 
 subtest 'run' => sub {
     $t->run_task(
@@ -64,6 +83,74 @@ subtest 'run' => sub {
             },
         },
     });
+};
+
+subtest 'json' => sub {
+    $t->run_task(
+        'Zapp::Task::Request' => {
+            method => 'GET',
+            url => $t->ua->server->url->path( '/test/json' ),
+        },
+        'Request: JSON',
+    );
+    $t->task_info_is( state => 'finished' );
+    $t->task_output_is({
+        res => {
+            is_success => 1,
+            code => 200,
+            message => 'OK',
+            json => { status => 'Success' },
+            headers => {
+                content_type => 'application/json',
+            },
+        },
+    });
+};
+
+subtest 'file download' => sub {
+    $t->run_task(
+        'Zapp::Task::Request' => {
+            method => 'GET',
+            url => $t->ua->server->url->path( '/test/file' ),
+        },
+        'Request: File',
+    );
+    my $job_id = $t->{zapp}{job}->id;
+    $t->task_info_is( state => 'finished' );
+    $t->task_output_is({
+        res => {
+            is_success => 1,
+            code => 200,
+            message => 'OK',
+            file => "/task/request/$job_id/file",
+            headers => {
+                content_type => 'application/octet-stream',
+            },
+        },
+    });
+
+    subtest 'with content-disposition' => sub {
+        $t->run_task(
+            'Zapp::Task::Request' => {
+                method => 'GET',
+                url => $t->ua->server->url->path( '/test/file/attachment' ),
+            },
+            'Request: File w/ Content-Disposition',
+        );
+        my $job_id = $t->{zapp}{job}->id;
+        $t->task_info_is( state => 'finished' );
+        $t->task_output_is({
+            res => {
+                is_success => 1,
+                code => 200,
+                message => 'OK',
+                file => "/task/request/$job_id/test-file-filename.txt",
+                headers => {
+                    content_type => 'application/octet-stream',
+                },
+            },
+        });
+    };
 };
 
 subtest 'auth' => sub {

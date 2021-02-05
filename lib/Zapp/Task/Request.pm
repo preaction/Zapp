@@ -31,7 +31,7 @@ sub schema( $class ) {
                 },
                 content_type => {
                     type => 'string',
-                    enum => ['', qw( application/json )],
+                    enum => ['', qw( application/octet-stream application/json )],
                     default => '',
                 },
                 # XXX: Query params / Form params
@@ -82,9 +82,20 @@ sub schema( $class ) {
 }
 
 sub run( $self, $input ) {
+    # XXX: Need a way to see what type of input was given so we can
+    # decide what to do with it if we need to. Then we wouldn't have to
+    # have different input fields for different types...
+    my $body;
+    if ( $input->{content_type} eq 'application/octet-stream' ) {
+        $body = Mojo::Asset::File->new( path => $input->{body}{file} )->slurp;
+    }
+    elsif ( $input->{content_type} eq 'application/json' ) {
+        $body = $input->{body}{json};
+    }
+
     my $ua = $self->app->ua;
     $ua->max_redirects( 5 );
-    #$self->app->log->debug( 'input: ' . $self->app->dumper( $input ) );
+    #; $self->app->log->debug( 'input: ' . $self->app->dumper( $input ) );
     my %headers;
     if ( $input->{auth} && $input->{auth}{type} eq 'bearer' ) {
         $headers{ Authorization } = join ' ', 'Bearer', $input->{auth}{token};
@@ -96,28 +107,45 @@ sub run( $self, $input ) {
     my $tx = $ua->build_tx(
         $input->{method} => $input->{url},
         \%headers,
-        $input->{content_type} ? ( $input->{body} ) : (),
+        $input->{content_type} ? ( $body ) : (),
     );
     $ua->start( $tx );
     my $method = $tx->res->is_success ? 'finish' : 'fail';
+
+    my @res_body;
+    if ( $tx->res->headers->content_type eq 'application/octet-stream' ) {
+        my ( $filename ) = grep !!$_, reverse split m{/}, $input->{url};
+        if ( $tx->res->headers->content_disposition =~ m{filename\*?=['"]?([^'"]+)['"]?} ) {
+            $filename = $1;
+        }
+        my $path = $self->app->static->paths->[0];
+        my $file = Mojo::File->new( $path, 'task', 'request', $self->id, $filename );
+        $file->dirname->make_path;
+        $file->spurt( $tx->res->body );
+        @res_body = (
+            file => '/' . $file->to_rel( $self->app->home->child( 'public' ) ),
+        );
+        #; $self->app->log->debug( 'File content: ' . $file->slurp );
+    }
+    elsif ( $tx->res->headers->content_type =~ m{^application/json} ) {
+        @res_body = ( json => $tx->res->json );
+    }
+    elsif ( $tx->res->headers->content_type =~ m{^text/} ) {
+        @res_body = ( body => $tx->res->body );
+    }
+
     $self->$method({
         res => {
             (
                 map { $_ => $tx->res->$_ }
-                qw( is_success code message body )
+                qw( is_success code message )
             ),
             headers => {
                 map { $_ => $tx->res->headers->$_ }
                 grep { $tx->res->headers->$_ }
                 qw( content_type )
             },
-            (
-                $tx->res->headers->content_type =~ m{^application/json}
-                ? (
-                    json => $tx->res->json,
-                )
-                : ()
-            ),
+            @res_body,
         },
     });
 }
@@ -152,6 +180,7 @@ __DATA__
         <%= select_field 'content_type' =>
             [
                 [ 'None' => '' ],
+                [ 'File' => 'application/octet-stream', $input->{content_type} eq 'application/octet-stream' ? ( selected => 'selected' ) : () ],
                 [ 'JSON' => 'application/json', $input->{content_type} eq 'application/json' ? ( selected => 'selected' ) : () ],
             ],
             class => 'form-control',
@@ -160,12 +189,18 @@ __DATA__
 </div>
 <div data-zapp-if="content_type eq 'application/json'" class="form-row">
     <div class="col">
-        <label for="body">JSON Body</label>
+        <label for="body.json">JSON Body</label>
         <div class="grow-wrap">
-            <%= text_area "body", $input->{body}, class => 'form-control',
+            <%= text_area "body.json", $input->{body}{json}, class => 'form-control',
                 oninput => 'this.parentNode.dataset.replicatedValue = this.value',
             %>
         </div>
+    </div>
+</div>
+<div data-zapp-if="content_type eq 'application/octet-stream'" class="form-row">
+    <div class="col">
+        <label for="body.file">File</label>
+        <%= text_field "body.file", $input->{body}{file}, class => 'form-control' %>
     </div>
 </div>
 
@@ -191,13 +226,6 @@ __DATA__
     <%= $task->{args}{method} %>
     <%= $task->{args}{url} %>
 % end
-<%
-    use Mojo::JSON qw( decode_json );
-    my $body = $task->{output}{res}{body};
-    if ( $task->{output}{res}{headers}{content_type} =~ m{^application/json} ) {
-        $body = decode_json( $body );
-    }
-%>
 <div class="ml-4">
     <h4>Request</h4>
     <pre class="bg-light border border-secondary p-1"><%= $task->{input}{method} %> <%= $task->{input}{url} %></pre>
@@ -208,6 +236,15 @@ __DATA__
         <dt>Content-Type</dt>
         <dd><%= $task->{output}{res}{headers}{content_type} // '' %></dd>
     </dl>
-    <pre class="bg-light border border-secondary p-1"><%= dumper $body %></pre>
+    % if ( my $data = $task->{output}{res}{json} ) {
+        <pre class="bg-light border border-secondary p-1"><%= dumper $data %></pre>
+    % }
+    % elsif ( my $file = $task->{output}{res}{file} ) {
+        <a class="btn btn-outline-primary" href="<%= $file %>">Download File</a>
+    % }
+    % elsif ( my $body = $task->{output}{res}{body} ) {
+        <pre class="bg-light border border-secondary p-1"><%= $body %></pre>
+    % }
+
 </div>
 
