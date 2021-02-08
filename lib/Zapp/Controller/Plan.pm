@@ -56,7 +56,7 @@ sub _get_run_task( $self, $run_id, $task_id ) {
     # args and result (renamed input and output respectively)
     my $run_task = {
         %$plan_task,
-        $minion_job->info->%*,
+        ( $minion_job ? $minion_job->info->%* : () ),
         %$job,
         tests => [
             $self->app->yancy->list( zapp_run_tests =>
@@ -108,7 +108,6 @@ sub _get_run( $self, $run_id ) {
 
     $run->{started} = $run->{tasks}[0]{started};
     $run->{finished} = $run->{tasks}[-1]{finished};
-    $run->{state} = ( first { $_ ne 'finished' } map { $_->{state} } @{ $run->{tasks} } ) // 'finished';
 
     return $run;
 }
@@ -383,6 +382,151 @@ sub get_run( $self ) {
     }
 
     $self->render( 'zapp/run/view', run => $run );
+}
+
+sub stop_run( $self ) {
+    my $run_id = $self->stash( 'run_id' );
+    my $run = $self->_get_run( $run_id ) || return $self->reply->not_found;
+
+    if ( $self->req->method eq 'GET' ) {
+        return $self->render(
+            'zapp/run/note',
+            heading => 'Stop Run',
+            next => 'zapp.stop_run_confirm',
+        );
+    }
+
+    # Add the note
+    $self->yancy->create( zapp_run_notes => {
+        $run->%{qw( run_id )},
+        event => 'stop',
+        note => $self->param( 'note' ),
+    } );
+
+    # Stop inactive jobs
+    for my $job_id ( map { $_->{minion_job_id} } $run->{tasks}->@* ) {
+        my $job = $self->minion->job( $job_id ) || next;
+        next if $job->info->{state} ne 'inactive';
+        $job->remove;
+        $self->yancy->backend->set(
+            zapp_run_jobs => $job_id,
+            {
+                state => 'stopped',
+            },
+        );
+    }
+
+    # Stop run
+    $self->yancy->backend->set(
+        zapp_runs => $run_id,
+        {
+            state => 'stopped',
+        },
+    );
+
+    return $self->redirect_to( 'zapp.get_run' => { run_id => $run_id } );
+}
+
+sub start_run( $self ) {
+    my $run_id = $self->stash( 'run_id' );
+    my $run = $self->_get_run( $run_id ) || return $self->reply->not_found;
+
+    # Requeue all jobs that were stopped
+    my %task_jobs;
+    for my $task ( $run->{tasks}->@* ) {
+        ; $self->log->debug( 'Requeueing task: ' . $self->dumper( $task ) );
+        if ( $task->{state} ne 'stopped' ) {
+            $task_jobs{ $task->{task_id} } = $task->{minion_job_id};
+            next;
+        }
+
+        my $old_job_id = $task->{minion_job_id};
+        my %job_opts;
+        if ( my @parents = $self->yancy->list( zapp_task_parents => { $task->%{'task_id'} } ) ) {
+            next if grep { !$task_jobs{ $_->{parent_task_id} } } @parents;
+            $job_opts{ parents } = [
+                map $task_jobs{ $_ }, @parents
+            ];
+        }
+
+        my $args = $task->{input};
+        if ( ref $args ne 'ARRAY' ) {
+            $args = [ $args ];
+        }
+
+        $self->log->debug( sprintf 'Enqueuing task %s', $task->{class} );
+        my $new_job_id = $self->minion->enqueue(
+            $task->{class} => $args,
+            \%job_opts,
+        );
+        $task_jobs{ $task->{ task_id } } = $new_job_id;
+
+        $self->yancy->backend->set(
+            zapp_run_jobs => $old_job_id,
+            {
+                minion_job_id => $new_job_id,
+                state => 'inactive',
+            },
+        );
+    }
+
+    $self->yancy->backend->set(
+        zapp_runs => $run_id,
+        {
+            state => 'active',
+        },
+    );
+
+    return $self->redirect_to( 'zapp.get_run' => { run_id => $run_id } );
+}
+
+sub kill_run( $self ) {
+    my $run_id = $self->stash( 'run_id' );
+    my $run = $self->_get_run( $run_id ) || return $self->reply->not_found;
+
+    if ( $self->req->method eq 'GET' ) {
+        return $self->render(
+            'zapp/run/note',
+            heading => 'Kill Run',
+            next => 'zapp.kill_run_confirm',
+        );
+    }
+
+    # Add the note
+    ; $self->log->debug( 'Note: ' . $self->param( 'note' ) );
+    $self->yancy->create( zapp_run_notes => {
+        $run->%{qw( run_id )},
+        event => 'kill',
+        note => $self->param( 'note' ),
+    } );
+
+    # Kill inactive and active jobs
+    for my $job_id ( map { $_->{minion_job_id} } $run->{tasks}->@* ) {
+        my $job = $self->minion->job( $job_id ) || next;
+        next if $job->info->{state} !~ qr{inactive|active};
+        if ( $job->info->{state} eq 'active' ) {
+            $self->minion->broadcast( 'kill', [ TERM => $job_id ]);
+        }
+        else {
+            $job->remove;
+        }
+        $self->yancy->backend->set(
+            zapp_run_jobs => $job_id,
+            {
+                state => 'killed',
+            },
+        );
+    }
+
+    # Kill run
+    $self->yancy->backend->set(
+        zapp_runs => $run_id,
+        {
+            state => 'killed',
+        },
+    );
+
+    return $self->redirect_to( 'zapp.get_run' => { run_id => $run_id } );
 }
 
 sub get_run_task( $self ) {

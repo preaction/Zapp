@@ -25,6 +25,43 @@
     <dd data-run-state><%= $run->{state} %></dd>
 </dl>
 
+<div class="d-flex justify-content-end">
+    <div class="btn-toolbar" role="toolbar" aria-label="Job control">
+        <%
+            my $start_btn_class
+                = $run->{state} eq 'stopped'
+                ? 'btn btn-success'
+                : 'btn btn-outline-secondary disabled'
+                ;
+            my $stop_btn_class
+                = $run->{state} !~ qr{failed|stopped|finished|killed}
+                ? 'btn btn-warning'
+                : 'btn btn-outline-secondary disabled'
+                ;
+            my $kill_btn_class
+                = $run->{state} !~ qr{failed|finished|killed}
+                ? 'btn btn-danger'
+                : 'btn btn-outline-secondary disabled'
+                ;
+        %>
+        %= form_for 'zapp.start_run_confirm', begin
+            <div class="btn-group mr-2" role="group">
+                <button class="<%= $start_btn_class %>" <%= $run->{state} ne 'stopped' ? 'disabled' : '' %> aria-label="Start job">
+                    <i class="fa fa-play"></i>
+                </button>
+                %= link_to 'zapp.stop_run', class => $stop_btn_class, 'aria-label' => 'Stop job', begin
+                    <i class="fa fa-stop"></i>
+                % end
+            </div>
+        % end
+        <div class="btn-group" role="group">
+            %= link_to 'zapp.kill_run', class => $kill_btn_class, 'aria-label' => 'Kill job', begin
+                <i class="fa fa-times-circle"></i>
+            % end
+        </div>
+    </div>
+</div>
+
 % if ( @{ $run->{inputs} // [] } ) {
     <h2>Input</h2>
     XXX Show read-only input

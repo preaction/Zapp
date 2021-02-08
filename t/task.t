@@ -98,7 +98,7 @@ subtest 'execute' => sub {
         my $run = $t->app->enqueue( $plan->{plan_id}, $input );
 
         # Check jobs created correctly
-        my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
+        my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
         is_deeply
             {
                 $got_jobs[0]->%*,
@@ -118,6 +118,7 @@ subtest 'execute' => sub {
                         value => 'Should be passed through',
                     },
                 },
+                state => 'inactive',
             },
             'first job run entry is correct';
         is_deeply
@@ -130,6 +131,7 @@ subtest 'execute' => sub {
                 run_id => $run->{run_id},
                 task_id => $plan->{tasks}[1]{task_id},
                 context => {},
+                state => 'inactive',
             },
             'second job run entry is correct';
 
@@ -146,7 +148,7 @@ subtest 'execute' => sub {
                 ],
                 'minion job args are interpolated input';
 
-            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
+            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
             is_deeply
                 {
                     $got_jobs[0]->%*,
@@ -166,6 +168,7 @@ subtest 'execute' => sub {
                             value => 'Should be passed through',
                         },
                     },
+                    state => 'finished',
                 },
                 'first job run entry is correct';
             is_deeply
@@ -191,6 +194,7 @@ subtest 'execute' => sub {
                             value => "Nude Beach Planet\n",
                         },
                     },
+                    state => 'inactive',
                 },
                 'second job run entry is correct';
         };
@@ -208,7 +212,7 @@ subtest 'execute' => sub {
                 ],
                 'minion job args are interpolated input';
 
-            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => {}, { order_by => 'task_id' } );
+            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
             is_deeply
                 {
                     $got_jobs[0]->%*,
@@ -228,6 +232,7 @@ subtest 'execute' => sub {
                             value => 'Should be passed through',
                         },
                     },
+                    state => 'finished',
                 },
                 'first job run entry is correct';
             is_deeply
@@ -253,6 +258,7 @@ subtest 'execute' => sub {
                             value => "Nude Beach Planet\n",
                         },
                     },
+                    state => 'finished',
                 },
                 'second job run entry is correct';
         };
@@ -317,6 +323,39 @@ subtest 'execute' => sub {
         my $e = $job->execute;
         ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
         is $job->info->{state}, 'failed', 'job failed';
+
+        my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
+        is_deeply
+            {
+                $got_jobs[0]->%*,
+                context => decode_json( $got_jobs[0]{context} ),
+            },
+            {
+                minion_job_id => $got_jobs[0]{minion_job_id},
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[0]{task_id},
+                context => {
+                    destination => {
+                        type => 'string',
+                        value => '',
+                    },
+                },
+                state => 'failed',
+            },
+            'first job run entry is correct';
+        is_deeply
+            {
+                $got_jobs[1]->%*,
+                context => decode_json( $got_jobs[1]{context} ),
+            },
+            {
+                minion_job_id => $got_jobs[1]{minion_job_id},
+                run_id => $run->{run_id},
+                task_id => $plan->{tasks}[1]{task_id},
+                context => {},
+                state => 'inactive',
+            },
+            'second job run entry is correct';
 
         # Check test results
         my @tests = $t->app->yancy->list( zapp_run_tests => { run_id => $run->{run_id} }, { order_by => 'test_id' } );

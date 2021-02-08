@@ -1,35 +1,106 @@
 package Zapp::Task;
 use Mojo::Base 'Minion::Job', -signatures;
+use List::Util qw( uniq );
 use Mojo::JSON qw( decode_json encode_json );
 use Zapp::Util qw( get_path_from_data get_path_from_schema fill_input );
 
-sub execute( $self, @args ) {
-    my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
-    my $context = decode_json( $run_job->{context} );
+has zapp_task => sub( $self ) {
+    # XXX: Rename zapp_run_jobs to zapp_run_tasks as copy of
+    # zapp_plan_tasks plus job_id
+    return $self->app->yancy->get( zapp_run_jobs => $self->id );
+};
+
+has zapp_run => sub( $self ) {
+    my $task = $self->zapp_task;
+    return $self->app->yancy->get( zapp_runs => $task->{run_id} );
+};
+
+sub set( $self, %values ) {
+    ; say sprintf 'Setting task %s: %s', $self->id, $self->app->dumper( \%values );
+    $self->app->yancy->backend->set(
+        zapp_run_jobs => $self->id,
+        \%values,
+    );
+    if ( exists $values{state} ) {
+        my $run = $self->zapp_run;
+        my $run_state = $run->{state};
+        if ( $values{state} =~ /(active|failed|stopped|killed)/ && $run->{state} ne $values{state} ) {
+            # One job in these states can change the run state
+            $run_state = $values{state};
+        }
+        elsif ( $values{state} =~ /(inactive|finished)/ ) {
+            # All jobs must be in this state to change the run state
+            my @job_states = uniq map $_->{state}, $self->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} } );
+            if ( @job_states == 1 && $job_states[0] eq $values{state} ) {
+                $run_state = $values{state};
+            }
+        }
+
+        if ( $run_state ne $run->{state} ) {
+            $self->app->yancy->backend->set(
+                zapp_runs => $run->{run_id},
+                { state => $run_state },
+            );
+        }
+    }
+}
+
+sub context( $self ) {
+    my $run_job = $self->zapp_task;
+    my $context = decode_json( $self->zapp_task->{context} );
     ; $self->app->log->debug( "Got context: " . $self->app->dumper( $context ) );
-    my %values;
     for my $name ( keys %$context ) {
         my $input = $context->{ $name };
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
-        $values{ $name } = $type->task_input( { run_id => $run_job->{run_id} }, { task_id => $run_job->{task_id} }, $input->{value} );
+        # XXX: Remove run/task from task_input
+        $context->{ $name } = {
+            type => $input->{type},
+            value => $type->task_input( { run_id => $run_job->{run_id} }, { task_id => $run_job->{task_id} }, $input->{value} ),
+        };
+    }
+    return $context;
+}
+
+sub args( $self, $new_args=undef ) {
+    my $args = $new_args || $self->SUPER::args;
+
+    my $context = $self->context;
+    my %values;
+    for my $key ( keys %$context ) {
+        $values{ $key } = $context->{ $key }{value};
     }
 
-    # Interpolate arguments
-    # XXX: Does this mean we can't work with existing Minion tasks?
-    $self->args( fill_input( \%values, $self->args ) );
+    $args = fill_input( \%values, $args );
+    $self->SUPER::args( $args );
+    return $args;
+}
 
+sub execute( $self, @args ) {
+    $self->set( state => 'active' );
     return $self->SUPER::execute( @args );
+}
+
+sub tests( $self ) {
+    my $run_job = $self->zapp_task;
+    my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
+    return $self->app->yancy->list(
+        zapp_run_tests => {
+            run_id => $run_id,
+            task_id => $task_id,
+        },
+        { order_by => 'test_id' },
+    );
 }
 
 sub finish( $self, $output=undef ) {
     return $self->SUPER::finish if !defined $output; # XXX: Minion calls this again after we do inside the task?
-    my $run_job = $self->app->yancy->get( zapp_run_jobs => $self->id );
+    my $run_job = $self->zapp_task;
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
     # Verify tests
     ; $self->app->log->info( 'Running tests' );
-    my @tests = $self->app->yancy->list( zapp_run_tests => { run_id => $run_id, task_id => $task_id }, { order_by => 'test_id' } );
+    my @tests = $self->tests;
     for my $test ( @tests ) {
         # Stringify whatever data we get because the value to test
         # against can only ever be a string.
@@ -75,11 +146,11 @@ sub finish( $self, $output=undef ) {
         }
     }
 
-    ; $self->app->log->info( 'Saving context' );
     # Save assignments to child contexts
+    # XXX: Make zapp_run_tasks a copy of zapp_plan_tasks
     my $task = $self->app->yancy->get( zapp_plan_tasks => $task_id );
     my $output_saves = decode_json( $task->{output} // '[]' );
-    my $context = decode_json( $run_job->{context} // '{}' );
+    my $context = decode_json( $self->zapp_task->{context} );
     for my $save ( @$output_saves ) {
         ; $self->app->log->debug( "Saving: " . $self->app->dumper( $save ) );
         my $schema = get_path_from_schema( $save->{expr}, $self->schema->{output} );
@@ -94,7 +165,8 @@ sub finish( $self, $output=undef ) {
             type => $type_name,
         };
     }
-    $self->app->log->debug( "Saving context: " . $self->app->dumper( $context ) );
+
+    $self->app->log->debug( "Saving context to children: " . $self->app->dumper( $context ) );
     for my $minion_job_id ( @{ $self->info->{children} } ) {
         $self->app->yancy->backend->set(
             zapp_run_jobs => $minion_job_id => {
@@ -103,7 +175,13 @@ sub finish( $self, $output=undef ) {
         );
     }
 
+    $self->set( state => 'finished' );
     return $self->SUPER::finish( $output );
+}
+
+sub fail( $self, @args ) {
+    $self->set( state => 'failed' );
+    return $self->SUPER::fail( @args );
 }
 
 sub schema( $class ) {

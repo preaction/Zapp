@@ -1505,6 +1505,7 @@ subtest 'run a plan' => sub {
                 },
                 run_id => $run_id,
                 task_id => $plan->{tasks}[0]{task_id},
+                state => 'inactive',
             },
             'first job is correct'
                 or diag explain $jobs[0];
@@ -1518,6 +1519,7 @@ subtest 'run a plan' => sub {
                 context => {},
                 run_id => $run_id,
                 task_id => $plan->{tasks}[1]{task_id},
+                state => 'inactive',
             },
             'second job is correct'
                 or diag explain $jobs[1];
@@ -1668,6 +1670,216 @@ subtest 'view run status' => sub {
             ->element_exists_not( 'body', 'not inside layout' )
             ->text_like( "code", qr/Zanthor/, 'second task input are interpolated' )
             ;
+    };
+};
+
+subtest 'stop/kill run' => sub {
+    my $plan = $t->app->create_plan({
+        name => 'Open the Scary Door',
+        tasks => [
+            {
+                name => 'Open',
+                class => 'Zapp::Task::Script',
+                input => encode_json({
+                    script => 'echo The door creaks spookily',
+                }),
+            },
+            {
+                name => 'Twist Ending',
+                class => 'Zapp::Task::Script',
+                input => encode_json({
+                    script => 'echo Saw it coming',
+                }),
+            },
+        ],
+    });
+    my $plan_id = $plan->{plan_id};
+
+    subtest 'stop run' => sub {
+        my $run = $t->app->enqueue( $plan_id, {} );
+
+        # Run view screen shows start/stop buttons
+        $t->get_ok( "/run/$run->{run_id}" )->status_is( 200 )
+            ->element_exists( "[href=/run/$run->{run_id}/stop]", 'stop link exists' )
+            ->element_exists_not( "[href=/run/$run->{run_id}/stop].disabled", 'stop link not disabled' )
+            ->element_exists( qq{form[action="/run/$run->{run_id}/start"]}, 'start form exists' )
+            ->element_exists( qq{form[action="/run/$run->{run_id}/start"] button[disabled]}, 'start form button disabled exists' )
+            ->element_exists( "[href=/run/$run->{run_id}/kill]", 'kill link exists' )
+            ->element_exists_not( "[href=/run/$run->{run_id}/kill].disabled", 'kill link not disabled' )
+            ;
+
+        # Do one job before stopping
+        my $worker = $t->app->minion->worker->register;
+        my $job = $worker->dequeue;
+        my $e = $job->execute;
+        $worker->unregister;
+
+        # Show stop run form
+        $t->get_ok( "/run/$run->{run_id}/stop" )->status_is( 200 )
+            ->element_exists( 'form' )
+            ->attr_is( 'form', action => "/run/$run->{run_id}/stop" )
+            ->attr_like( 'form', method => qr{post}i )
+            ->element_exists( 'textarea' )
+            ->attr_is( 'textarea', name => 'note' )
+            ->element_exists( 'button' )
+            ;
+
+        # Stop the run
+        $t->post_ok( "/run/$run->{run_id}/stop",
+                form => {
+                    note => 'You only stamped it four times!',
+                },
+            )
+            ->status_is( 302 )
+            ->header_is( Location => "/run/$run->{run_id}" )
+            ;
+
+        # Run note is added
+        my @notes = $t->app->yancy->list( zapp_run_notes => { $run->%{'run_id'} } );
+        is scalar @notes, 1, 'one note found';
+        like $notes[0]{created}, qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}};
+        is $notes[0]{event}, 'stop';
+        is $notes[0]{note}, 'You only stamped it four times!';
+
+        # Run state "stopped"
+        my $set_run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
+        is $set_run->{state}, 'stopped', 'run state is correct';
+
+        # Zapp job state "stopped"
+        $job = $t->app->yancy->get( zapp_run_jobs => $run->{jobs}[1] );
+        is $job->{state}, 'stopped', 'zapp job state is correct'
+            or diag explain [ $run->{jobs}[1], $job ];
+
+        # Minion job removed
+        ok !$t->app->minion->job( $run->{jobs}[1] ), 'minion job removed';
+
+        # Job cannot be dequeued
+        $worker = $t->app->minion->worker->register;
+        ok !$worker->dequeue(0), 'no job to dequeue';
+        $worker->unregister;
+
+        # Job view screen shows Start button
+        $t->get_ok( "/run/$run->{run_id}" )->status_is( 200 )
+            ->element_exists( "[href=/run/$run->{run_id}/stop]", 'stop link exists' )
+            ->element_exists( "[href=/run/$run->{run_id}/stop].disabled", 'stop link is disabled' )
+            ->element_exists( "form[action=/run/$run->{run_id}/start]", 'start form exists' )
+            ->element_exists_not( "form[action=/run/$run->{run_id}/start] button[disabled]", 'start form button not disabled' )
+            ->element_exists( "[href=/run/$run->{run_id}/kill]", 'kill link exists' )
+            ->element_exists_not( "[href=/run/$run->{run_id}/kill].disabled", 'kill link not disabled' )
+            ;
+
+        # Start the run
+        $t->post_ok( "/run/$run->{run_id}/start" )->status_is( 302 )
+            ->header_is( Location => "/run/$run->{run_id}" )
+            ;
+        $run->{jobs} = [
+            map { $_->{minion_job_id} }
+            $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} } )
+        ];
+        ; diag 'New jobs: ' . explain $run->{jobs};
+
+        # Zapp job state "inactive"
+        $job = $t->app->yancy->get( zapp_run_jobs => $run->{jobs}[1] );
+        is $job->{state}, 'inactive', 'zapp job state is correct';
+
+        # Minion job state "inactive"
+        $job = $t->app->minion->job( $run->{jobs}[1] );
+        is $job->info->{state}, 'inactive', 'minion job state is correct';
+
+        # Job can be dequeued
+        $worker = $t->app->minion->worker->register;
+        $job = $worker->dequeue(0);
+        ok $job, 'job dequeued';
+        $job->execute;
+        $worker->unregister;
+
+        # Run screen shows stop/start buttons both disabled
+        $t->get_ok( "/run/$run->{run_id}" )->status_is( 200 )
+            ->element_exists( "[href=/run/$run->{run_id}/stop]", 'stop link exists' )
+            ->element_exists( "[href=/run/$run->{run_id}/stop].disabled", 'stop link disabled' )
+            ->element_exists( "form[action=/run/$run->{run_id}/start]", 'start form exists' )
+            ->element_exists( "form[action=/run/$run->{run_id}/start] button[disabled]", 'start form button disabled' )
+            ->element_exists( "[href=/run/$run->{run_id}/kill]", 'kill link exists' )
+            ->element_exists( "[href=/run/$run->{run_id}/kill].disabled", 'kill link disabled' )
+            ;
+    };
+
+    subtest 'kill run' => sub {
+        my @signals;
+        local $SIG{TERM} = sub { push @signals, 'TERM' };
+
+        my $run = $t->app->enqueue( $plan_id );
+
+        # Run view screen shows kill button
+        $t->get_ok( "/run/$run->{run_id}" )->status_is( 200 )
+            ->element_exists( "[href=/run/$run->{run_id}/stop]", 'stop link exists' )
+            ->element_exists_not( "[href=/run/$run->{run_id}/stop].disabled", 'stop link not disabled' )
+            ->element_exists( "form[action=/run/$run->{run_id}/start]", 'start form exists' )
+            ->element_exists( "form[action=/run/$run->{run_id}/start] button[disabled]", 'start form button disabled' )
+            ->element_exists( "[href=/run/$run->{run_id}/kill]", 'kill link exists' )
+            ->element_exists_not( "[href=/run/$run->{run_id}/kill].disabled", 'kill link not disabled' )
+            ;
+
+        # Do one job before killing
+        my $worker = $t->app->minion->worker->register;
+        my $job = $worker->dequeue;
+        my $e = $job->execute;
+        $worker->unregister;
+
+        # Show kill run form
+        $t->get_ok( "/run/$run->{run_id}/kill" )->status_is( 200 )
+            ->element_exists( 'form' )
+            ->attr_is( 'form', action => "/run/$run->{run_id}/kill" )
+            ->attr_like( 'form', method => qr{post}i )
+            ->element_exists( 'textarea' )
+            ->attr_is( 'textarea', name => 'note' )
+            ->element_exists( 'button' )
+            ;
+
+        # Kill the run
+        $t->post_ok( "/run/$run->{run_id}/kill",
+                form => {
+                    note => 'I was young, and reckless!',
+                },
+            )
+            ->status_is( 302 )
+            ->header_is( Location => "/run/$run->{run_id}" )
+            ;
+
+        # Run note is added
+        my @notes = $t->app->yancy->list( zapp_run_notes => { $run->%{'run_id'} } );
+        is scalar @notes, 1, 'one note found';
+        like $notes[0]{created}, qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}};
+        is $notes[0]{event}, 'kill';
+        is $notes[0]{note}, 'I was young, and reckless!';
+
+        # Run state "killed"
+        my $set_run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
+        is $set_run->{state}, 'killed', 'run state is correct';
+
+        # Zapp job state "killed"
+        $job = $t->app->yancy->get( zapp_run_jobs => $run->{jobs}[1] );
+        is $job->{state}, 'killed', 'zapp job state is correct';
+
+        # Minion job removed
+        ok !$t->app->minion->job( $run->{jobs}[1] ), 'minion job removed';
+
+        # Job cannot be started again
+        $worker = $t->app->minion->worker->register;
+        $job = $worker->dequeue(0);
+        $worker->unregister;
+        ok !$job, 'no job dequeued' or diag explain $job->info;
+
+        # Job view screen shows disabled buttons
+        $t->get_ok( "/run/$run->{run_id}" )->status_is( 200 )
+            ->element_exists( "[href=/run/$run->{run_id}/stop]", 'stop link exists' )
+            ->element_exists( "[href=/run/$run->{run_id}/stop].disabled", 'stop link disabled' )
+            ->element_exists( "form[action=/run/$run->{run_id}/start]", 'start form exists' )
+            ->element_exists( "form[action=/run/$run->{run_id}/start] button[disabled]", 'start form button disabled' )
+            ->element_exists( "[href=/run/$run->{run_id}/kill]", 'kill link exists' )
+            ->element_exists( "[href=/run/$run->{run_id}/kill].disabled", 'kill link disabled' )
+            ;
+
     };
 };
 

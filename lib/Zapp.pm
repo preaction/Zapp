@@ -121,6 +121,16 @@ sub startup( $self ) {
     # ->to( 'plan#edit_run' )->name( 'zapp.edit_run' );
     # $self->routes->post( '/run/:run_id/edit' )
     # ->to( 'plan#save_run' )->name( 'zapp.save_run' );
+    $self->routes->get( '/run/:run_id/stop' )
+        ->to( 'plan#stop_run' )->name( 'zapp.stop_run' );
+    $self->routes->post( '/run/:run_id/stop' )
+        ->to( 'plan#stop_run' )->name( 'zapp.stop_run_confirm' );
+    $self->routes->post( '/run/:run_id/start' )
+        ->to( 'plan#start_run' )->name( 'zapp.start_run_confirm' );
+    $self->routes->get( '/run/:run_id/kill' )
+        ->to( 'plan#kill_run' )->name( 'zapp.kill_run' );
+    $self->routes->post( '/run/:run_id/kill' )
+        ->to( 'plan#kill_run' )->name( 'zapp.kill_run_confirm' );
 
 }
 
@@ -176,7 +186,7 @@ Enqueue a plan.
 
 =cut
 
-sub enqueue( $self, $plan_id, $input, %opt ) {
+sub enqueue( $self, $plan_id, $input={}, %opt ) {
     $opt{queue} ||= 'zapp';
 
     # Create the run in the database
@@ -188,6 +198,7 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
     my $run_id = $run->{run_id} = $self->yancy->create( zapp_runs => $run );
     my @tasks = $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
     for my $task ( @tasks ) {
+        $task->{run_id} = $run_id;
         my $task_id = $task->{task_id};
         # Copy tests for the run
         my @tests = $self->yancy->list( zapp_plan_tests => { task_id => $task_id }, { order_by => 'test_id' } );
@@ -208,7 +219,16 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
         next unless @parents;
         $task_parents{ $task_id } = [ map $_->{parent_task_id}, @parents ];
     }
+    for my $task ( @tasks ) {
+        $task->{parents} = $task_parents{ $task->{task_id} };
+    }
 
+    $run->{jobs} = $self->enqueue_tasks( $input, @tasks );
+    return $run;
+}
+
+sub enqueue_tasks( $self, $input, @tasks ) {
+    my @jobs;
     # Create Minion jobs for this run
     my %task_jobs;
     # Loop over tasks, making the job if the task's parents are made.
@@ -219,12 +239,14 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
         for my $task ( grep !$task_jobs{ $_->{task_id} }, @tasks ) {
             my $task_id = $task->{task_id};
             # Skip if we haven't created all parents
-            next if $task_parents{ $task_id } && grep { !$task_jobs{ $_ } } $task_parents{ $task_id }->@*;
+            next if @{ $task->{parents} // [] } && grep { !$task_jobs{ $_ } } $task->{parents}->@*;
 
             # XXX: Expose more Minion job configuration
             my %job_opts;
-            if ( my $parents = $task_parents{ $task_id } ) {
-                $job_opts{ parents } = [ map $task_jobs{ $_ }, @$parents ];
+            if ( my @parents = @{ $task->{parents} // [] } ) {
+                $job_opts{ parents } = [
+                    map $task_jobs{ $_ }, @parents
+                ];
             }
 
             my $args = decode_json( $task->{input} );
@@ -239,15 +261,14 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
             );
             $task_jobs{ $task_id } = $job_id;
 
-            push $run->{jobs}->@*,
+            push @jobs,
                 $self->yancy->create( zapp_run_jobs => {
-                    run_id => $run_id,
-                    task_id => $task_id,
+                    $task->%{qw( run_id task_id )},
                     minion_job_id => $job_id,
                     # All jobs with no parents must have the initial context. Other jobs
                     # will get their context filled in by their parent.
                     context => encode_json(
-                        !$task_parents{ $task_id } ? $input : {}
+                        !$job_opts{parents} ? $input : {},
                     ),
                 } );
         }
@@ -258,7 +279,7 @@ sub enqueue( $self, $plan_id, $input, %opt ) {
         return undef;
     }
 
-    return $run;
+    return \@jobs;
 }
 
 1;
@@ -306,6 +327,7 @@ CREATE TABLE zapp_runs (
     plan_id BIGINT NULL,
     description TEXT,
     input_values JSON,
+    state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -314,6 +336,7 @@ CREATE TABLE zapp_run_jobs (
     run_id BIGINT NOT NULL,
     task_id BIGINT NULL,
     context JSON,
+    state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     PRIMARY KEY ( minion_job_id ),
     CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
@@ -344,6 +367,15 @@ CREATE TABLE zapp_run_tests (
     CONSTRAINT FOREIGN KEY ( test_id ) REFERENCES zapp_plan_tests ( test_id ) ON DELETE SET NULL,
     CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE zapp_run_notes (
+    note_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    run_id BIGINT NOT NULL,
+    created DATETIME DEFAULT CURRENT_TIMESTAMP,
+    event VARCHAR(20) NOT NULL,
+    note TEXT NOT NULL,
+    CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE
+);
 
 @@ migrations.sqlite.sql
 
@@ -383,6 +415,7 @@ CREATE TABLE zapp_runs (
     run_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL,
     description TEXT,
+    state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     input_values JSON
 );
 
@@ -391,6 +424,7 @@ CREATE TABLE zapp_run_jobs (
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
     context JSON,
+    state VARCHAR(20) DEFAULT 'inactive',
     PRIMARY KEY ( minion_job_id )
 );
 
@@ -413,5 +447,13 @@ CREATE TABLE zapp_run_tests (
     expr_value VARCHAR(255) DEFAULT NULL,
     pass BOOLEAN DEFAULT NULL,
     PRIMARY KEY ( run_id, test_id )
+);
+
+CREATE TABLE zapp_run_notes (
+    note_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id BIGINT NOT NULL REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    created DATETIME DEFAULT CURRENT_TIMESTAMP,
+    event VARCHAR(20) NOT NULL,
+    note TEXT NOT NULL
 );
 
