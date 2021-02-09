@@ -54,7 +54,7 @@ subtest 'create a plan' => sub {
       ->click_ok( 'select.add-input option[value=integer]' )
       ->wait_for( '[name="input[0].name"]' )
       ->send_keys_ok( '[name="input[0].name"]', 'Felony_Count' )
-      ->send_keys_ok( '[name="input[0].default_value"]', '0' )
+      ->send_keys_ok( '[name="input[0].value"]', '0' )
       ->send_keys_ok( '[name="input[0].description"]', 'The number of felonies perpetrated by the Feministas' )
       ;
 
@@ -152,7 +152,7 @@ subtest 'create a plan' => sub {
             plan_id => $plan_id,
             name => 'Felony_Count',
             type => 'integer',
-            default_value => q{"0"}, # json-encoded
+            value => q{"0"}, # json-encoded
             description => 'The number of felonies perpetrated by the Feministas',
         },
         'input is correct';
@@ -217,7 +217,7 @@ subtest 'create a plan' => sub {
         },
         'task 2 is correct';
 
-    my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+    my @got_parents = $t->app->yancy->list( zapp_plan_task_parents => {
         task_id => [ map { $_->{task_id} } @got_tasks ],
     });
     is scalar @got_parents, 1, 'got 1 relationship for plan';
@@ -320,7 +320,7 @@ subtest 'edit a plan' => sub {
         } ),
     );
 
-    $t->app->yancy->create( zapp_task_parents => {
+    $t->app->yancy->create( zapp_plan_task_parents => {
         task_id => $task_ids[1],
         parent_task_id => $task_ids[0],
     });
@@ -501,7 +501,7 @@ subtest 'edit a plan' => sub {
             },
             'task 2 is correct';
 
-        my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+        my @got_parents = $t->app->yancy->list( zapp_plan_task_parents => {
             task_id => [ map { $_->{task_id} } @got_tasks ],
         });
         is scalar @got_parents, 1, 'got 1 relationship for plan';

@@ -110,7 +110,7 @@ subtest 'create new plan' => sub {
                 'input[0].name' => 'prank_name',
                 'input[0].type' => 'string',
                 'input[0].description' => 'A funny name to demoralize the Mighty One',
-                'input[0].default_value' => 'I.C. Weiner',
+                'input[0].value' => 'I.C. Weiner',
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
@@ -190,7 +190,7 @@ subtest 'create new plan' => sub {
             },
             'task 2 is correct';
 
-        my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+        my @got_parents = $t->app->yancy->list( zapp_plan_task_parents => {
             task_id => [ map { $_->{task_id} } @got_tasks ],
         });
         is scalar @got_parents, 1, 'got 1 relationship for plan';
@@ -213,7 +213,7 @@ subtest 'create new plan' => sub {
             name => 'prank_name',
             type => 'string',
             description => 'A funny name to demoralize the Mighty One',
-            default_value => encode_json( 'I.C. Weiner' ),
+            value => encode_json( 'I.C. Weiner' ),
         };
 
         my @got_tests = $t->app->yancy->list(
@@ -303,13 +303,13 @@ subtest 'edit existing plan' => sub {
                 name => 'location',
                 type => 'string',
                 description => 'Where to place the bomb',
-                default_value => encode_json( 'In the center' ),
+                value => encode_json( 'In the center' ),
             },
             {
                 name => 'delay',
                 type => 'number',
                 description => 'Time to give crew to survive, in minutes',
-                default_value => encode_json( 25 ),
+                value => encode_json( 25 ),
             },
         ],
     } );
@@ -418,11 +418,11 @@ subtest 'edit existing plan' => sub {
                 'first input description input value is correct',
             );
             $t->element_exists(
-                'form [name="input[0].default_value"]',
+                'form [name="input[0].value"]',
                 'first input default input exists',
             );
             $t->attr_is(
-                'form [name="input[0].default_value"]',
+                'form [name="input[0].value"]',
                 value => '25',
                 'first input default value input value is correct',
             );
@@ -455,11 +455,11 @@ subtest 'edit existing plan' => sub {
                 'second input description input value is correct',
             );
             $t->element_exists(
-                'form [name="input[1].default_value"]',
+                'form [name="input[1].value"]',
                 'second input default input exists',
             );
             $t->attr_is(
-                'form [name="input[1].default_value"]',
+                'form [name="input[1].value"]',
                 value => 'In the center',
                 'second input default value input value is correct',
             );
@@ -796,11 +796,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'location',
                 'input[0].type' => 'string',
                 'input[0].description' => 'Where to put the bomb',
-                'input[0].default_value' => 'In the center',
+                'input[0].value' => 'In the center',
                 'input[1].name' => 'delay',
                 'input[1].type' => 'number',
                 'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].default_value' => '0.4',
+                'input[1].value' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -884,7 +884,7 @@ subtest 'edit existing plan' => sub {
             },
             'task 2 is correct';
 
-        my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+        my @got_parents = $t->app->yancy->list( zapp_plan_task_parents => {
             task_id => [ map { $_->{task_id} } @got_tasks ],
         });
         is scalar @got_parents, 1, 'got 1 relationship for plan';
@@ -907,14 +907,14 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in hours',
-            default_value => encode_json( '0.4' ),
+            value => encode_json( '0.4' ),
         };
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
             type => 'string',
             description => 'Where to put the bomb',
-            default_value => encode_json( 'In the center' ),
+            value => encode_json( 'In the center' ),
         };
 
         my @got_tests = $t->app->yancy->list(
@@ -956,11 +956,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'location',
                 'input[0].type' => 'string',
                 'input[0].description' => 'Where to put the bomb',
-                'input[0].default_value' => 'In the center',
+                'input[0].value' => 'In the center',
                 'input[1].name' => 'delay',
                 'input[1].type' => 'number',
                 'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].default_value' => '0.4',
+                'input[1].value' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1050,7 +1050,7 @@ subtest 'edit existing plan' => sub {
             },
             'task 2 is correct';
 
-        my @got_parents = $t->app->yancy->list( zapp_task_parents =>
+        my @got_parents = $t->app->yancy->list( zapp_plan_task_parents =>
             {
                 task_id => [ map { $_->{task_id} } @got_tasks ],
             },
@@ -1083,14 +1083,14 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in hours',
-            default_value => encode_json( '0.4' ),
+            value => encode_json( '0.4' ),
         };
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
             type => 'string',
             description => 'Where to put the bomb',
-            default_value => encode_json( 'In the center' ),
+            value => encode_json( 'In the center' ),
         };
 
         my @got_tests = $t->app->yancy->list(
@@ -1132,11 +1132,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'prank_name',
                 'input[0].type' => 'string',
                 'input[0].description' => 'A funny name to demoralize the Mighty One',
-                'input[0].default_value' => 'I.C. Weiner',
+                'input[0].value' => 'I.C. Weiner',
                 'input[1].name' => 'delay',
                 'input[1].type' => 'number',
                 'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].default_value' => '0.4',
+                'input[1].value' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1203,7 +1203,7 @@ subtest 'edit existing plan' => sub {
             },
             'task 2 is correct';
 
-        my @got_parents = $t->app->yancy->list( zapp_task_parents => {
+        my @got_parents = $t->app->yancy->list( zapp_plan_task_parents => {
             task_id => [ map { $_->{task_id} } @got_tasks ],
         });
         is scalar @got_parents, 1, 'got 1 relationship for plan';
@@ -1251,7 +1251,7 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'delay',
                 'input[0].type' => 'number',
                 'input[0].description' => 'Time to give crew to survive, in minutes',
-                'input[0].default_value' => '60',
+                'input[0].value' => '60',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1284,7 +1284,7 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
-            default_value => encode_json( '60' ),
+            value => encode_json( '60' ),
         };
     };
 
@@ -1296,11 +1296,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'delay',
                 'input[0].type' => 'number',
                 'input[0].description' => 'Time to give crew to survive, in minutes',
-                'input[0].default_value' => '60',
+                'input[0].value' => '60',
                 'input[1].name' => 'location',
                 'input[1].type' => 'string',
                 'input[1].description' => 'Where to place the bomb',
-                'input[1].default_value' => 'In the center',
+                'input[1].value' => 'In the center',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1333,14 +1333,14 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
-            default_value => encode_json( '60' ),
+            value => encode_json( '60' ),
         };
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
             type => 'string',
             description => 'Where to place the bomb',
-            default_value => encode_json( 'In the center' ),
+            value => encode_json( 'In the center' ),
         };
     };
 
@@ -1438,7 +1438,7 @@ subtest 'run a plan' => sub {
                 name => 'destination',
                 type => 'string',
                 description => 'Where to send the crew to their doom',
-                default_value => encode_json( 'Chapek 9' ),
+                value => encode_json( 'Chapek 9' ),
             },
         ],
     });
@@ -1483,20 +1483,23 @@ subtest 'run a plan' => sub {
             },
             'run input is correct';
 
-        # Record all enqueued jobs so we can keep track of which Minion
-        # jobs were triggered by which Zapp run
-        my @jobs = $t->app->yancy->list(
-            zapp_run_jobs => { run_id => $run_id },
-            { order_by => { -asc => 'minion_job_id' } },
+        # Record all enqueued tasks so we can keep track of which Minion
+        # tasks were triggered by which Zapp run
+        my @tasks = $t->app->yancy->list(
+            zapp_run_tasks => { run_id => $run_id },
+            { order_by => { -asc => 'job_id' } },
         );
-        is scalar @jobs, 2, 'two run jobs created';
+        is scalar @tasks, 2, 'two run tasks created';
         is_deeply
             {
-                $jobs[0]->%*,
-                context => decode_json( $jobs[0]{context} ),
+                $tasks[0]->%*,
+                context => decode_json( $tasks[0]{context} ),
+                input => decode_json( $tasks[0]{input} ),
             },
             {
-                $jobs[0]->%{qw( minion_job_id )},
+                $tasks[0]->%{qw( job_id task_id )},
+                $plan->{tasks}[0]->%{qw( name description class output )},
+                input => decode_json( $plan->{tasks}[0]{input} ),
                 context => {
                     destination => {
                         type => 'string',
@@ -1504,25 +1507,28 @@ subtest 'run a plan' => sub {
                     },
                 },
                 run_id => $run_id,
-                task_id => $plan->{tasks}[0]{task_id},
+                plan_task_id => $plan->{tasks}[0]{task_id},
                 state => 'inactive',
             },
             'first job is correct'
-                or diag explain $jobs[0];
+                or diag explain $tasks[0];
         is_deeply
             {
-                $jobs[1]->%*,
-                context => decode_json( $jobs[1]{context} ),
+                $tasks[1]->%*,
+                context => decode_json( $tasks[1]{context} ),
+                input => decode_json( $tasks[1]{input} ),
             },
             {
-                $jobs[1]->%{qw( minion_job_id )},
+                $tasks[1]->%{qw( job_id task_id )},
+                $plan->{tasks}[1]->%{qw( name description class output )},
+                input => decode_json( $plan->{tasks}[1]{input} ),
                 context => {},
                 run_id => $run_id,
-                task_id => $plan->{tasks}[1]{task_id},
+                plan_task_id => $plan->{tasks}[1]{task_id},
                 state => 'inactive',
             },
             'second job is correct'
-                or diag explain $jobs[1];
+                or diag explain $tasks[1];
 
         # Tests are copied to allow modifying job
         my @tests = $t->app->yancy->list(
@@ -1533,8 +1539,8 @@ subtest 'run a plan' => sub {
         is_deeply $tests[0],
             {
                 run_id => $run_id,
-                task_id => $jobs[0]{task_id},
-                test_id => $plan->{tasks}[0]{tests}[0]{test_id},
+                task_id => $tasks[0]{task_id},
+                test_id => $tests[0]{test_id},
                 expr => 'output',
                 op => '!=',
                 value => '',
@@ -1545,8 +1551,8 @@ subtest 'run a plan' => sub {
         is_deeply $tests[1],
             {
                 run_id => $run_id,
-                task_id => $jobs[1]{task_id},
-                test_id => $plan->{tasks}[1]{tests}[0]{test_id},
+                task_id => $tasks[1]{task_id},
+                test_id => $tests[1]{test_id},
                 expr => 'output',
                 op => '!=',
                 value => '',
@@ -1557,8 +1563,8 @@ subtest 'run a plan' => sub {
         is_deeply $tests[2],
             {
                 run_id => $run_id,
-                task_id => $jobs[1]{task_id},
-                test_id => $plan->{tasks}[1]{tests}[1]{test_id},
+                task_id => $tasks[1]{task_id},
+                test_id => $tests[2]{test_id},
                 expr => 'exit',
                 op => '==',
                 value => '0',
@@ -1568,11 +1574,11 @@ subtest 'run a plan' => sub {
             'run task 2 test 2 is correct';
 
         # Enqueued in Minion
-        my $mjob = $t->app->minion->job( $jobs[0]{minion_job_id} );
+        my $mjob = $t->app->minion->job( $tasks[0]{job_id} );
         ok $mjob, 'minion job 1 exists';
         # XXX: Test job attributes
 
-        $mjob = $t->app->minion->job( $jobs[1]{minion_job_id} );
+        $mjob = $t->app->minion->job( $tasks[1]{job_id} );
         ok $mjob, 'minion job 2 exists';
         # XXX: Test job attributes
     };
@@ -1603,7 +1609,7 @@ subtest 'view run status' => sub {
                 name => 'Character',
                 type => 'string',
                 description => 'Which character should ask the question?',
-                default_value => encode_json( 'Leela' ),
+                value => encode_json( 'Leela' ),
             },
         ],
     });
@@ -1746,12 +1752,12 @@ subtest 'stop/kill run' => sub {
         is $set_run->{state}, 'stopped', 'run state is correct';
 
         # Zapp job state "stopped"
-        $job = $t->app->yancy->get( zapp_run_jobs => $run->{jobs}[1] );
-        is $job->{state}, 'stopped', 'zapp job state is correct'
-            or diag explain [ $run->{jobs}[1], $job ];
+        my $task = $t->app->yancy->get( zapp_run_tasks => $run->{tasks}[1]{task_id} );
+        is $task->{state}, 'stopped', 'zapp job state is correct'
+            or diag explain [ $run->{tasks}[1], $task ];
 
         # Minion job removed
-        ok !$t->app->minion->job( $run->{jobs}[1] ), 'minion job removed';
+        ok !$t->app->minion->job( $run->{task}[1]{job_id} ), 'minion job removed';
 
         # Job cannot be dequeued
         $worker = $t->app->minion->worker->register;
@@ -1772,18 +1778,13 @@ subtest 'stop/kill run' => sub {
         $t->post_ok( "/run/$run->{run_id}/start" )->status_is( 302 )
             ->header_is( Location => "/run/$run->{run_id}" )
             ;
-        $run->{jobs} = [
-            map { $_->{minion_job_id} }
-            $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} } )
-        ];
-        ; diag 'New jobs: ' . explain $run->{jobs};
 
         # Zapp job state "inactive"
-        $job = $t->app->yancy->get( zapp_run_jobs => $run->{jobs}[1] );
-        is $job->{state}, 'inactive', 'zapp job state is correct';
+        $task = $t->app->yancy->get( zapp_run_tasks => $run->{tasks}[1]{task_id} );
+        is $task->{state}, 'inactive', 'zapp run task state is correct';
 
         # Minion job state "inactive"
-        $job = $t->app->minion->job( $run->{jobs}[1] );
+        $job = $t->app->minion->job( $task->{job_id} );
         is $job->info->{state}, 'inactive', 'minion job state is correct';
 
         # Job can be dequeued
@@ -1858,11 +1859,11 @@ subtest 'stop/kill run' => sub {
         is $set_run->{state}, 'killed', 'run state is correct';
 
         # Zapp job state "killed"
-        $job = $t->app->yancy->get( zapp_run_jobs => $run->{jobs}[1] );
-        is $job->{state}, 'killed', 'zapp job state is correct';
+        my $task = $t->app->yancy->get( zapp_run_tasks => $run->{tasks}[1]{task_id} );
+        is $task->{state}, 'killed', 'zapp run task state is correct';
 
         # Minion job removed
-        ok !$t->app->minion->job( $run->{jobs}[1] ), 'minion job removed';
+        ok !$t->app->minion->job( $task->{job_id} ), 'minion job removed';
 
         # Job cannot be started again
         $worker = $t->app->minion->worker->register;
@@ -1907,7 +1908,7 @@ subtest 'delete plan' => sub {
                 name => 'color',
                 type => 'string',
                 description => 'What color of scissors',
-                default_value => encode_json( 'White' ),
+                value => encode_json( 'White' ),
             },
         ],
     });
@@ -1963,7 +1964,7 @@ sub Test::Yancy::clear_backend {
         zapp_plans => 'plan_id',
         zapp_plan_inputs => [ 'plan_id', 'name' ],
         zapp_plan_tasks => 'task_id',
-        zapp_task_parents => 'task_id',
+        zapp_plan_task_parents => 'task_id',
     );
     for my $table ( keys %tables ) {
         my $id_field = $tables{ $table };

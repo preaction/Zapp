@@ -239,14 +239,13 @@
                 %= text_field "input[$input_num].name", $input->{name}, placeholder => 'Name', class => 'form-control'
             </div>
             <div class="col">
-                <label for="input[<%= $input_num %>].default_value">Default Value</label>
+                <label for="input[<%= $input_num %>].value">Default Value</label>
                 <div>
                     <% if ( my $type_name = $input->{type} ) {
                         my $type = $c->zapp->types->{ $type_name }
                             or die qq{Could not find type "$type_name"};
-                        my $input_field = include inline => $type->input_field( $c, $input->{default_value} ), self => $type, input => $input;
-                        my $input_dom = rename_field( $input_field, value => 'default_value' );
-                        $input_dom = prefix_field( $input_dom, "input[$input_num]" );
+                        my $input_field = include inline => $type->input_field( $c, $input->{value} ), self => $type, input => $input;
+                        my $input_dom = prefix_field( $input_field, "input[$input_num]" );
                         %><%== $input_dom %><%
                     } else {
                         %><span data-input-value></span><%
@@ -333,7 +332,7 @@
                 % my $input = $plan->{inputs}[ $input_num ];
                 <li data-input-form>
                     <%
-                        my $input_form = $input_tmpl->( $input_num, { %$input, value => $input->{default_value} } );
+                        my $input_form = $input_tmpl->( $input_num, { %$input, value => $input->{value} } );
                         my $input_dom = Mojo::DOM->new( $input_form );
                         if ( $input_num == 0 ) {
                             my $btn = $input_dom->at( '.input-move-up' );
@@ -660,12 +659,12 @@ function addInput( event ) {
 
     valueForm.querySelectorAll( 'input,select,textarea' ).forEach(
         function( el ) {
-            el.name = el.name.replace( /^value/, 'default_value' );
+            el.name = el.name.replace( /^value/, 'value' );
         }
     );
     valueForm.querySelectorAll( 'label' ).forEach(
         function( el ) {
-            el.for = el.for.replace( /^value/, 'default_value' );
+            el.for = el.for.replace( /^value/, 'value' );
         }
     );
     prefixField( valueForm, 'input[0]' );

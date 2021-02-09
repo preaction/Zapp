@@ -59,9 +59,9 @@ sub startup( $self ) {
                 # XXX: Fix read_schema to detect compound primary keys
                 'x-id-field' => [qw( plan_id name )],
             },
-            zapp_run_tests => {
+            zapp_run_inputs => {
                 # XXX: Fix read_schema to detect compound primary keys
-                'x-id-field' => [qw( run_id test_id )],
+                'x-id-field' => [qw( run_id name )],
             },
         },
     );
@@ -157,7 +157,7 @@ sub create_plan( $self, $plan ) {
         my $tests = $task->{tests} ? delete $task->{tests} : [];
         my $task_id = $self->yancy->create( zapp_plan_tasks => $task );
         if ( $prev_task_id ) {
-            $self->yancy->create( zapp_task_parents => {
+            $self->yancy->create( zapp_plan_task_parents => {
                 task_id => $task_id,
                 parent_task_id => $prev_task_id,
             });
@@ -189,23 +189,31 @@ Enqueue a plan.
 sub enqueue( $self, $plan_id, $input={}, %opt ) {
     $opt{queue} ||= 'zapp';
 
-    # Create the run in the database
+    # Create the run in the database by copying the plan
+    my $plan = $self->yancy->get( zapp_plans => $plan_id );
     my $run = {
-        plan_id => $plan_id,
+        %$plan,
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         input_values => encode_json( $input ),
     };
     my $run_id = $run->{run_id} = $self->yancy->create( zapp_runs => $run );
+
+    my %task_id_map; # plan task_id -> run task_id
     my @tasks = $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
     for my $task ( @tasks ) {
+        delete $task->{plan_id};
         $task->{run_id} = $run_id;
-        my $task_id = $task->{task_id};
+        $task->{plan_task_id} = delete $task->{task_id};
+        my $task_id = $task->{task_id} = $self->yancy->create( zapp_run_tasks => $task );
+        ; $self->log->debug( "Creating run task: " . $self->dumper( $task ) );
+        $task_id_map{ $task->{plan_task_id} } = $task->{task_id};
         # Copy tests for the run
-        my @tests = $self->yancy->list( zapp_plan_tests => { task_id => $task_id }, { order_by => 'test_id' } );
+        my @tests = $self->yancy->list( zapp_plan_tests => { task_id => $task->{plan_task_id} }, { order_by => 'test_id' } );
         for my $test ( @tests ) {
             $self->yancy->create( zapp_run_tests => {
+                $task->%{qw( run_id task_id )},
                 run_id => $run_id,
-                $test->%{qw( task_id test_id expr op value )},
+                $test->%{qw( expr op value )},
             } );
         }
         $task->{tests} = \@tests;
@@ -214,16 +222,30 @@ sub enqueue( $self, $plan_id, $input={}, %opt ) {
 
     # Calculate the parent/child relationships
     my %task_parents;
-    for my $task_id ( map $_->{task_id}, @tasks ) {
-        my @parents = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
+    for my $plan_task_id ( map $_->{plan_task_id}, @tasks ) {
+        my @parents = $self->yancy->list( zapp_plan_task_parents => { task_id => $plan_task_id } );
         next unless @parents;
-        $task_parents{ $task_id } = [ map $_->{parent_task_id}, @parents ];
+        for my $parent ( @parents ) {
+            $parent->{task_id} = $task_id_map{ $parent->{task_id} };
+            $parent->{parent_task_id} = $task_id_map{ $parent->{parent_task_id} };
+            $self->yancy->create( zapp_run_task_parents => $parent );
+            push $task_parents{ $parent->{task_id} }->@*, $parent->{parent_task_id};
+        }
     }
     for my $task ( @tasks ) {
         $task->{parents} = $task_parents{ $task->{task_id} };
     }
 
-    $run->{jobs} = $self->enqueue_tasks( $input, @tasks );
+    my $jobs = $self->enqueue_tasks( $input, @tasks );
+    for my $i ( 0..$#$jobs ) {
+        my $job = $jobs->[$i];
+
+        my ( $task ) = grep { $_->{task_id} eq $job->{task_id} } $run->{tasks}->@*;
+        $task->{$_} = $job->{$_} for keys %$job;
+
+        $self->yancy->backend->set( zapp_run_tasks => $job->{task_id}, $job );
+    }
+
     return $run;
 }
 
@@ -261,16 +283,15 @@ sub enqueue_tasks( $self, $input, @tasks ) {
             );
             $task_jobs{ $task_id } = $job_id;
 
-            push @jobs,
-                $self->yancy->create( zapp_run_jobs => {
-                    $task->%{qw( run_id task_id )},
-                    minion_job_id => $job_id,
-                    # All jobs with no parents must have the initial context. Other jobs
-                    # will get their context filled in by their parent.
-                    context => encode_json(
-                        !$job_opts{parents} ? $input : {},
-                    ),
-                } );
+            push @jobs, {
+                task_id => $task_id,
+                job_id => $job_id,
+                # All jobs with no parents must have the initial context. Other jobs
+                # will get their context filled in by their parent.
+                context => encode_json(
+                    !$job_opts{parents} ? $input : {},
+                ),
+            };
         }
         last if !$loops--;
     }
@@ -304,7 +325,7 @@ CREATE TABLE zapp_plan_tasks (
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE TABLE zapp_task_parents (
+CREATE TABLE zapp_plan_task_parents (
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
     parent_task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE RESTRICT,
     PRIMARY KEY ( task_id, parent_task_id ),
@@ -317,7 +338,7 @@ CREATE TABLE zapp_plan_inputs (
     name VARCHAR(255) NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
-    default_value JSON,
+    value JSON,
     PRIMARY KEY ( plan_id, name ),
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -325,22 +346,46 @@ CREATE TABLE zapp_plan_inputs (
 CREATE TABLE zapp_runs (
     run_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     plan_id BIGINT NULL,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
     input_values JSON,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE TABLE zapp_run_jobs (
-    minion_job_id BIGINT NOT NULL,
+CREATE TABLE zapp_run_tasks (
+    task_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     run_id BIGINT NOT NULL,
-    task_id BIGINT NULL,
+    plan_task_id BIGINT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    class VARCHAR(255) NOT NULL,
+    input JSON,
+    output JSON,
     context JSON,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
-    PRIMARY KEY ( minion_job_id ),
+    job_id BIGINT,
     CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
+    CONSTRAINT FOREIGN KEY ( plan_task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE zapp_run_task_parents (
+    task_id BIGINT REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE,
+    parent_task_id BIGINT REFERENCES zapp_run_tasks ( task_id ) ON DELETE RESTRICT,
+    PRIMARY KEY ( task_id, parent_task_id ),
+    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE,
+    CONSTRAINT FOREIGN KEY ( parent_task_id ) REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE
 );
+
+CREATE TABLE zapp_run_inputs (
+    run_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(255) NOT NULL,
+    description TEXT,
+    value JSON,
+    PRIMARY KEY ( run_id, name ),
+    CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_plan_tests (
     test_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -354,18 +399,16 @@ CREATE TABLE zapp_plan_tests (
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_run_tests (
+    test_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     run_id BIGINT NOT NULL,
-    test_id BIGINT NULL,
-    task_id BIGINT NULL,
+    task_id BIGINT NOT NULL,
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
     value VARCHAR(255) NOT NULL,
     expr_value VARCHAR(255) DEFAULT NULL,
     pass BOOLEAN DEFAULT NULL,
-    UNIQUE KEY ( run_id, test_id ),
     CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    CONSTRAINT FOREIGN KEY ( test_id ) REFERENCES zapp_plan_tests ( test_id ) ON DELETE SET NULL,
-    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
+    CONSTRAINT FOREIGN KEY ( task_id ) REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_run_notes (
@@ -396,7 +439,7 @@ CREATE TABLE zapp_plan_tasks (
     output JSON
 );
 
-CREATE TABLE zapp_task_parents (
+CREATE TABLE zapp_plan_task_parents (
     task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE CASCADE,
     parent_task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE RESTRICT,
     PRIMARY KEY ( task_id, parent_task_id )
@@ -407,25 +450,46 @@ CREATE TABLE zapp_plan_inputs (
     name VARCHAR(255) NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
-    default_value JSON,
+    value JSON,
     PRIMARY KEY ( plan_id, name )
 );
 
 CREATE TABLE zapp_runs (
     run_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    state VARCHAR(20) NOT NULL DEFAULT 'inactive',
-    input_values JSON
+    input_values JSON,
+    state VARCHAR(20) NOT NULL DEFAULT 'inactive'
 );
 
-CREATE TABLE zapp_run_jobs (
-    minion_job_id BIGINT NOT NULL,
-    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
+CREATE TABLE zapp_run_tasks (
+    task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id BIGINT NOT NULL REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    plan_task_id BIGINT NULL REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    class VARCHAR(255) NOT NULL,
+    input JSON,
     context JSON,
-    state VARCHAR(20) DEFAULT 'inactive',
-    PRIMARY KEY ( minion_job_id )
+    output JSON,
+    state VARCHAR(20) NOT NULL DEFAULT 'inactive',
+    job_id BIGINT
+);
+
+CREATE TABLE zapp_run_task_parents (
+    task_id BIGINT REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE,
+    parent_task_id BIGINT REFERENCES zapp_run_tasks ( task_id ) ON DELETE RESTRICT,
+    PRIMARY KEY ( task_id, parent_task_id )
+);
+
+CREATE TABLE zapp_run_inputs (
+    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(255) NOT NULL,
+    description TEXT,
+    value JSON,
+    PRIMARY KEY ( run_id, name )
 );
 
 CREATE TABLE zapp_plan_tests (
@@ -438,15 +502,14 @@ CREATE TABLE zapp_plan_tests (
 );
 
 CREATE TABLE zapp_run_tests (
+    test_id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    test_id BIGINT REFERENCES zapp_plan_tests ( test_id ) ON DELETE SET NULL,
-    task_id BIGINT REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
+    task_id BIGINT REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE,
     expr VARCHAR(255) NOT NULL,
     op VARCHAR(255) NOT NULL,
     value VARCHAR(255) NOT NULL,
     expr_value VARCHAR(255) DEFAULT NULL,
-    pass BOOLEAN DEFAULT NULL,
-    PRIMARY KEY ( run_id, test_id )
+    pass BOOLEAN DEFAULT NULL
 );
 
 CREATE TABLE zapp_run_notes (

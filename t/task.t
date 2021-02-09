@@ -78,7 +78,7 @@ subtest 'execute' => sub {
                 name => 'destination',
                 type => 'string',
                 description => 'Where to send the crew to their doom',
-                default_value => encode_json( 'Chapek 9' ),
+                value => encode_json( 'Chapek 9' ),
             },
         ],
     });
@@ -98,16 +98,21 @@ subtest 'execute' => sub {
         my $run = $t->app->enqueue( $plan->{plan_id}, $input );
 
         # Check jobs created correctly
-        my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
+        my @got_tasks = $t->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} }, { order_by => 'task_id' } );
         is_deeply
             {
-                $got_jobs[0]->%*,
-                context => decode_json( $got_jobs[0]{context} ),
+                $got_tasks[0]->%*,
+                context => decode_json( $got_tasks[0]{context} ),
+                input => decode_json( $got_tasks[0]{input} ),
+                output => decode_json( $got_tasks[0]{output} ),
             },
             {
-                minion_job_id => $got_jobs[0]{minion_job_id},
+                $got_tasks[0]->%{qw( job_id task_id )},
+                input => decode_json( $plan->{tasks}[0]{input} ),
+                output => decode_json( $plan->{tasks}[0]{output} ),
+                plan_task_id => $plan->{tasks}[0]{task_id},
+                $plan->{tasks}[0]->%{qw( name description class )},
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[0]{task_id},
                 context => {
                     destination => {
                         type => 'string',
@@ -123,13 +128,18 @@ subtest 'execute' => sub {
             'first job run entry is correct';
         is_deeply
             {
-                $got_jobs[1]->%*,
-                context => decode_json( $got_jobs[1]{context} ),
+                $got_tasks[1]->%*,
+                context => decode_json( $got_tasks[1]{context} ),
+                input => decode_json( $got_tasks[1]{input} ),
+                output => decode_json( $got_tasks[1]{output} ),
             },
             {
-                minion_job_id => $got_jobs[1]{minion_job_id},
+                $got_tasks[1]->%{qw( job_id task_id )},
+                plan_task_id => $plan->{tasks}[1]{task_id},
+                $plan->{tasks}[1]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[1]{input} ),
+                output => decode_json( $plan->{tasks}[1]{output} ),
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[1]{task_id},
                 context => {},
                 state => 'inactive',
             },
@@ -148,16 +158,21 @@ subtest 'execute' => sub {
                 ],
                 'minion job args are interpolated input';
 
-            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
+            my @got_tasks = $t->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} }, { order_by => 'task_id' } );
             is_deeply
                 {
-                    $got_jobs[0]->%*,
-                    context => decode_json( $got_jobs[0]{context} ),
+                    $got_tasks[0]->%*,
+                    context => decode_json( $got_tasks[0]{context} ),
+                    input => decode_json( $got_tasks[0]{input} ),
+                    output => decode_json( $got_tasks[0]{output} ),
                 },
                 {
-                    minion_job_id => $got_jobs[0]{minion_job_id},
+                    $got_tasks[0]->%{qw( job_id task_id )},
+                    plan_task_id => $plan->{tasks}[0]{task_id},
+                    $plan->{tasks}[0]->%{qw( name description class )},
+                    input => decode_json( $plan->{tasks}[0]{input} ),
+                    output => decode_json( $plan->{tasks}[0]{output} ),
                     run_id => $run->{run_id},
-                    task_id => $plan->{tasks}[0]{task_id},
                     context => {
                         destination => {
                             type => 'string',
@@ -173,13 +188,18 @@ subtest 'execute' => sub {
                 'first job run entry is correct';
             is_deeply
                 {
-                    $got_jobs[1]->%*,
-                    context => decode_json( $got_jobs[1]{context} ),
+                    $got_tasks[1]->%*,
+                    context => decode_json( $got_tasks[1]{context} ),
+                    input => decode_json( $got_tasks[1]{input} ),
+                    output => decode_json( $got_tasks[1]{output} ),
                 },
                 {
-                    minion_job_id => $got_jobs[1]{minion_job_id},
+                    $got_tasks[1]->%{qw( job_id task_id )},
+                    plan_task_id => $plan->{tasks}[1]{task_id},
+                    $plan->{tasks}[1]->%{qw( name description class )},
+                    input => decode_json( $plan->{tasks}[1]{input} ),
+                    output => decode_json( $plan->{tasks}[1]{output} ),
                     run_id => $run->{run_id},
-                    task_id => $plan->{tasks}[1]{task_id},
                     context => {
                         destination => {
                             type => 'string',
@@ -212,16 +232,21 @@ subtest 'execute' => sub {
                 ],
                 'minion job args are interpolated input';
 
-            my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
+            my @got_tasks = $t->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} }, { order_by => 'task_id' } );
             is_deeply
                 {
-                    $got_jobs[0]->%*,
-                    context => decode_json( $got_jobs[0]{context} ),
+                    $got_tasks[0]->%*,
+                    context => decode_json( $got_tasks[0]{context} ),
+                    input => decode_json( $got_tasks[0]{input} ),
+                    output => decode_json( $got_tasks[0]{output} ),
                 },
                 {
-                    minion_job_id => $got_jobs[0]{minion_job_id},
+                    $got_tasks[0]->%{qw( job_id task_id )},
+                    plan_task_id => $plan->{tasks}[0]{task_id},
+                    $plan->{tasks}[0]->%{qw( name description class )},
+                    input => decode_json( $plan->{tasks}[0]{input} ),
+                    output => decode_json( $plan->{tasks}[0]{output} ),
                     run_id => $run->{run_id},
-                    task_id => $plan->{tasks}[0]{task_id},
                     context => {
                         destination => {
                             type => 'string',
@@ -237,13 +262,18 @@ subtest 'execute' => sub {
                 'first job run entry is correct';
             is_deeply
                 {
-                    $got_jobs[1]->%*,
-                    context => decode_json( $got_jobs[1]{context} ),
+                    $got_tasks[1]->%*,
+                    context => decode_json( $got_tasks[1]{context} ),
+                    input => decode_json( $got_tasks[1]{input} ),
+                    output => decode_json( $got_tasks[1]{output} ),
                 },
                 {
-                    minion_job_id => $got_jobs[1]{minion_job_id},
+                    $got_tasks[1]->%{qw( job_id task_id )},
+                    plan_task_id => $plan->{tasks}[1]{task_id},
+                    $plan->{tasks}[1]->%{qw( name description class )},
+                    input => decode_json( $plan->{tasks}[1]{input} ),
+                    output => decode_json( $plan->{tasks}[1]{output} ),
                     run_id => $run->{run_id},
-                    task_id => $plan->{tasks}[1]{task_id},
                     context => {
                         destination => {
                             type => 'string',
@@ -268,9 +298,9 @@ subtest 'execute' => sub {
         is scalar @tests, 3, '3 tests found for run';
         is_deeply $tests[0],
             {
+                test_id => $tests[0]{test_id},
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[0]{task_id},
-                test_id => $plan->{tasks}[0]{tests}[0]{test_id},
+                task_id => $run->{tasks}[0]{task_id},
                 expr => 'output',
                 op => '!=',
                 value => "\n",
@@ -281,9 +311,9 @@ subtest 'execute' => sub {
                 or diag explain $tests[0];
         is_deeply $tests[1],
             {
+                test_id => $tests[1]{test_id},
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[1]{task_id},
-                test_id => $plan->{tasks}[1]{tests}[0]{test_id},
+                task_id => $run->{tasks}[1]{task_id},
                 expr => 'output',
                 op => '!=',
                 value => "\n",
@@ -294,9 +324,9 @@ subtest 'execute' => sub {
                 or diag explain $tests[1];
         is_deeply $tests[2],
             {
+                test_id => $tests[2]{test_id},
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[1]{task_id},
-                test_id => $plan->{tasks}[1]{tests}[1]{test_id},
+                task_id => $run->{tasks}[1]{task_id},
                 expr => 'exit',
                 op => '==',
                 value => '0',
@@ -324,16 +354,21 @@ subtest 'execute' => sub {
         ok !$e, 'job executed successfully' or diag "Job error: ", explain $e;
         is $job->info->{state}, 'failed', 'job failed';
 
-        my @got_jobs = $t->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} }, { order_by => 'task_id' } );
+        my @got_tasks = $t->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} }, { order_by => 'task_id' } );
         is_deeply
             {
-                $got_jobs[0]->%*,
-                context => decode_json( $got_jobs[0]{context} ),
+                $got_tasks[0]->%*,
+                context => decode_json( $got_tasks[0]{context} ),
+                input => decode_json( $got_tasks[0]{input} ),
+                output => decode_json( $got_tasks[0]{output} ),
             },
             {
-                minion_job_id => $got_jobs[0]{minion_job_id},
+                $got_tasks[0]->%{qw( job_id task_id )},
+                plan_task_id => $plan->{tasks}[0]{task_id},
+                $plan->{tasks}[0]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[0]{input} ),
+                output => decode_json( $plan->{tasks}[0]{output} ),
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[0]{task_id},
                 context => {
                     destination => {
                         type => 'string',
@@ -345,13 +380,18 @@ subtest 'execute' => sub {
             'first job run entry is correct';
         is_deeply
             {
-                $got_jobs[1]->%*,
-                context => decode_json( $got_jobs[1]{context} ),
+                $got_tasks[1]->%*,
+                context => decode_json( $got_tasks[1]{context} ),
+                input => decode_json( $got_tasks[1]{input} ),
+                output => decode_json( $got_tasks[1]{output} ),
             },
             {
-                minion_job_id => $got_jobs[1]{minion_job_id},
+                $got_tasks[1]->%{qw( job_id task_id )},
+                plan_task_id => $plan->{tasks}[1]{task_id},
+                $plan->{tasks}[1]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[1]{input} ),
+                output => decode_json( $plan->{tasks}[1]{output} ),
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[1]{task_id},
                 context => {},
                 state => 'inactive',
             },
@@ -362,9 +402,9 @@ subtest 'execute' => sub {
         is scalar @tests, 3, '3 tests found for run';
         is_deeply $tests[0],
             {
+                test_id => $tests[0]{test_id},
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[0]{task_id},
-                test_id => $plan->{tasks}[0]{tests}[0]{test_id},
+                task_id => $run->{tasks}[0]{task_id},
                 expr => 'output',
                 op => '!=',
                 value => "\n",
@@ -375,9 +415,9 @@ subtest 'execute' => sub {
                 or diag explain $tests[0];
         is_deeply $tests[1],
             {
+                test_id => $tests[1]{test_id},
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[1]{task_id},
-                test_id => $plan->{tasks}[1]{tests}[0]{test_id},
+                task_id => $run->{tasks}[1]{task_id},
                 expr => 'output',
                 op => '!=',
                 value => "\n",
@@ -388,9 +428,9 @@ subtest 'execute' => sub {
                 or diag explain $tests[1];
         is_deeply $tests[2],
             {
+                test_id => $tests[2]{test_id},
                 run_id => $run->{run_id},
-                task_id => $plan->{tasks}[1]{task_id},
-                test_id => $plan->{tasks}[1]{tests}[1]{test_id},
+                task_id => $run->{tasks}[1]{task_id},
                 expr => 'exit',
                 op => '==',
                 value => '0',

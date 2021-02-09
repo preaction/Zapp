@@ -5,9 +5,8 @@ use Mojo::JSON qw( decode_json encode_json );
 use Zapp::Util qw( get_path_from_data get_path_from_schema fill_input );
 
 has zapp_task => sub( $self ) {
-    # XXX: Rename zapp_run_jobs to zapp_run_tasks as copy of
-    # zapp_plan_tasks plus job_id
-    return $self->app->yancy->get( zapp_run_jobs => $self->id );
+    my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $self->id } );
+    return $task;
 };
 
 has zapp_run => sub( $self ) {
@@ -18,7 +17,7 @@ has zapp_run => sub( $self ) {
 sub set( $self, %values ) {
     ; say sprintf 'Setting task %s: %s', $self->id, $self->app->dumper( \%values );
     $self->app->yancy->backend->set(
-        zapp_run_jobs => $self->id,
+        zapp_run_tasks => $self->zapp_task->{task_id},
         \%values,
     );
     if ( exists $values{state} ) {
@@ -29,9 +28,9 @@ sub set( $self, %values ) {
             $run_state = $values{state};
         }
         elsif ( $values{state} =~ /(inactive|finished)/ ) {
-            # All jobs must be in this state to change the run state
-            my @job_states = uniq map $_->{state}, $self->app->yancy->list( zapp_run_jobs => { $run->%{'run_id'} } );
-            if ( @job_states == 1 && $job_states[0] eq $values{state} ) {
+            # All tasks must be in this state to change the run state
+            my @task_states = uniq map $_->{state}, $self->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} } );
+            if ( @task_states == 1 && $task_states[0] eq $values{state} ) {
                 $run_state = $values{state};
             }
         }
@@ -130,8 +129,7 @@ sub finish( $self, $output=undef ) {
         $test->{pass} = $pass;
 
         my $rows = $self->app->yancy->backend->set(
-            zapp_run_tests =>
-            { $test->%{qw( run_id test_id )} },
+            zapp_run_tests => $test->{test_id},
             {
                 expr_value => $test->{expr_value},
                 pass => $test->{pass},
@@ -167,9 +165,11 @@ sub finish( $self, $output=undef ) {
     }
 
     $self->app->log->debug( "Saving context to children: " . $self->app->dumper( $context ) );
-    for my $minion_job_id ( @{ $self->info->{children} } ) {
+    for my $job_id ( @{ $self->info->{children} } ) {
+        # XXX: Allow multiple unique keys to be used to `get` Yancy items
+        my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $job_id } );
         $self->app->yancy->backend->set(
-            zapp_run_jobs => $minion_job_id => {
+            zapp_run_tasks => $task->{task_id} => {
                 context => encode_json( $context ),
             },
         );

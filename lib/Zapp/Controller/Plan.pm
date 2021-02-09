@@ -35,73 +35,72 @@ sub _get_plan( $self, $plan_id ) {
             $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'name' } ),
         ];
         for my $input ( @$inputs ) {
-            $input->{default_value} = decode_json( $input->{default_value} );
+            $input->{value} = decode_json( $input->{value} );
         }
     }
     return $plan;
 }
 
-sub _get_run_task( $self, $run_id, $task_id ) {
-    my ( $job ) = $self->yancy->list( zapp_run_jobs => { run_id => $run_id, task_id => $task_id } );
-    my $minion_job = $self->minion->job( $job->{minion_job_id} );
+sub _get_run_tasks( $self, $run_id ) {
+    my @run_tasks;
+    for my $task ( $self->yancy->list( zapp_run_tasks => { run_id => $run_id } ) ) {
+        my $minion_job = $self->minion->job( $task->{job_id} );
 
-    my $plan_task = $self->yancy->get( zapp_plan_tasks => $task_id );
-    $plan_task->{input} = decode_json( $plan_task->{input} );
-    if ( $plan_task->{output} ) {
-        $plan_task->{output} = decode_json( $plan_task->{output} );
-    }
-
-    # The task run information should be all the Zapp task
-    # information and all the Minion job information except for
-    # args and result (renamed input and output respectively)
-    my $run_task = {
-        %$plan_task,
-        ( $minion_job ? $minion_job->info->%* : () ),
-        %$job,
-        tests => [
-            $self->app->yancy->list( zapp_run_tests =>
-                {
-                    run_id => $run_id,
-                    task_id => $task_id,
-                },
-                {
-                    order_by => 'test_id',
-                },
-            ),
-        ],
-    };
-
-    delete $run_task->{args};
-    if ( $run_task->{context} ) {
-        $run_task->{context} = decode_json( $run_task->{context} );
-        my %values;
-        for my $name ( keys %{ $run_task->{context} } ) {
-            my $input = $run_task->{context}{ $name };
-            my $type = $self->app->zapp->types->{ $input->{type} }
-                or die qq{Could not find type "$input->{type}"};
-            $values{ $name } = $type->task_input( { run_id => $run_id }, { task_id => $task_id }, $input->{value} );
+        $task->{input} = decode_json( $task->{input} );
+        if ( $task->{output} ) {
+            $task->{output} = decode_json( $task->{output} );
         }
-        $run_task->{input} = fill_input( \%values, $run_task->{input} );
+
+        # The task run information should be all the Zapp task
+        # information and all the Minion job information except for
+        # args and result (renamed input and output respectively)
+        my $run_task = {
+            ( $minion_job ? $minion_job->info->%* : () ),
+            %$task,
+            tests => [
+                $self->app->yancy->list( zapp_run_tests =>
+                    {
+                        $task->%{qw( run_id task_id )},
+                    },
+                    {
+                        order_by => 'test_id',
+                    },
+                ),
+            ],
+        };
+
+        delete $run_task->{args};
+        if ( $run_task->{context} ) {
+            $run_task->{context} = decode_json( $run_task->{context} );
+            my %values;
+            for my $name ( keys %{ $run_task->{context} } ) {
+                my $input = $run_task->{context}{ $name };
+                my $type = $self->app->zapp->types->{ $input->{type} }
+                    or die qq{Could not find type "$input->{type}"};
+                $values{ $name } = $type->task_input( { run_id => $run_id }, { task_id => $task->{task_id} }, $input->{value} );
+            }
+            $run_task->{input} = fill_input( \%values, $run_task->{input} );
+        }
+
+        $run_task->{output} = delete $run_task->{result};
+        push @run_tasks, $run_task;
     }
 
-    $run_task->{output} = delete $run_task->{result};
-
-    return $run_task;
+    return \@run_tasks,
 }
 
 sub _get_run( $self, $run_id ) {
     my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
-    if ( my $run_id = $run->{run_id } ) {
+    if ( my $run_id = $run->{run_id} ) {
         $run->{input_values} = decode_json( $run->{input_values} );
 
-        my $plan = $run->{plan} = $self->_get_plan( $run->{plan_id} );
-        $run->{tasks} = [ map { $self->_get_run_task( $run_id, $_->{task_id} ) } $plan->{tasks}->@* ];
+        $run->{tasks} = $self->_get_run_tasks( $run_id );
 
-        my $inputs = $plan->{inputs} = [
-            $self->yancy->list( zapp_plan_inputs => { plan_id => $run->{plan_id} }, { order_by => 'name' } ),
+        my $inputs = [
+            $self->yancy->list( zapp_run_inputs => { run_id => $run_id }, { order_by => 'name' } ),
         ];
         for my $input ( @$inputs ) {
-            $input->{default_value} = decode_json( $input->{default_value} );
+            $input->{value} = decode_json( $input->{value} );
             $input->{value} = $run->{input_values}{ $input->{name} };
         }
     }
@@ -180,12 +179,12 @@ sub save_plan( $self ) {
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
         eval {
-            $input->{default_value} = $type->plan_input( $self, $plan, $input->{default_value} );
+            $input->{value} = $type->plan_input( $self, $plan, $input->{value} );
         };
         if ( $@ ) {
             push @errors, {
                 name => "input[$i].name",
-                error => qq{Error validating input "$input->{name}" type "$input->{type}" value "$input->{default_value}": $@},
+                error => qq{Error validating input "$input->{name}" type "$input->{type}" value "$input->{value}": $@},
             };
         }
     }
@@ -232,18 +231,18 @@ sub save_plan( $self ) {
         }
 
         if ( $parent_task_id ) {
-            my ( @existing_parents ) = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
+            my ( @existing_parents ) = $self->yancy->list( zapp_plan_task_parents => { task_id => $task_id } );
             for my $parent ( @existing_parents ) {
                 # We're supposed to have this row, so ignore it
                 next if grep { $parent->{parent_task_id} eq $_ } ( $parent_task_id );
                 # We're not supposed to have this row, so delete it
-                $self->yancy->backend->delete( zapp_task_parents => [ $parent->@{qw( task_id parent_task_id )} ] );
+                $self->yancy->backend->delete( zapp_plan_task_parents => [ $parent->@{qw( task_id parent_task_id )} ] );
             }
             for my $new_parent ( $parent_task_id ) {
                 # We already have this row, so ignore it
                 next if grep { $new_parent eq $_->{parent_task_id} } @existing_parents;
                 # We don't have this row, so create it
-                $self->yancy->backend->create( zapp_task_parents => {
+                $self->yancy->backend->create( zapp_plan_task_parents => {
                     task_id => $task_id,
                     parent_task_id => $parent_task_id,
                 });
@@ -279,9 +278,9 @@ sub save_plan( $self ) {
 
     for my $task_id ( keys %tasks_to_delete ) {
         $self->yancy->delete( zapp_plan_tasks => $task_id );
-        my ( @existing_parents ) = $self->yancy->list( zapp_task_parents => { task_id => $task_id } );
+        my ( @existing_parents ) = $self->yancy->list( zapp_plan_task_parents => { task_id => $task_id } );
         for my $parent ( @existing_parents ) {
-            $self->yancy->backend->delete( zapp_task_parents => [ $parent->@{qw( task_id parent_task_id )} ] );
+            $self->yancy->backend->delete( zapp_plan_task_parents => [ $parent->@{qw( task_id parent_task_id )} ] );
         }
     }
 
@@ -289,7 +288,7 @@ sub save_plan( $self ) {
     for my $form_input ( @$form_inputs ) {
         ; $self->log->debug( "Input: " . $self->dumper( $form_input ) );
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        for my $json_field ( qw( default_value ) ) {
+        for my $json_field ( qw( value ) ) {
             $form_input->{ $json_field } = encode_json( $form_input->{ $json_field } );
         }
 
@@ -404,12 +403,13 @@ sub stop_run( $self ) {
     } );
 
     # Stop inactive jobs
-    for my $job_id ( map { $_->{minion_job_id} } $run->{tasks}->@* ) {
+    for my $task ( $run->{tasks}->@* ) {
+        my $job_id = $task->{job_id};
         my $job = $self->minion->job( $job_id ) || next;
         next if $job->info->{state} ne 'inactive';
         $job->remove;
         $self->yancy->backend->set(
-            zapp_run_jobs => $job_id,
+            zapp_run_tasks => $task->{task_id},
             {
                 state => 'stopped',
             },
@@ -436,13 +436,13 @@ sub start_run( $self ) {
     for my $task ( $run->{tasks}->@* ) {
         ; $self->log->debug( 'Requeueing task: ' . $self->dumper( $task ) );
         if ( $task->{state} ne 'stopped' ) {
-            $task_jobs{ $task->{task_id} } = $task->{minion_job_id};
+            $task_jobs{ $task->{task_id} } = $task->{job_id};
             next;
         }
 
-        my $old_job_id = $task->{minion_job_id};
+        my $old_job_id = $task->{job_id};
         my %job_opts;
-        if ( my @parents = $self->yancy->list( zapp_task_parents => { $task->%{'task_id'} } ) ) {
+        if ( my @parents = $self->yancy->list( zapp_run_task_parents => { $task->%{'task_id'} } ) ) {
             next if grep { !$task_jobs{ $_->{parent_task_id} } } @parents;
             $job_opts{ parents } = [
                 map $task_jobs{ $_ }, @parents
@@ -462,9 +462,9 @@ sub start_run( $self ) {
         $task_jobs{ $task->{ task_id } } = $new_job_id;
 
         $self->yancy->backend->set(
-            zapp_run_jobs => $old_job_id,
+            zapp_run_tasks => $task->{task_id},
             {
-                minion_job_id => $new_job_id,
+                job_id => $new_job_id,
                 state => 'inactive',
             },
         );
@@ -501,7 +501,8 @@ sub kill_run( $self ) {
     } );
 
     # Kill inactive and active jobs
-    for my $job_id ( map { $_->{minion_job_id} } $run->{tasks}->@* ) {
+    for my $task ( $run->{tasks}->@* ) {
+        my $job_id = $task->{job_id};
         my $job = $self->minion->job( $job_id ) || next;
         next if $job->info->{state} !~ qr{inactive|active};
         if ( $job->info->{state} eq 'active' ) {
@@ -511,7 +512,7 @@ sub kill_run( $self ) {
             $job->remove;
         }
         $self->yancy->backend->set(
-            zapp_run_jobs => $job_id,
+            zapp_run_tasks => $task->{task_id},
             {
                 state => 'killed',
             },
@@ -530,7 +531,9 @@ sub kill_run( $self ) {
 }
 
 sub get_run_task( $self ) {
-    my $run_task = $self->_get_run_task( $self->stash( 'run_id' ), $self->stash( 'task_id' ) )
+    my $run_id = $self->stash( 'run_id' );
+    my $task_id = $self->stash( 'task_id' );
+    my ( $run_task ) = grep { $_->{task_id} eq $task_id } $self->_get_run_tasks( $run_id )->@*
         or return $self->reply->not_found;
     my $template = data_section( $run_task->{class}, 'output.html.ep' );
     return $self->render( inline => $template, task => $run_task );
