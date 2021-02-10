@@ -327,31 +327,28 @@ sub delete_plan( $self ) {
 sub list_plans( $self ) {
     my @plans = $self->yancy->list( zapp_plans => {}, {} );
     for my $plan ( @plans ) {
-        my ( $active_run ) = $self->yancy->list(
+        my ( $last_run ) = $self->yancy->list(
             zapp_runs => {
                 $plan->%{'plan_id'},
-                state => 'active',
             },
-            { order_by => { -desc => [ 'finished', 'started' ] } },
-        );
-        if ( $active_run ) {
-            $plan->{last_run} = $active_run;
-            next;
-        }
-
-        my ( $last_run ) = $self->yancy->list(
-            zapp_runs => { $plan->%{'plan_id'} },
-            { order_by => { -desc => [ 'finished', 'started' ] } },
+            { order_by => { -desc => [qw( created started finished )] } },
         );
         next if !$last_run;
 
         $plan->{ last_run } = $last_run;
     }
+    # XXX: Order should be:
+    #   1. Jobs that have no started
+    #   2. Jobs that have no finished
+    #   3. Jobs by finished datetime
+    #   4. Jobs by started datetime
+    #   5. Jobs by created datetime
+    #   6. Plans by created datetime
     @plans = sort {
         !!( $b->{last_run} // '' ) cmp !!( $a->{last_run} // '' )
         || (
             defined $a->{last_run} && (
-                ( $b->{last_run}{state} eq 'active' ) cmp ( $a->{last_run}{state} eq 'active' )
+                ( $b->{last_run}{state} =~ /(in)?active/n ) cmp ( $a->{last_run}{state} =~ /(in)?active/n )
                 || $b->{last_run}{finished} cmp $a->{last_run}{finished}
                 || $b->{last_run}{started} cmp $a->{last_run}{started}
             )
@@ -553,6 +550,7 @@ sub kill_run( $self ) {
         zapp_runs => $run_id,
         {
             state => 'killed',
+            finished => Time::Piece->new->datetime,
         },
     );
 

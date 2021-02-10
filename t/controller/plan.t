@@ -1409,6 +1409,7 @@ subtest 'list plans' => sub {
             $t->app->yancy->create( zapp_runs => {
                 $plans[1]->%{qw( name description )},
                 plan_id => $plans[1]{plan_id},
+                created => '2021-02-01 00:00:00',
                 started => '2021-02-01 00:00:00',
                 finished => '2021-02-02 00:00:00',
                 state => 'failed',
@@ -1417,6 +1418,7 @@ subtest 'list plans' => sub {
             $t->app->yancy->create( zapp_runs => {
                 $plans[2]->%{qw( name description )},
                 plan_id => $plans[2]{plan_id},
+                created => '2021-02-03 00:00:00',
                 started => '2021-02-04 00:00:00',
                 finished => '2021-02-05 00:00:00',
                 state => 'killed',
@@ -1458,8 +1460,16 @@ subtest 'list plans' => sub {
             $t->app->yancy->create( zapp_runs => {
                 $plans[0]->%{qw( name description )},
                 plan_id => $plans[0]{plan_id},
+                created => '2021-02-03 00:00:00',
                 started => '2021-02-04 00:00:00',
                 state => 'active',
+            }),
+            # Should be second now, since it is inactive
+            $t->app->yancy->create( zapp_runs => {
+                $plans[1]->%{qw( name description )},
+                plan_id => $plans[1]{plan_id},
+                created => '2021-02-03 00:00:00',
+                state => 'inactive',
             }),
         );
 
@@ -1474,25 +1484,25 @@ subtest 'list plans' => sub {
             ->attr_is( '.plans-list > :nth-child(1) time', datetime => '2021-02-04 00:00:00' )
             ->text_is( '.plans-list > :nth-child(1) [data-last-run-state]', 'active', 'run state shown' )
 
-            ->text_like( '.plans-list > :nth-child(3) h2', qr{Clean the ship} )
+            ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
+            ->element_exists( '.plans-list > :nth-child(2) [data-last-run-created]', 'last run created showing' )
+            ->attr_is(
+                '.plans-list > :nth-child(2) [data-last-run-created]',
+                href => '/run/' . $runs[3],
+                'last run inactive link is correct',
+            )
+            ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-03 00:00:00' )
+            ->text_is( '.plans-list > :nth-child(2) [data-last-run-state]', 'inactive', 'run state shown' )
+
+            ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
             ->element_exists( '.plans-list > :nth-child(3) [data-last-run-finished]', 'last run finished showing' )
             ->attr_is(
                 '.plans-list > :nth-child(3) [data-last-run-finished]',
-                href => '/run/' . $runs[0],
-                'last run finished link is correct',
-            )
-            ->attr_is( '.plans-list > :nth-child(3) time', datetime => '2021-02-02 00:00:00' )
-            ->text_is( '.plans-list > :nth-child(3) [data-last-run-state]', 'failed', 'run state shown' )
-
-            ->text_like( '.plans-list > :nth-child(2) h2', qr{Find a replacement crew} )
-            ->element_exists( '.plans-list > :nth-child(2) [data-last-run-finished]', 'last run finished showing' )
-            ->attr_is(
-                '.plans-list > :nth-child(2) [data-last-run-finished]',
                 href => '/run/' . $runs[1],
                 'last run finished link is correct',
             )
-            ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-05 00:00:00' )
-            ->text_is( '.plans-list > :nth-child(2) [data-last-run-state]', 'killed', 'run state shown' )
+            ->attr_is( '.plans-list > :nth-child(3) time', datetime => '2021-02-05 00:00:00' )
+            ->text_is( '.plans-list > :nth-child(3) [data-last-run-state]', 'killed', 'run state shown' )
             ;
     };
 
@@ -1963,10 +1973,12 @@ subtest 'stop/kill run' => sub {
         # Run state "killed"
         my $set_run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
         is $set_run->{state}, 'killed', 'run state is correct';
+        like $set_run->{finished}, qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run finished is set';
 
         # Zapp job state "killed"
         my $task = $t->app->yancy->get( zapp_run_tasks => $run->{tasks}[1]{task_id} );
         is $task->{state}, 'killed', 'zapp run task state is correct';
+        ok !$task->{finished}, 'task finished is not set';
 
         # Minion job removed
         ok !$t->app->minion->job( $task->{job_id} ), 'minion job removed';

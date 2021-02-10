@@ -2,6 +2,7 @@
     use Time::Piece;
     layout 'zapp';
     my %state_badge_class = (
+        inactive => 'badge badge-primary',
         active => 'badge badge-primary',
         killed => 'badge badge-secondary',
         failed => 'badge badge-danger',
@@ -52,11 +53,19 @@
                             % end
                         </a>
                     % }
-                    % else {
+                    % elsif ( $run->{started} ) {
                         <a href="<%= url_for 'zapp.get_run', $run %>" data-last-run-started class="btn btn-link">
                             Last run <span data-last-run-state class="<%= $state_badge_class{ $run->{state} } %>">active</span> since
                             %= tag time => ( datetime => $run->{started} ), begin
                                 %= $since->( $run->{started} )
+                            % end
+                        </a>
+                    % }
+                    % else {
+                        <a href="<%= url_for 'zapp.get_run', $run %>" data-last-run-created class="btn btn-link">
+                            Last run <span data-last-run-state class="<%= $state_badge_class{ $run->{state} } %>">inactive</span> since
+                            %= tag time => ( datetime => $run->{created} ), begin
+                                %= $since->( $run->{created} )
                             % end
                         </a>
                     % }
