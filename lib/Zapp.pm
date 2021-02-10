@@ -191,6 +191,7 @@ sub enqueue( $self, $plan_id, $input={}, %opt ) {
 
     # Create the run in the database by copying the plan
     my $plan = $self->yancy->get( zapp_plans => $plan_id );
+    delete $plan->{created};
     my $run = {
         %$plan,
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
@@ -311,7 +312,8 @@ __DATA__
 CREATE TABLE zapp_plans (
     plan_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    description TEXT
+    description TEXT,
+    created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_plan_tasks (
@@ -349,6 +351,9 @@ CREATE TABLE zapp_runs (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     input_values JSON,
+    created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started DATETIME NULL,
+    finished DATETIME NULL,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -426,7 +431,8 @@ CREATE TABLE zapp_run_notes (
 CREATE TABLE zapp_plans (
     plan_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(255) NOT NULL,
-    description TEXT
+    description TEXT,
+    created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE zapp_plan_tasks (
@@ -460,6 +466,9 @@ CREATE TABLE zapp_runs (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     input_values JSON,
+    created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started DATETIME NULL,
+    finished DATETIME NULL,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive'
 );
 

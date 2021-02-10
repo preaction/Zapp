@@ -1,4 +1,30 @@
-% layout 'zapp';
+<%
+    use Time::Piece;
+    layout 'zapp';
+    my %state_badge_class = (
+        active => 'badge badge-primary',
+        killed => 'badge badge-secondary',
+        failed => 'badge badge-danger',
+        stopped => 'badge badge-warning',
+        finished => 'badge badge-success',
+    );
+    my $since = sub {
+        my ( $dt ) = @_;
+        my $since = time - Time::Piece->strptime( $dt, '%Y-%m-%d %H:%M:%S' )->epoch;
+        $c->log->debug( sprintf '%d - %s = %d', time, $dt, $since );
+        return $since < 30 ? 'a few seconds ago'
+            : $since < 90 ? 'a minute ago'
+            : $since < 300 ? 'a few minutes ago'
+            : $since < 3600 ? sprintf( '%d minutes ago', $since / 60 )
+            : $since < 86400 ? sprintf( '%d hours ago', $since / 3600 )
+            : $since < 86400 * 7 ? sprintf( '%d days ago', $since / 86400 )
+            : $since < 86400 * 30 ? sprintf( '%d weeks ago', $since / 86400 * 7 )
+            : $since < 86400 * 365 ? sprintf( '%d months ago', $since / 86400 * 30 )
+            : sprintf( '%d years ago', $since / 3600 * 24 * 365 )
+            ;
+    };
+%>
+
 
 <header>
     <h1>Plans</h1>
@@ -13,9 +39,29 @@
         <h2><%= $plan->{name} %></h2>
         <p class="description"><%= $plan->{description} %></p>
         <div class="buttons d-flex justify-content-between">
-            %= link_to 'zapp.new_run', $plan, class => 'btn btn-primary run', begin
-                <i class="fa fa-arrow-right"></i> Run...
-            % end
+            <div>
+                %= link_to 'zapp.new_run', $plan, class => 'btn btn-primary run', begin
+                    <i class="fa fa-arrow-right"></i> Run...
+                % end
+                % if ( my $run = $plan->{last_run} ) {
+                    % if ( $run->{finished} ) {
+                        <a href="<%= url_for 'zapp.get_run', $run %>" data-last-run-finished class="btn btn-link">
+                            Last run <span data-last-run-state class="<%= $state_badge_class{ $run->{state} } %>"><%= $run->{state} %></span>
+                            %= tag time => ( datetime => $run->{finished} ), begin
+                                %= $since->( $run->{finished} )
+                            % end
+                        </a>
+                    % }
+                    % else {
+                        <a href="<%= url_for 'zapp.get_run', $run %>" data-last-run-started class="btn btn-link">
+                            Last run <span data-last-run-state class="<%= $state_badge_class{ $run->{state} } %>">active</span> since
+                            %= tag time => ( datetime => $run->{started} ), begin
+                                %= $since->( $run->{started} )
+                            % end
+                        </a>
+                    % }
+                % }
+            </div>
             <div>
                 %= link_to 'zapp.edit_plan', $plan, class => 'btn btn-outline-secondary edit', begin
                     <i class="fa fa-pencil"></i> Edit

@@ -1,6 +1,7 @@
 package Zapp::Task;
 use Mojo::Base 'Minion::Job', -signatures;
 use List::Util qw( uniq );
+use Time::Piece;
 use Mojo::JSON qw( decode_json encode_json );
 use Zapp::Util qw( get_path_from_data get_path_from_schema fill_input );
 
@@ -38,7 +39,14 @@ sub set( $self, %values ) {
         if ( $run_state ne $run->{state} ) {
             $self->app->yancy->backend->set(
                 zapp_runs => $run->{run_id},
-                { state => $run_state },
+                {
+                    state => $run_state,
+                    (
+                        $run_state eq 'active' ? ( started => Time::Piece->new( $self->info->{started} )->datetime )
+                        : $run_state ne 'inactive' ? ( finished => Time::Piece->new( $self->info->{finished} )->datetime )
+                        : ()
+                    ),
+                },
             );
         }
     }
@@ -175,8 +183,10 @@ sub finish( $self, $output=undef ) {
         );
     }
 
+    my $ok = $self->SUPER::finish( $output );
+    # Set state after so run `finished` timestamp can be set
     $self->set( state => 'finished' );
-    return $self->SUPER::finish( $output );
+    return $ok;
 }
 
 sub fail( $self, @args ) {

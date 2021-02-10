@@ -105,9 +105,6 @@ sub _get_run( $self, $run_id ) {
         }
     }
 
-    $run->{started} = $run->{tasks}[0]{started};
-    $run->{finished} = $run->{tasks}[-1]{finished};
-
     return $run;
 }
 
@@ -329,6 +326,38 @@ sub delete_plan( $self ) {
 
 sub list_plans( $self ) {
     my @plans = $self->yancy->list( zapp_plans => {}, {} );
+    for my $plan ( @plans ) {
+        my ( $active_run ) = $self->yancy->list(
+            zapp_runs => {
+                $plan->%{'plan_id'},
+                state => 'active',
+            },
+            { order_by => { -desc => [ 'finished', 'started' ] } },
+        );
+        if ( $active_run ) {
+            $plan->{last_run} = $active_run;
+            next;
+        }
+
+        my ( $last_run ) = $self->yancy->list(
+            zapp_runs => { $plan->%{'plan_id'} },
+            { order_by => { -desc => [ 'finished', 'started' ] } },
+        );
+        next if !$last_run;
+
+        $plan->{ last_run } = $last_run;
+    }
+    @plans = sort {
+        !!( $b->{last_run} // '' ) cmp !!( $a->{last_run} // '' )
+        || (
+            defined $a->{last_run} && (
+                ( $b->{last_run}{state} eq 'active' ) cmp ( $a->{last_run}{state} eq 'active' )
+                || $b->{last_run}{finished} cmp $a->{last_run}{finished}
+                || $b->{last_run}{started} cmp $a->{last_run}{started}
+            )
+        )
+        || $b->{created} cmp $a->{created}
+    } @plans;
     $self->render( 'zapp/plan/list', plans => \@plans );
 }
 

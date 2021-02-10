@@ -1372,6 +1372,9 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} )
         ->element_exists( '.plans-list > :nth-child(1) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(1) a.delete', href => '/plan/' . $plans[0]{plan_id} . '/delete' )
+        ->element_exists_not( '.plans-list > :nth-child(1) [data-last-run-finished]', 'run finished not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(1) [data-last-run-started]', 'run started not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(1) [data-last-run-state]', 'run state not shown' )
 
         ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
         ->text_like( '.plans-list > :nth-child(2) .description', qr{Of any remains of the crew} )
@@ -1381,6 +1384,9 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} )
         ->element_exists( '.plans-list > :nth-child(2) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(2) a.delete', href => '/plan/' . $plans[1]{plan_id} . '/delete' )
+        ->element_exists_not( '.plans-list > :nth-child(2) [data-last-run-finished]', 'run finished not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(2) [data-last-run-started]', 'run started not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(2) [data-last-run-state]', 'run state not shown' )
 
         ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
         ->text_like( '.plans-list > :nth-child(3) .description', qr{After their inevitable deaths} )
@@ -1390,7 +1396,107 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} )
         ->element_exists( '.plans-list > :nth-child(3) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(3) a.delete', href => '/plan/' . $plans[2]{plan_id} . '/delete' )
+        ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-finished]', 'run finished not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-started]', 'run started not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-state]', 'run state not shown' )
         ;
+
+    my @runs;
+    subtest 'default plan order by run finished, started, created' => sub {
+        # Insert some runs to order plans
+        push @runs, (
+            # Should be second, since started after above
+            $t->app->yancy->create( zapp_runs => {
+                $plans[1]->%{qw( name description )},
+                plan_id => $plans[1]{plan_id},
+                started => '2021-02-01 00:00:00',
+                finished => '2021-02-02 00:00:00',
+                state => 'failed',
+            }),
+            # Should be first, since finished last
+            $t->app->yancy->create( zapp_runs => {
+                $plans[2]->%{qw( name description )},
+                plan_id => $plans[2]{plan_id},
+                started => '2021-02-04 00:00:00',
+                finished => '2021-02-05 00:00:00',
+                state => 'killed',
+            }),
+        );
+
+        $t->get_ok( '/' )->status_is( 200 )
+            ->text_like( '.plans-list > :nth-child(3) h2', qr{Deliver a package} )
+            ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-finished]', 'last run finished not showing' )
+            ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-started]', 'last run started not showing' )
+            ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-state]', 'last run state not showing' )
+
+            ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
+            ->element_exists( '.plans-list > :nth-child(2) [data-last-run-finished]', 'last run finished showing' )
+            ->attr_is(
+                '.plans-list > :nth-child(2) [data-last-run-finished]',
+                href => '/run/' . $runs[0],
+                'last run finished link is correct',
+            )
+            ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-02 00:00:00' )
+            ->text_is( '.plans-list > :nth-child(2) [data-last-run-state]', 'failed', 'run state shown' )
+
+            ->text_like( '.plans-list > :nth-child(1) h2', qr{Find a replacement crew} )
+            ->element_exists( '.plans-list > :nth-child(1) [data-last-run-finished]', 'last run finished showing' )
+            ->attr_is(
+                '.plans-list > :nth-child(1) [data-last-run-finished]',
+                href => '/run/' . $runs[1],
+                'last run finished link is correct',
+            )
+            ->attr_is( '.plans-list > :nth-child(1) time', datetime => '2021-02-05 00:00:00' )
+            ->text_is( '.plans-list > :nth-child(1) [data-last-run-state]', 'killed', 'run state shown' )
+            ;
+    };
+
+    subtest 'running tasks always shown on top' => sub {
+        # Insert some runs to order plans
+        push @runs, (
+            # Should be first now, since it is active
+            $t->app->yancy->create( zapp_runs => {
+                $plans[0]->%{qw( name description )},
+                plan_id => $plans[0]{plan_id},
+                started => '2021-02-04 00:00:00',
+                state => 'active',
+            }),
+        );
+
+        $t->get_ok( '/' )->status_is( 200 )
+            ->text_like( '.plans-list > :nth-child(1) h2', qr{Deliver a package} )
+            ->element_exists( '.plans-list > :nth-child(1) [data-last-run-started]', 'last run started showing' )
+            ->attr_is(
+                '.plans-list > :nth-child(1) [data-last-run-started]',
+                href => '/run/' . $runs[2],
+                'last run started link is correct',
+            )
+            ->attr_is( '.plans-list > :nth-child(1) time', datetime => '2021-02-04 00:00:00' )
+            ->text_is( '.plans-list > :nth-child(1) [data-last-run-state]', 'active', 'run state shown' )
+
+            ->text_like( '.plans-list > :nth-child(3) h2', qr{Clean the ship} )
+            ->element_exists( '.plans-list > :nth-child(3) [data-last-run-finished]', 'last run finished showing' )
+            ->attr_is(
+                '.plans-list > :nth-child(3) [data-last-run-finished]',
+                href => '/run/' . $runs[0],
+                'last run finished link is correct',
+            )
+            ->attr_is( '.plans-list > :nth-child(3) time', datetime => '2021-02-02 00:00:00' )
+            ->text_is( '.plans-list > :nth-child(3) [data-last-run-state]', 'failed', 'run state shown' )
+
+            ->text_like( '.plans-list > :nth-child(2) h2', qr{Find a replacement crew} )
+            ->element_exists( '.plans-list > :nth-child(2) [data-last-run-finished]', 'last run finished showing' )
+            ->attr_is(
+                '.plans-list > :nth-child(2) [data-last-run-finished]',
+                href => '/run/' . $runs[1],
+                'last run finished link is correct',
+            )
+            ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-05 00:00:00' )
+            ->text_is( '.plans-list > :nth-child(2) [data-last-run-state]', 'killed', 'run state shown' )
+            ;
+    };
+
+    # XXX: Filter plans by name/description
 };
 
 subtest 'run a plan' => sub {
