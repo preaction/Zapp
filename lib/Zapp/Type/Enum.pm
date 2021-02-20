@@ -44,24 +44,24 @@ sub _check_value( $self, $value ) {
 }
 
 # Form value -> Type value
-sub plan_input( $self, $c, $plan, $form_value ) {
+sub plan_input( $self, $c, $form_value ) {
     $self->_check_value( $form_value );
     return $form_value;
 }
 
-sub run_input( $self, $c, $run, $form_value ) {
+sub run_input( $self, $c, $form_value ) {
     $self->_check_value( $form_value );
     return $form_value;
 }
 
 # Type value -> Task value
-sub task_input( $self, $run, $task, $type_value ) {
+sub task_input( $self, $type_value ) {
     $self->_check_value( $type_value );
     return $type_value;
 }
 
 # Task value -> Type value
-sub task_output( $self, $run, $task, $task_value ) {
+sub task_output( $self, $task_value ) {
     $self->_check_value( $task_value );
     return $task_value;
 }

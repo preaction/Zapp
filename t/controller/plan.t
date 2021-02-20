@@ -114,7 +114,7 @@ subtest 'create new plan' => sub {
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
-                'task[0].input.script' => 'make order',
+                'task[0].input.script' => 'echo make order',
                 'task[0].tests[0].expr' => 'exit',
                 'task[0].tests[0].op' => '==',
                 'task[0].tests[0].value' => '0',
@@ -123,7 +123,7 @@ subtest 'create new plan' => sub {
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify',
                 'task[1].description' => 'Verify freezer',
-                'task[1].input.script' => 'make test',
+                'task[1].input.script' => 'echo make test',
                 'task[1].tests[0].expr' => 'exit',
                 'task[1].tests[0].op' => '!=',
                 'task[1].tests[0].value' => '1',
@@ -162,7 +162,7 @@ subtest 'create new plan' => sub {
                 name => 'Order pizza',
                 description => 'I.C. Weiner',
                 input => {
-                    script => 'make order',
+                    script => 'echo make order',
                 },
                 output => [
                     { name => 'last_exit', expr => 'exit' },
@@ -182,7 +182,7 @@ subtest 'create new plan' => sub {
                 name => 'Verify',
                 description => 'Verify freezer',
                 input => {
-                    script => 'make test',
+                    script => 'echo make test',
                 },
                 output => [
                     { name => 'last_exit', expr => 'exit' },
@@ -247,7 +247,6 @@ subtest 'create new plan' => sub {
             'test 2 is correct';
 
     };
-
 };
 
 subtest 'edit existing plan' => sub {

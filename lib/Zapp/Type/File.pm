@@ -1,17 +1,32 @@
 package Zapp::Type::File;
+use Digest;
 use Mojo::Base 'Zapp::Type', -signatures;
 use Mojo::File;
+use Mojo::Asset::File;
 
 has path => sub( $self ) { $self->app->home->child( 'uploads' ) };
 
 # "die" for validation errors
 
-sub _input( $self, $c, $type, $type_id, $upload ) {
-    return undef if !defined $upload->filename || $upload->filename eq '';
-    my ( $input_num ) = $upload->name =~ m{^input\[(\d+)\]};
-    ; $c->log->debug( "Type: $type, $type_id, $input_num" );
-    my $dir = $self->path->child( $type, $type_id, 'input', $input_num );
+sub _digest_dir( $self, $asset ) {
+    my $sha = Digest->new( 'SHA-1' );
+    if ( $asset->is_file ) {
+        ; say "File path: " . $asset->path;
+        $sha->addfile( $asset->path );
+    }
+    else {
+        $sha->add( $asset->slurp );
+    }
+    my $digest = $sha->b64digest =~ tr{+/}{-_}r;
+    my @parts = split /(.{2})/, $digest, 3;
+    my $dir = $self->path->child( @parts );
     $dir->make_path;
+    return $dir;
+}
+
+sub _input( $self, $c, $upload ) {
+    return undef if !defined $upload->filename || $upload->filename eq '';
+    my $dir = $self->_digest_dir( $upload->asset );
     my $file = $dir->child( $upload->filename );
     ; $c->log->debug( "Saving file: $file" );
     $upload->move_to( $file );
@@ -19,13 +34,13 @@ sub _input( $self, $c, $type, $type_id, $upload ) {
 }
 
 # Form value -> Type value
-sub plan_input( $self, $c, $plan, $form_value ) {
-    return $self->_input( $c, plan => $plan->{plan_id}, $form_value );
+sub plan_input( $self, $c, $form_value ) {
+    return $self->_input( $c, $form_value );
 }
 
 # Form value -> Type value
-sub run_input( $self, $c, $run, $form_value ) {
-    return $self->_input( $c, run => $run->{run_id}, $form_value );
+sub run_input( $self, $c, $form_value ) {
+    return $self->_input( $c, $form_value );
 }
 
 # For display on run view pages
@@ -34,18 +49,20 @@ sub display_value( $self, $c, $type_value ) {
 }
 
 # Type value -> Task value
-sub task_input( $self, $run, $task, $type_value ) {
+sub task_input( $self, $type_value ) {
+    ; say "Task input (file): $type_value";
     return $self->path->child( $type_value )->to_abs;
 }
 
 # Task value -> Type value
-sub task_output( $self, $run, $task, $task_value ) {
+sub task_output( $self, $task_value ) {
+    ; say "Task output (file): $task_value";
     # Task gave us a path. Save the path and return the saved path.
-    my $output_file = Mojo::File->new( $task_value );
-    my $task_dir = $self->path->child( run => $run->{run_id}, task => $task->{task_id} );
-    $task_dir->make_path;
-    my $task_file = $task_dir->child( $output_file->basename );
-    $output_file->copy_to( $task_file );
+    my $path = Mojo::File->new( $task_value );
+    my $output_file = Mojo::Asset::File->new( path => "$path" );
+    my $dir = $self->_digest_dir( $output_file );
+    my $task_file = $dir->child( $path->basename );
+    $output_file->move_to( $task_file );
     return $task_file->to_rel( $self->path );
 }
 

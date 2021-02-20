@@ -63,7 +63,7 @@ sub context( $self ) {
         # XXX: Remove run/task from task_input
         $context->{ $name } = {
             type => $input->{type},
-            value => $type->task_input( { run_id => $run_job->{run_id} }, { task_id => $run_job->{task_id} }, $input->{value} ),
+            value => $type->task_input( $input->{value} ),
         };
     }
     return $context;
@@ -154,7 +154,8 @@ sub finish( $self, $output=undef ) {
 
     # Save assignments to child contexts
     # XXX: Make zapp_run_tasks a copy of zapp_plan_tasks
-    my $task = $self->app->yancy->get( zapp_plan_tasks => $task_id );
+    ; $self->app->log->debug( 'Output: ' . $self->app->dumper( $output ) );
+    my $task = $self->app->yancy->get( zapp_run_tasks => $task_id );
     my $output_saves = decode_json( $task->{output} // '[]' );
     my $context = decode_json( $self->zapp_task->{context} );
     for my $save ( @$output_saves ) {
@@ -164,12 +165,19 @@ sub finish( $self, $output=undef ) {
         my $type = $self->app->zapp->types->{ $type_name }
             or die "Could not find type name $type_name";
         my $value = get_path_from_data( $save->{expr}, $output );
-        ; $self->app->log->debug( "Got schema: " . $self->app->dumper( $schema ) );
+        ; $self->app->log->debug(
+            "Building context value: " . $self->app->dumper( {
+                name => $save->{name},
+                value => $value,
+                type => $type_name,
+            } )
+        );
 
         $context->{ $save->{name} } = {
-            value => $type->task_output( { run_id => $run_id }, { task_id => $task_id }, $value ),
+            value => $type->task_output( $value ),
             type => $type_name,
         };
+        ; $self->app->log->debug( "Saved context: " . $self->app->dumper( $context->{ $save->{name} } ) );
     }
 
     $self->app->log->debug( "Saving context to children: " . $self->app->dumper( $context ) );

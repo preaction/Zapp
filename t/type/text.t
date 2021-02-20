@@ -30,23 +30,23 @@ subtest 'input_field' => sub {
 
 subtest 'plan_input' => sub {
     my $c = $t->app->build_controller;
-    my $type_value = $type->plan_input( $c, { plan_id => 1 }, 'foo' );
+    my $type_value = $type->plan_input( $c, 'foo' );
     is $type_value, 'foo', 'plan_input returns value';
 };
 
 subtest 'run_input' => sub {
     my $c = $t->app->build_controller;
-    my $type_value = $type->run_input( $c, { run_id => 1 }, 'foo' );
+    my $type_value = $type->run_input( $c, 'foo' );
     is $type_value, 'foo', 'plan_input returns value';
 };
 
 subtest 'task_input' => sub {
-    my $task_value = $type->task_input( { run_id => 1 }, { task_id => 1 }, 'foo' );
+    my $task_value = $type->task_input( 'foo' );
     is $task_value, 'foo', 'task_input returns value';
 };
 
 subtest 'task_output' => sub {
-    my $type_value = $type->task_output( { run_id => 1 }, { task_id => 1 }, 'foo' );
+    my $type_value = $type->task_output( 'foo' );
     is $type_value, 'foo', 'task_output returns value';
 };
 

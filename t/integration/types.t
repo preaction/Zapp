@@ -168,7 +168,7 @@ subtest 'plan input' => sub {
 
         subtest 'input 2 - file' => sub {
             is decode_json( $inputs[2]{value} ),
-                "plan/$plan->{plan_id}/input/3/file.txt";
+                "zK/-F/7nUyf8dI45-sohZhmQEd5Bo/file.txt";
             my $file = $t->app->home->child( 'uploads', decode_json( $inputs[2]{value} ) );
             ok -e $file, 'file exists';
             is $file->slurp, 'New File', 'file content correct';
@@ -285,7 +285,7 @@ subtest 'plan input' => sub {
         };
 
         subtest 'input 2 - file' => sub {
-            like $input->{file}{value}, qr{run/\d+/input/2/file\.txt};
+            like $input->{file}{value}, qr{Pw/Qd/XOBNWd9H5Zc5lIXvadI_0pk/file\.txt};
             my $file = $t->app->home->child( 'uploads', $input->{file}{value} );
             ok -e $file, 'file exists';
             is $file->slurp, 'Run File', 'file content correct';
@@ -469,7 +469,7 @@ subtest 'task input/output' => sub {
             or die "Could not find type name $type_name";
         my $value = get_path_from_data( $save->{expr}, $output );
         $context->{ $save->{name} } = {
-            value => $type->task_output( $run, $last_task, $value ),
+            value => $type->task_output( $value ),
             type => $type_name,
         };
     }
@@ -518,7 +518,7 @@ subtest 'task input/output' => sub {
     };
     subtest 'file: output' => sub {
         my $path = $context->{file_output}{value};
-        is $path, sprintf( 'run/%d/task/%d/zapp', $run->{run_id}, $run->{tasks}[9]{task_id} ),
+        is $path, 'sp/Vj/PbsjGT3QuqhRN2B1qtTDV1w/zapp',
             'file output correct';
         my $file = $t->app->home->child( 'uploads', $path );
         ok -e $file, 'path exists';

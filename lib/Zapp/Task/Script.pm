@@ -37,6 +37,7 @@ sub schema( $class ) {
 }
 
 sub run( $self, $input ) {
+    ; $self->app->log->debug( 'Running script: ' . $input->{script} );
     my $dir = tempdir;
     my $file = tempfile( DIR => $dir, UNLINK => 1 );
     $file->spurt( $input->{script} );
@@ -75,6 +76,7 @@ sub run( $self, $input ) {
         ;
     $exit >>= 8;
 
+    ; $self->app->log->debug( 'Script output: ' . $output );
     my $method = $exit == 0 ? 'finish' : 'fail';
     return $self->$method({
         pid => $pid,

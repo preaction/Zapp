@@ -57,7 +57,7 @@ stored in the database.
 
 =cut
 
-sub plan_input( $self, $c, $plan, $form_value ) {
+sub plan_input( $self, $c, $form_value ) {
     ...;
 }
 
@@ -68,7 +68,7 @@ stored in the database.
 
 =cut
 
-sub run_input( $self, $c, $run, $form_value ) {
+sub run_input( $self, $c, $form_value ) {
     ...;
 }
 
@@ -79,7 +79,7 @@ task.
 
 =cut
 
-sub task_input( $self, $run, $task, $type_value ) {
+sub task_input( $self, $type_value ) {
     ...;
 }
 
@@ -90,7 +90,7 @@ the database.
 
 =cut
 
-sub task_output( $self, $run, $task, $task_value ) {
+sub task_output( $self, $task_value ) {
     ...;
 }
 

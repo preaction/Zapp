@@ -37,8 +37,8 @@ subtest 'plan_input' => sub {
         asset => Mojo::Asset::Memory->new->add_chunk( 'Hello, World!' ),
         name => 'input[0].value',
     );
-    my $type_value = $type->plan_input( $c, { plan_id => 1 }, $upload );
-    is $type_value, 'plan/1/input/0/foo.txt',
+    my $type_value = $type->plan_input( $c, $upload );
+    is $type_value, 'Cg/qf/KmdylCVXq1NV12r0Qvj2XgE/foo.txt',
         'form_input returns path';
     my $file = $temp->child( 'uploads', split m{/}, $type_value );
     ok -e $file, 'file exists';
@@ -50,7 +50,7 @@ subtest 'plan_input' => sub {
             asset => Mojo::Asset::Memory->new->add_chunk( '' ),
             name => 'input[0].value',
         );
-        my $type_value = $type->plan_input( $c, { plan_id => 1 }, $upload );
+        my $type_value = $type->plan_input( $c, $upload );
         is $type_value, undef, 'blank value is undef';
     };
 };
@@ -62,8 +62,8 @@ subtest 'run_input' => sub {
         asset => Mojo::Asset::Memory->new->add_chunk( 'Hello, World!' ),
         name => 'input[0].value',
     );
-    my $type_value = $type->run_input( $c, { run_id => 1 }, $upload );
-    is $type_value, 'run/1/input/0/foo.txt',
+    my $type_value = $type->run_input( $c, $upload );
+    is $type_value, 'Cg/qf/KmdylCVXq1NV12r0Qvj2XgE/foo.txt',
         'form_input returns path';
     my $file = $temp->child( 'uploads', split m{/}, $type_value );
     ok -e $file, 'file exists';
@@ -73,7 +73,7 @@ subtest 'run_input' => sub {
 subtest 'task_input' => sub {
     my $type_value = 'task_input';
     my $input_file = $temp->child( uploads => $type_value )->spurt( 'Goodbye, World!' );
-    my $task_value = $type->task_input( { run_id => 1 }, { task_id => 1 }, $type_value );
+    my $task_value = $type->task_input( $type_value );
     isa_ok $task_value, 'Mojo::File';
     is $task_value, $t->app->home->child( uploads => $type_value ),
         'task_value path is correct';
@@ -82,10 +82,10 @@ subtest 'task_input' => sub {
 subtest 'task_output' => sub {
     my $tmp = tempfile()->spurt( 'Goodbye, World!' );
     my $task_value = "$tmp";
-    my $type_value = $type->task_output( { run_id => 1 }, { task_id => 1 }, $task_value );
-    is $type_value, 'run/1/task/1/' . $tmp->basename,
+    my $type_value = $type->task_output( $task_value );
+    is $type_value, 'qj/OR/3yrB7CZSKh0leolWSXSF-nY/' . $tmp->basename,
         'type_value is correct';
-    my $file = $t->app->home->child(qw( uploads run 1 task 1 ), $tmp->basename );
+    my $file = $t->app->home->child( 'uploads', split m{/}, $type_value );
     ok -e $file, 'file exists';
     is $file->slurp, 'Goodbye, World!', 'file content is correct';
 };

@@ -77,7 +77,7 @@ sub _get_run_tasks( $self, $run_id ) {
                 my $input = $run_task->{context}{ $name };
                 my $type = $self->app->zapp->types->{ $input->{type} }
                     or die qq{Could not find type "$input->{type}"};
-                $values{ $name } = $type->task_input( { run_id => $run_id }, { task_id => $task->{task_id} }, $input->{value} );
+                $values{ $name } = $type->task_input( $input->{value} );
             }
             $run_task->{input} = fill_input( \%values, $run_task->{input} );
         }
@@ -176,7 +176,7 @@ sub save_plan( $self ) {
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
         eval {
-            $input->{value} = $type->plan_input( $self, $plan, $input->{value} );
+            $input->{value} = $type->plan_input( $self, $input->{value} );
         };
         if ( $@ ) {
             push @errors, {
@@ -374,7 +374,7 @@ sub save_run( $self ) {
             or die qq{Could not find type "$input->{type}"};
         $input_values->{ $input->{name} } = {
             type => $input->{type},
-            value => $type->run_input( $self, { run_id => time }, $input->{value} ),
+            value => $type->run_input( $self, $input->{value} ),
         };
     }
 
