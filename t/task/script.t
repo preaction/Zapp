@@ -35,7 +35,7 @@ subtest 'run' => sub {
         subtest 'success' => sub {
             $t->run_task(
                 'Zapp::Task::Script' => {
-                    script => qq{echo Hello, World},
+                    script => qq{echo Hello, World\015\012},
                 },
                 'Test: Success',
             );
@@ -49,7 +49,7 @@ subtest 'run' => sub {
         subtest 'failure' => sub {
             $t->run_task(
                 'Zapp::Task::Script' => {
-                    script => qq{echo Oh no!; exit 1},
+                    script => qq{echo Oh no!;\015\012exit 1\015\012},
                 },
                 'Test: Failure',
             );
@@ -65,7 +65,7 @@ subtest 'run' => sub {
         subtest 'success' => sub {
             $t->run_task(
                 'Zapp::Task::Script' => {
-                    script => qq{#!$^X\nprint "Hello, World\\n";\n exit 0;\n},
+                    script => qq{#!$^X\015\012print "Hello, World\015\012";\015\012 exit 0;\015\012},
                 },
                 'Test: Success',
             );
@@ -79,14 +79,15 @@ subtest 'run' => sub {
         subtest 'failure' => sub {
             $t->run_task(
                 'Zapp::Task::Script' => {
-                    script => qq{#!$^X\nprint "Oh no!\\n";\n exit 1;\n},
+                    script => qq{#!$^X\015\012warn "Oh no!\\n";\015\012 exit 1;\015\012},
                 },
                 'Test: Failure',
             );
             $t->task_info_is( state => 'failed', 'job failed' );
             $t->task_output_like( pid => qr{\d+}, 'pid is saved' );
             $t->task_output_is( exit => 1, 'exit is correct' );
-            $t->task_output_is( output => "Oh no!\n", 'output is correct' );
+            $t->task_output_is( output => "", 'no output on stdout' );
+            $t->task_output_is( error_output => "Oh no!\n", 'error output correct' );
             $t->task_output_is( info => 'Script exited with value: 1', 'info is correct' );
         };
     };

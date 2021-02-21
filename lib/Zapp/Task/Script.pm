@@ -1,6 +1,9 @@
 package Zapp::Task::Script;
 use Mojo::Base 'Zapp::Task', -signatures;
 use Mojo::File qw( tempdir tempfile );
+use IPC::Open3 qw( open3 );
+use Cwd qw( cwd );
+use Symbol qw( gensym );
 
 sub schema( $class ) {
     return {
@@ -38,32 +41,47 @@ sub schema( $class ) {
 
 sub run( $self, $input ) {
     ; $self->app->log->debug( 'Running script: ' . $input->{script} );
-    my $dir = tempdir;
-    my $file = tempfile( DIR => $dir, UNLINK => 1 );
-    $file->spurt( $input->{script} );
+    # The script came from the browser's form with \r\n as line ending
+    # character, but we need to use the native OS's line ending
+    # character...
+    my $script = $input->{script} =~ s/\r\n/\n/gr;
 
-    my ( $fh, $pid );
+    my $cwd = cwd;
+    my $dir = tempdir;
+    chdir $dir;
+    my $file = tempfile( DIR => $dir, UNLINK => 1 );
+    $file->spurt( $script );
+
+    my ( $stdout, $stderr, $pid );
+    $stderr = gensym;
     if ( $input->{script} =~ /^\#!/ ) {
         $file->chmod( 0700 );
-        $pid = open $fh, '-|', $file;
+        $pid = open3( my $stdin, $stdout, $stderr, $file );
     }
     else {
-        $pid = open $fh, '-|', $ENV{SHELL} // '/bin/sh', $file;
+        $pid = open3( my $stdin, $stdout, $stderr, $ENV{SHELL} // '/bin/sh', $file );
     }
     # XXX: Put PID somewhere we can use it
 
-    if ( $pid <= 0 ) {
+    if ( !$pid || $pid <= 0 ) {
+        chdir $cwd;
         return $self->fail({
             info => 'Could not execute script: ' . $!,
             output => '',
             exit => -1,
             pid => 0,
+            error_output => '',
         });
     }
 
     my $output = '';
-    while ( my $line = <$fh> ) {
+    while ( my $line = <$stdout> ) {
         $output .= $line;
+        # XXX: Put output somewhere it can be seen while process runs
+    }
+    my $error_output = '';
+    while ( my $line = <$stderr> ) {
+        $error_output .= $line;
         # XXX: Put output somewhere it can be seen while process runs
     }
 
@@ -76,13 +94,14 @@ sub run( $self, $input ) {
         ;
     $exit >>= 8;
 
-    ; $self->app->log->debug( 'Script output: ' . $output );
     my $method = $exit == 0 ? 'finish' : 'fail';
+    chdir $cwd;
     return $self->$method({
         pid => $pid,
         output => $output,
         exit => $exit,
         info => $info,
+        error_output => $error_output,
     });
 }
 
@@ -110,6 +129,12 @@ __DATA__
     <div data-error class="alert alert-danger"><%= $task->{output} %></div>
 % } elsif ( $task->{output} ) {
     <h3>Output</h3>
-    <pre data-output class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
+    % if ( $task->{output}{output} ) {
+        <pre data-output class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
+    % }
+    % if ( $task->{output}{error_output} ) {
+        <h4>Error Output</h4>
+        <pre data-output class="m-1 border p-1 rounded table-warning"><output><%= $task->{output}{error_output} %></output></pre>
+    % }
 % }
 
