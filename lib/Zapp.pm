@@ -195,7 +195,7 @@ sub enqueue( $self, $plan_id, $input={}, %opt ) {
     my $run = {
         %$plan,
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        input_values => encode_json( $input ),
+        input => encode_json( $input ),
     };
     my $run_id = $run->{run_id} = $self->yancy->create( zapp_runs => $run );
 
@@ -350,7 +350,7 @@ CREATE TABLE zapp_runs (
     plan_id BIGINT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    input_values JSON,
+    input JSON,
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started DATETIME NULL,
     finished DATETIME NULL,
@@ -466,7 +466,7 @@ CREATE TABLE zapp_runs (
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    input_values JSON,
+    input JSON,
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started DATETIME NULL,
     finished DATETIME NULL,

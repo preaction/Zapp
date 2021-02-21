@@ -92,7 +92,7 @@ sub _get_run_tasks( $self, $run_id ) {
 sub _get_run( $self, $run_id ) {
     my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
     if ( my $run_id = $run->{run_id} ) {
-        $run->{input_values} = decode_json( $run->{input_values} );
+        $run->{input} = decode_json( $run->{input} );
 
         $run->{tasks} = $self->_get_run_tasks( $run_id );
 
@@ -101,7 +101,7 @@ sub _get_run( $self, $run_id ) {
         ];
         for my $input ( @$inputs ) {
             $input->{value} = decode_json( $input->{value} );
-            $input->{value} = $run->{input_values}{ $input->{name} };
+            $input->{value} = $run->{input}{ $input->{name} };
         }
     }
 
@@ -368,11 +368,11 @@ sub save_run( $self ) {
     my $plan = $self->_get_plan( $plan_id );
 
     my $input_fields = $self->build_data_from_params( 'input' );
-    my $input_values = {};
+    my $run_input = {};
     for my $input ( @$input_fields ) {
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
-        $input_values->{ $input->{name} } = {
+        $run_input->{ $input->{name} } = {
             type => $input->{type},
             value => $type->run_input( $self, $input->{value} ),
         };
@@ -380,14 +380,14 @@ sub save_run( $self ) {
 
     my $run_id = $self->stash( 'run_id' );
     if ( !$run_id ) {
-        my $run = $self->app->enqueue( $plan_id, $input_values );
+        my $run = $self->app->enqueue( $plan_id, $run_input );
         $run_id = $run->{run_id};
     }
     else {
         my $run = {
             plan_id => $plan_id,
             # XXX: Auto-encode/-decode JSON fields in Yancy schema
-            input_values => encode_json( $input_values ),
+            input => encode_json( $run_input ),
         };
         $self->yancy->set( zapp_runs => $run_id, $run );
     }

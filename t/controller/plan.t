@@ -1612,7 +1612,7 @@ subtest 'run a plan' => sub {
         # Recorded in Zapp
         my $run = $t->app->yancy->get( zapp_runs => $run_id );
         is $run->{plan_id}, $plan_id, 'run plan_id is correct';
-        is_deeply decode_json( $run->{input_values} ),
+        is_deeply decode_json( $run->{input} ),
             {
                 destination => {
                     type => 'string',

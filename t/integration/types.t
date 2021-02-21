@@ -274,7 +274,7 @@ subtest 'plan input' => sub {
         my ( $run_id ) = $t->tx->res->headers->location =~ m{/run/(\d+)};
 
         my $run = $t->app->yancy->get( zapp_runs => $run_id );
-        my $input = decode_json( $run->{input_values} );
+        my $input = decode_json( $run->{input} );
 
         subtest 'input 0 - boolean' => sub {
             is $input->{boolean}{value}, 1;

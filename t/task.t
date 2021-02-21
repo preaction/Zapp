@@ -102,12 +102,12 @@ subtest 'execute' => sub {
         is_deeply
             {
                 %$run,
-                input_values => decode_json( $run->{input_values} ),
+                input => decode_json( $run->{input} ),
             },
             {
                 $run->%{qw( run_id created )},
                 $plan->%{qw( plan_id name description )},
-                input_values => {
+                input => {
                     destination => {
                         type => 'string',
                         value => 'Nude Beach Planet',
@@ -189,12 +189,12 @@ subtest 'execute' => sub {
             is_deeply
                 {
                     %$run,
-                    input_values => decode_json( $run->{input_values} ),
+                    input => decode_json( $run->{input} ),
                 },
                 {
                     $run->%{qw( run_id created started )},
                     $plan->%{qw( plan_id name description )},
-                    input_values => {
+                    input => {
                         destination => {
                             type => 'string',
                             value => 'Nude Beach Planet',
@@ -288,13 +288,13 @@ subtest 'execute' => sub {
             is_deeply
                 {
                     %$run,
-                    input_values => decode_json( $run->{input_values} ),
+                    input => decode_json( $run->{input} ),
                     output => decode_json( $run->{output} ),
                 },
                 {
                     $run->%{qw( run_id created started finished )},
                     $plan->%{qw( plan_id name description )},
-                    input_values => {
+                    input => {
                         destination => {
                             type => 'string',
                             value => 'Nude Beach Planet',
