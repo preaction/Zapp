@@ -120,6 +120,7 @@ subtest 'create new plan' => sub {
                 'task[0].tests[0].value' => '0',
                 'task[0].output[0].name' => 'last_exit',
                 'task[0].output[0].expr' => 'exit',
+                'task[0].output[0].type' => 'integer',
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify',
                 'task[1].description' => 'Verify freezer',
@@ -129,6 +130,7 @@ subtest 'create new plan' => sub {
                 'task[1].tests[0].value' => '1',
                 'task[1].output[0].name' => 'last_exit',
                 'task[1].output[0].expr' => 'exit',
+                'task[1].output[0].type' => 'integer',
             },
         );
         $t->status_is( 302 )->or( sub( $t ) { diag $t->tx->res->dom->find( '#error,#context,#trace,#log' )->each } );
@@ -165,7 +167,7 @@ subtest 'create new plan' => sub {
                     script => 'echo make order',
                 },
                 output => [
-                    { name => 'last_exit', expr => 'exit' },
+                    { name => 'last_exit', expr => 'exit', type => 'integer' },
                 ],
             },
             'task 1 is correct';
@@ -185,7 +187,7 @@ subtest 'create new plan' => sub {
                     script => 'echo make test',
                 },
                 output => [
-                    { name => 'last_exit', expr => 'exit' },
+                    { name => 'last_exit', expr => 'exit', type => 'integer' },
                 ],
             },
             'task 2 is correct';
@@ -270,7 +272,7 @@ subtest 'edit existing plan' => sub {
                     },
                 ],
                 output => encode_json([
-                    { name => 'last_exit', expr => 'exit' },
+                    { name => 'last_exit', expr => 'exit', type => 'integer' },
                 ]),
             },
             {
@@ -293,7 +295,7 @@ subtest 'edit existing plan' => sub {
                     },
                 ],
                 output => encode_json([
-                    { name => 'last_exit', expr => 'exit' },
+                    { name => 'last_exit', expr => 'exit', type => 'integer' },
                 ]),
             },
         ],
@@ -592,6 +594,15 @@ subtest 'edit existing plan' => sub {
                         'task 1 output 1 expr value is correct',
                     );
                     $t->element_exists(
+                        '[name="task[0].output[0].type"]',
+                        'task 1 output 1 type input exists',
+                    );
+                    $t->attr_is(
+                        '[name="task[0].output[0].type"] [selected]',
+                        value => 'integer',
+                        'task 1 output 1 type value is correct',
+                    );
+                    $t->element_exists(
                         '#all-tasks > :nth-child(1) .output :nth-child(1) button.output-remove',
                         'task 1 output 1 remove button exists',
                     );
@@ -754,7 +765,7 @@ subtest 'edit existing plan' => sub {
             };
 
             subtest 'output' => sub {
-                subtest 'task 1' => sub {
+                subtest 'task 2' => sub {
                     $t->element_exists(
                         'input[name="task[1].output[0].name"]',
                         'task 2 output 1 name input exists',
@@ -772,6 +783,15 @@ subtest 'edit existing plan' => sub {
                         'input[name="task[1].output[0].expr"]',
                         value => 'exit',
                         'task 2 output 1 expr value is correct',
+                    );
+                    $t->element_exists(
+                        '[name="task[1].output[0].type"]',
+                        'task 2 output 1 type input exists',
+                    );
+                    $t->attr_is(
+                        '[name="task[1].output[0].type"] [selected]',
+                        value => 'integer',
+                        'task 2 output 1 type value is correct',
                     );
                     $t->element_exists(
                         '#all-tasks > :nth-child(2) .output :nth-child(1) button.output-remove',
@@ -810,8 +830,10 @@ subtest 'edit existing plan' => sub {
                 'task[0].tests[0].value' => '25:00',
                 'task[0].output[0].name' => 'last_exit',
                 'task[0].output[0].expr' => 'exit',
+                'task[0].output[0].type' => 'integer',
                 'task[0].output[1].name' => 'output',
                 'task[0].output[1].expr' => 'stdout',
+                'task[0].output[1].type' => 'string',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
@@ -822,6 +844,7 @@ subtest 'edit existing plan' => sub {
                 'task[1].tests[0].value' => 'reverse',
                 'task[1].output[0].name' => 'last_exit',
                 'task[1].output[0].expr' => 'exit',
+                'task[1].output[0].type' => 'integer',
             },
         );
         $t->status_is( 302 );
@@ -857,8 +880,8 @@ subtest 'edit existing plan' => sub {
                     script => 'make thebomb',
                 },
                 output => [
-                    { name => 'last_exit', expr => 'exit' },
-                    { name => 'output', expr => 'stdout' },
+                    { name => 'last_exit', expr => 'exit', type => 'integer' },
+                    { name => 'output', expr => 'stdout', type => 'string' },
                 ],
             },
             'task 1 is correct';
@@ -878,7 +901,7 @@ subtest 'edit existing plan' => sub {
                     script => 'make check',
                 },
                 output => [
-                    { name => 'last_exit', expr => 'exit' },
+                    { name => 'last_exit', expr => 'exit', type => 'integer' },
                 ],
             },
             'task 2 is correct';

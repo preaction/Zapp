@@ -107,6 +107,24 @@
             <input type="text" name="output[<%= $i %>].expr" value="<%= $output->{expr} %>" class="form-control">
         </div>
         <div class="col-auto align-self-end">
+            <span class="form-control-plaintext">as</span>
+        </div>
+        <div class="col-auto align-self-end">
+            <label for="output[<%= $i %>].type">Type</label>
+            <select name="output[<%= $i %>].type" class="form-control">
+                <option value="">default type</option>
+                % for my $type_name ( sort keys $c->zapp->types->%* ) {
+                    <%= tag option =>
+                        (
+                            value => $type_name,
+                            ( selected => 'selected' )x!!( $output->{type} && $output->{type} eq $type_name ),
+                        ),
+                        $type_name
+                    %>
+                % }
+            </select>
+        </div>
+        <div class="col-auto align-self-end">
             <button type="button" class="output-remove btn btn-outline-danger"
                 aria-label="Delete output"
             >
@@ -286,7 +304,7 @@
         %= include inline => data_section( $class, 'input.html.ep' )
     </template>
 % }
-% for my $type_name ( keys $c->zapp->types->%* ) {
+% for my $type_name ( sort keys $c->zapp->types->%* ) {
     % my $type = $c->zapp->types->{ $type_name };
     <template data-type-input="<%= $type_name %>">
         %= include inline => $type->input_field( $c ), input => {}, self => $type
@@ -348,7 +366,7 @@
         </ul>
         <select class="add-input form-control col-auto">
             <option>Add Input...</option>
-            % for my $type_name ( keys $c->zapp->types->%* ) {
+            % for my $type_name ( sort keys $c->zapp->types->%* ) {
                 %= tag option => ( value => $type_name ), ucfirst $type_name
             % }
         </select>
