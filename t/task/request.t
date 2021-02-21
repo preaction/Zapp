@@ -10,6 +10,8 @@ use Test::Zapp;
 use Test::More;
 use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
+use Mojo::Loader qw( data_section );
+use Mojo::DOM;
 
 my $mysqld = Test::mysqld->new(
     my_cnf => {
@@ -334,6 +336,115 @@ subtest 'input form' => sub {
                 'auth token input value is correct',
             )
             ;
+    };
+
+};
+
+subtest 'output view' => sub {
+    my $tmpl = data_section 'Zapp::Task::Request', 'output.html.ep';
+
+    subtest 'before run' => sub {
+        $t->render_ok(
+            inline => $tmpl,
+            task => {
+                input => {
+                    method => 'GET',
+                    url => 'http://example.com',
+                },
+            },
+        );
+        $t->text_like(
+            'pre[data-input]',
+            qr{GET http://example\.com}ms,
+            "input display is correct",
+        );
+        $t->element_exists_not( '[data-output]', 'output not showing' );
+        $t->element_exists_not( '[data-error]', 'error not showing' );
+    };
+
+    subtest 'success: json' => sub {
+        $t->render_ok(
+            inline => $tmpl,
+            task => {
+                input => {
+                    method => 'GET',
+                    url => 'http://example.com',
+                },
+                output => {
+                    res => {
+                        code => 200,
+                        message => 'Ok',
+                        body => '{"hello":"world"}',
+                        json => { hello => 'world' },
+                    },
+                },
+            },
+        );
+        $t->text_like(
+            'pre[data-input]',
+            qr{GET http://example\.com}ms,
+            "input display is correct",
+        );
+        $t->text_like(
+            'pre[data-output]',
+            qr{\s*{\s*"hello"\s*=>\s*"world",?\s*}\s*}ms,
+            "json dumper output is correct",
+        );
+        $t->element_exists_not( '[data-error]', 'error not showing' );
+    };
+
+    subtest 'success: file' => sub {
+        $t->render_ok(
+            inline => $tmpl,
+            task => {
+                input => {
+                    method => 'GET',
+                    url => 'http://example.com',
+                },
+                output => {
+                    res => {
+                        code => 200,
+                        message => 'Ok',
+                        body => '{"hello":"world"}',
+                        file => "/output.txt",
+                        headers => {
+                            content_type => 'application/octet-stream',
+                        },
+                    },
+                },
+            },
+        );
+        $t->text_like(
+            'pre[data-input]',
+            qr{GET http://example\.com}ms,
+            "input display is correct",
+        );
+        $t->attr_is(
+            'a[href]',
+            href => '/output.txt',
+            "file download link is correct",
+        );
+        $t->element_exists_not( '[data-error]', 'error not showing' );
+    };
+
+    subtest 'exception' => sub {
+        $t->render_ok(
+            inline => $tmpl,
+            task => {
+                input => {
+                    method => 'GET',
+                    url => 'http://example.com',
+                },
+                output => q{Can't call method "res" on an undefined value},
+            },
+        );
+        $t->text_like(
+            'pre[data-input]',
+            qr{GET http://example\.com}ms,
+            "input display is correct",
+        );
+        $t->element_exists_not( '[data-output]', 'output not showing' );
+        $t->text_like( '[data-error]', qr{Can't call method "res"}, 'error is correct' );
     };
 
 };

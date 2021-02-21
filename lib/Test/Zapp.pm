@@ -14,6 +14,37 @@ sub new {
     return $class->SUPER::new( @_ );
 }
 
+sub render_ok {
+    my ( $self, @args ) = @_;
+    my @tmpl;
+    my $name = 'render template succeeds';
+    if ( $args[0] eq 'inline' ) {
+        @tmpl = ( shift @args, shift @args );
+    }
+    if ( @args % 2 == 1 ) {
+        $name = pop @args;
+    }
+
+    my $output;
+    eval {
+        $output = $self->app->build_controller->render_to_string( @tmpl, @args );
+    };
+    $self->test( ok => !$@, $name );
+    if ( !$self->success ) {
+        diag "Render error: $@";
+        return $self;
+    }
+
+    # Magic up a TX and response so that Test::Mojo methods work
+    $self->tx( $self->ua->build_tx( GET => '/render_ok' ) );
+    my $res = $self->tx->res;
+    $res->code( 200 );
+    $res->message( "Ok" );
+    $res->content->asset->add_chunk( $output );
+
+    return $self;
+}
+
 sub run_queue {
     my ( $self ) = @_;
     # Run all tasks on the queue

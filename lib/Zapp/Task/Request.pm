@@ -222,20 +222,25 @@ __DATA__
 
 @@ output.html.ep
 <h4>Request</h4>
-<pre class="bg-light border border-secondary p-1"><%= $task->{input}{method} %> <%= $task->{input}{url} %></pre>
-<h4>Response</h4>
-<dl>
-    <dt>Code</dt>
-    <dd><%= $task->{output}{res}{code} %> <%= $task->{output}{res}{message} %></dd>
-    <dt>Content-Type</dt>
-    <dd><%= $task->{output}{res}{headers}{content_type} // '' %></dd>
-</dl>
-% if ( my $data = $task->{output}{res}{json} ) {
-    <pre class="bg-light border border-secondary p-1"><%= dumper $data %></pre>
-% }
-% elsif ( my $file = $task->{output}{res}{file} ) {
-    <a class="btn btn-outline-primary" href="<%= $file %>">Download File</a>
-% }
-% elsif ( my $body = $task->{output}{res}{body} ) {
-    <pre class="bg-light border border-secondary p-1"><%= $body %></pre>
+<pre data-input class="bg-light border border-secondary p-1"><%= $task->{input}{method} %> <%= $task->{input}{url} %></pre>
+% if ( $task->{output} && !ref $task->{output} ) {
+    <h4>Error</h4>
+    <div data-error class="alert alert-danger"><%= $task->{output} %></div>
+% } elsif ( $task->{output} ) {
+    <h4>Response</h4>
+    <dl>
+        <dt>Code</dt>
+        <dd><%= $task->{output}{res}{code} %> <%= $task->{output}{res}{message} %></dd>
+        <dt>Content-Type</dt>
+        <dd><%= $task->{output}{res}{headers}{content_type} // '' %></dd>
+    </dl>
+    % if ( my $data = $task->{output}{res}{json} ) {
+        <pre data-output class="bg-light border border-secondary p-1"><%= dumper $data %></pre>
+    % }
+    % elsif ( my $file = $task->{output}{res}{file} ) {
+        <a class="btn btn-outline-primary" href="<%= $file %>">Download File</a>
+    % }
+    % elsif ( my $body = $task->{output}{res}{body} ) {
+        <pre class="bg-light border border-secondary p-1"><%= $body %></pre>
+    % }
 % }

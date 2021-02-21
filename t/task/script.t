@@ -10,6 +10,7 @@ use Test::Zapp;
 use Test::More;
 use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json false true );
+use Mojo::Loader qw( data_section );
 use Zapp::Task::Script;
 
 my $mysqld = Test::mysqld->new(
@@ -91,6 +92,71 @@ subtest 'run' => sub {
     };
 };
 
+subtest 'output view' => sub {
+    my $tmpl = data_section 'Zapp::Task::Script', 'output.html.ep';
+
+    subtest 'before run' => sub {
+        $t->render_ok(
+            inline => $tmpl,
+            task => {
+                input => {
+                    script => 'echo "Foo"',
+                },
+            },
+        );
+        $t->text_like(
+            'pre[data-input] code',
+            qr{echo "Foo"}ms,
+            "input display is correct",
+        );
+        $t->element_exists_not( '[data-output]', 'output not showing' );
+        $t->element_exists_not( '[data-error]', 'error not showing' );
+    };
+
+    subtest 'success' => sub {
+        $t->render_ok(
+            inline => $tmpl,
+            task => {
+                input => {
+                    script => 'echo "Foo"',
+                },
+                output => {
+                    pid => 1827,
+                    output => "Foo\n",
+                    exit => 0,
+                    info => undef,
+                },
+            },
+        );
+        $t->text_like(
+            'pre[data-input] code',
+            qr{echo "Foo"}ms,
+            "input display is correct",
+        );
+        $t->text_like( '[data-output] output', qr{Foo\n}, 'output is correct' );
+        $t->element_exists_not( '[data-error]', 'error not showing' );
+    };
+
+    subtest 'exception' => sub {
+        $t->render_ok(
+            inline => $tmpl,
+            task => {
+                input => {
+                    script => 'DOESNTEXIST 1',
+                },
+                output => q{Can't call method "res" on an undefined value},
+            },
+        );
+        $t->text_like(
+            'pre[data-input] code',
+            qr{DOESNTEXIST 1}ms,
+            "input display is correct",
+        );
+        $t->element_exists_not( '[data-output]', 'output not showing' );
+        $t->text_like( '[data-error]', qr{Can't call method "res"}, 'error is correct' );
+    };
+
+};
 
 done_testing;
 

@@ -104,7 +104,12 @@ __DATA__
 
 @@ output.html.ep
 <h3>Script</h3>
-<pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
-<h3>Output</h3>
-<pre class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
+<pre data-input class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
+% if ( $task->{output} && !ref $task->{output} ) {
+    <h3>Error</h3>
+    <div data-error class="alert alert-danger"><%= $task->{output} %></div>
+% } elsif ( $task->{output} ) {
+    <h3>Output</h3>
+    <pre data-output class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
+% }
 
