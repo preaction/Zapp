@@ -355,6 +355,7 @@ CREATE TABLE zapp_runs (
     started DATETIME NULL,
     finished DATETIME NULL,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
+    output JSON,
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -469,7 +470,8 @@ CREATE TABLE zapp_runs (
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started DATETIME NULL,
     finished DATETIME NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'inactive'
+    state VARCHAR(20) NOT NULL DEFAULT 'inactive',
+    output JSON
 );
 
 CREATE TABLE zapp_run_tasks (

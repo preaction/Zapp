@@ -180,13 +180,23 @@ sub finish( $self, $output=undef ) {
         ; $self->app->log->debug( "Saved context: " . $self->app->dumper( $context->{ $save->{name} } ) );
     }
 
-    $self->app->log->debug( "Saving context to children: " . $self->app->dumper( $context ) );
-    for my $job_id ( @{ $self->info->{children} } ) {
-        # XXX: Allow multiple unique keys to be used to `get` Yancy items
-        my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $job_id } );
+    if ( my @job_ids = @{ $self->info->{children} } ) {
+        $self->app->log->debug( "Saving context to children: " . $self->app->dumper( $context ) );
+        for my $job_id ( @{ $self->info->{children} } ) {
+            # XXX: Allow alternate unique keys to be used to `get` Yancy items
+            my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $job_id } );
+            $self->app->yancy->backend->set(
+                zapp_run_tasks => $task->{task_id} => {
+                    context => encode_json( $context ),
+                },
+            );
+        }
+    }
+    else {
+        $self->app->log->debug( 'Saving run output' );
         $self->app->yancy->backend->set(
-            zapp_run_tasks => $task->{task_id} => {
-                context => encode_json( $context ),
+            zapp_runs => $run_id => {
+                output => encode_json( $context ),
             },
         );
     }

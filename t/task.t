@@ -96,6 +96,33 @@ subtest 'execute' => sub {
         };
 
         my $run = $t->app->enqueue( $plan->{plan_id}, $input );
+        my @tasks = @{ $run->{tasks} };
+
+        $run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
+        is_deeply
+            {
+                %$run,
+                input_values => decode_json( $run->{input_values} ),
+            },
+            {
+                $run->%{qw( run_id created )},
+                $plan->%{qw( plan_id name description )},
+                input_values => {
+                    destination => {
+                        type => 'string',
+                        value => 'Nude Beach Planet',
+                    },
+                    unused_value => {
+                        type => 'string',
+                        value => 'Should be passed through',
+                    },
+                },
+                started => undef,
+                finished => undef,
+                state => 'inactive',
+                output => undef,
+            },
+            'database run is correct';
 
         # Check jobs created correctly
         my @got_tasks = $t->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} }, { order_by => 'task_id' } );
@@ -157,6 +184,31 @@ subtest 'execute' => sub {
                     },
                 ],
                 'minion job args are interpolated input';
+
+            $run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
+            is_deeply
+                {
+                    %$run,
+                    input_values => decode_json( $run->{input_values} ),
+                },
+                {
+                    $run->%{qw( run_id created started )},
+                    $plan->%{qw( plan_id name description )},
+                    input_values => {
+                        destination => {
+                            type => 'string',
+                            value => 'Nude Beach Planet',
+                        },
+                        unused_value => {
+                            type => 'string',
+                            value => 'Should be passed through',
+                        },
+                    },
+                    finished => undef,
+                    state => 'active',
+                    output => undef,
+                },
+                'database run is correct';
 
             my @got_tasks = $t->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} }, { order_by => 'task_id' } );
             is_deeply
@@ -232,6 +284,52 @@ subtest 'execute' => sub {
                 ],
                 'minion job args are interpolated input';
 
+            $run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
+            is_deeply
+                {
+                    %$run,
+                    input_values => decode_json( $run->{input_values} ),
+                    output => decode_json( $run->{output} ),
+                },
+                {
+                    $run->%{qw( run_id created started finished )},
+                    $plan->%{qw( plan_id name description )},
+                    input_values => {
+                        destination => {
+                            type => 'string',
+                            value => 'Nude Beach Planet',
+                        },
+                        unused_value => {
+                            type => 'string',
+                            value => 'Should be passed through',
+                        },
+                    },
+                    state => 'finished',
+                    output => {
+                        initial_destination => {
+                            type => 'string',
+                            value => "Nude Beach Planet\n",
+                        },
+                        destination => {
+                            type => 'string',
+                            value => 'Nude Beach Planet',
+                        },
+                        final_destination => {
+                            type => 'string',
+                            value => "Certain Doom on Nude Beach Planet\n",
+                        },
+                        unused_value => {
+                            type => 'string',
+                            value => 'Should be passed through',
+                        },
+                        deaths => {
+                            type => 'integer',
+                            value => 0,
+                        },
+                    },
+                },
+                'database run is correct';
+
             my @got_tasks = $t->app->yancy->list( zapp_run_tasks => { $run->%{'run_id'} }, { order_by => 'task_id' } );
             is_deeply
                 {
@@ -300,7 +398,7 @@ subtest 'execute' => sub {
             {
                 test_id => $tests[0]{test_id},
                 run_id => $run->{run_id},
-                task_id => $run->{tasks}[0]{task_id},
+                task_id => $tasks[0]{task_id},
                 expr => 'output',
                 op => '!=',
                 value => "\n",
@@ -313,7 +411,7 @@ subtest 'execute' => sub {
             {
                 test_id => $tests[1]{test_id},
                 run_id => $run->{run_id},
-                task_id => $run->{tasks}[1]{task_id},
+                task_id => $tasks[1]{task_id},
                 expr => 'output',
                 op => '!=',
                 value => "\n",
@@ -326,7 +424,7 @@ subtest 'execute' => sub {
             {
                 test_id => $tests[2]{test_id},
                 run_id => $run->{run_id},
-                task_id => $run->{tasks}[1]{task_id},
+                task_id => $tasks[1]{task_id},
                 expr => 'exit',
                 op => '==',
                 value => '0',
