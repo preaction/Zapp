@@ -24,7 +24,7 @@ sub _digest_dir( $self, $asset ) {
     return $dir;
 }
 
-sub _input( $self, $c, $upload ) {
+sub _save_upload( $self, $c, $upload ) {
     return undef if !defined $upload->filename || $upload->filename eq '';
     my $dir = $self->_digest_dir( $upload->asset );
     my $file = $dir->child( $upload->filename );
@@ -33,29 +33,29 @@ sub _input( $self, $c, $upload ) {
     return $file->to_rel( $self->path );
 }
 
-# Form value -> Type value
-sub plan_input( $self, $c, $form_value ) {
-    return $self->_input( $c, $form_value );
+# No default allowed for these values (for now)
+sub process_config( $self, $c, $form_value ) {
+    return {};
 }
 
 # Form value -> Type value
-sub run_input( $self, $c, $form_value ) {
-    return $self->_input( $c, $form_value );
+sub process_input( $self, $c, $config_value, $form_value ) {
+    return $self->_save_upload( $c, $form_value );
 }
 
 # For display on run view pages
-sub display_value( $self, $c, $type_value ) {
-    return $self->app->home->child( $type_value )->basename;
+sub display_value( $self, $c, $input_value ) {
+    return $self->app->home->child( $input_value )->basename;
 }
 
 # Type value -> Task value
-sub task_input( $self, $type_value ) {
-    ; say "Task input (file): $type_value";
-    return $self->path->child( $type_value )->to_abs;
+sub task_input( $self, $config_value, $input_value ) {
+    ; say "Task input (file): $input_value";
+    return $self->path->child( $input_value )->to_abs;
 }
 
 # Task value -> Type value
-sub task_output( $self, $task_value ) {
+sub task_output( $self, $config_value, $task_value ) {
     ; say "Task output (file): $task_value";
     # Task gave us a path. Save the path and return the saved path.
     my $path = Mojo::File->new( $task_value );

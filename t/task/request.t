@@ -221,117 +221,96 @@ subtest 'auth' => sub {
 };
 
 subtest 'input form' => sub {
+    my $tmpl = data_section 'Zapp::Task::Request', 'input.html.ep';
 
     subtest 'defaults' => sub {
-        my $plan = $t->app->create_plan( {
-            name => '',
-            tasks => [
-                {
-                    name => '',
-                    class => 'Zapp::Task::Request',
-                    input => encode_json({}),
-                },
-            ],
-        } );
-
-        $t->get_ok( '/plan/' . $plan->{plan_id} )
-            ->status_is( 200 )
+        $t->render_ok( inline => $tmpl )
             ->element_exists(
-                '[name="task[0].input.method"]',
+                '[name="method"]',
                 'method input exists',
             )
             ->attr_is(
-                '[name="task[0].input.method"] [selected]',
+                '[name="method"] [selected]',
                 value => 'GET',
                 'GET method selected by default',
             )
             ->element_exists(
-                '[name="task[0].input.url"]',
+                '[name="url"]',
                 'url input exists',
             )
             ->attr_is(
-                '[name="task[0].input.url"]',
+                '[name="url"]',
                 value => '',
                 'url correct value',
             )
             ->element_exists(
-                '[name="task[0].input.auth.type"]',
+                '[name="auth.type"]',
                 'auth type input exists',
             )
             ->attr_is(
-                '[name="task[0].input.auth.type"] [selected]',
+                '[name="auth.type"] [selected]',
                 value => '',
                 'auth type correct option selected',
             )
             ->element_exists(
-                '[name="task[0].input.auth.token"]',
+                '[name="auth.token"]',
                 'auth token input exists',
             )
             ->element_exists_not(
-                '.zapp-visible [name="task[0].input.auth.token"]',
+                '.zapp-visible [name="auth.token"]',
                 'auth token input is not visible',
             )
             ;
     };
 
     subtest 'with bearer auth' => sub {
-        my $plan = $t->app->create_plan( {
-            name => '',
-            tasks => [
-                {
-                    name => '',
-                    class => 'Zapp::Task::Request',
-                    input => encode_json({
-                        method => 'POST',
-                        url => '/foo/bar',
-                        auth => {
-                            type => 'bearer',
-                            token => 'AUTHTOKEN',
-                        },
-                    }),
-                },
-            ],
-        } );
+        my $input = {
+            method => 'POST',
+            url => '/foo/bar',
+            auth => {
+                type => 'bearer',
+                token => 'AUTHTOKEN',
+            },
+        };
 
-        $t->get_ok( '/plan/' . $plan->{plan_id} )
-            ->status_is( 200 )
+        $t->render_ok( inline => $tmpl, input => $input )
             ->element_exists(
-                '[name="task[0].input.method"]',
+                '[name="method"]',
                 'method input exists',
             )
             ->attr_is(
-                '[name="task[0].input.method"] [selected]',
+                '[name="method"] [selected]',
                 value => 'POST',
                 'method correct option selected',
             )
             ->element_exists(
-                '[name="task[0].input.url"]',
+                '[name="url"]',
                 'url input exists',
             )
             ->attr_is(
-                '[name="task[0].input.url"]',
+                '[name="url"]',
                 value => '/foo/bar',
                 'url correct value',
             )
             ->element_exists(
-                '[name="task[0].input.auth.type"]',
+                '[name="auth.type"]',
                 'auth type input exists',
             )
             ->attr_is(
-                '[name="task[0].input.auth.type"] [selected]',
+                '[name="auth.type"] [selected]',
                 value => 'bearer',
                 'auth type correct option selected',
             )
             ->element_exists(
-                '[name="task[0].input.auth.token"]',
+                '[name="auth.token"]',
                 'auth token input exists',
             )
             ->element_exists(
-                '.zapp-visible [name="task[0].input.auth.token"]',
+                '.zapp-visible [name="auth.token"]',
                 'auth token input is visible',
             )
             ->attr_is(
-                '[name="task[0].input.auth.token"]',
+                '[name="auth.token"]',
                 value => 'AUTHTOKEN',
                 'auth token input value is correct',
             )

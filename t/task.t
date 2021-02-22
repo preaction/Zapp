@@ -264,6 +264,7 @@ subtest 'execute' => sub {
                         initial_destination => {
                             type => 'string',
                             value => "Nude Beach Planet\n",
+                            config => undef,
                         },
                     },
                     state => 'inactive',
@@ -309,6 +310,7 @@ subtest 'execute' => sub {
                         initial_destination => {
                             type => 'string',
                             value => "Nude Beach Planet\n",
+                            config => undef,
                         },
                         destination => {
                             type => 'string',
@@ -317,6 +319,7 @@ subtest 'execute' => sub {
                         final_destination => {
                             type => 'string',
                             value => "Certain Doom on Nude Beach Planet\n",
+                            config => undef,
                         },
                         unused_value => {
                             type => 'string',
@@ -325,6 +328,7 @@ subtest 'execute' => sub {
                         deaths => {
                             type => 'integer',
                             value => 0,
+                            config => undef,
                         },
                     },
                 },
@@ -384,6 +388,7 @@ subtest 'execute' => sub {
                         initial_destination => {
                             type => 'string',
                             value => "Nude Beach Planet\n",
+                            config => undef,
                         },
                     },
                     state => 'finished',

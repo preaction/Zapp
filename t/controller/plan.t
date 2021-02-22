@@ -110,7 +110,7 @@ subtest 'create new plan' => sub {
                 'input[0].name' => 'prank_name',
                 'input[0].type' => 'string',
                 'input[0].description' => 'A funny name to demoralize the Mighty One',
-                'input[0].value' => 'I.C. Weiner',
+                'input[0].config' => 'I.C. Weiner',
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
@@ -215,7 +215,8 @@ subtest 'create new plan' => sub {
             name => 'prank_name',
             type => 'string',
             description => 'A funny name to demoralize the Mighty One',
-            value => encode_json( 'I.C. Weiner' ),
+            config => encode_json( 'I.C. Weiner' ),
+            value => encode_json( undef ),
         };
 
         my @got_tests = $t->app->yancy->list(
@@ -304,13 +305,13 @@ subtest 'edit existing plan' => sub {
                 name => 'location',
                 type => 'string',
                 description => 'Where to place the bomb',
-                value => encode_json( 'In the center' ),
+                config => encode_json( 'In the center' ),
             },
             {
                 name => 'delay',
                 type => 'number',
                 description => 'Time to give crew to survive, in minutes',
-                value => encode_json( 25 ),
+                config => encode_json( 25 ),
             },
         ],
     } );
@@ -419,11 +420,11 @@ subtest 'edit existing plan' => sub {
                 'first input description input value is correct',
             );
             $t->element_exists(
-                'form [name="input[0].value"]',
+                'form [name="input[0].config"]',
                 'first input default input exists',
             );
             $t->attr_is(
-                'form [name="input[0].value"]',
+                'form [name="input[0].config"]',
                 value => '25',
                 'first input default value input value is correct',
             );
@@ -456,11 +457,11 @@ subtest 'edit existing plan' => sub {
                 'second input description input value is correct',
             );
             $t->element_exists(
-                'form [name="input[1].value"]',
+                'form [name="input[1].config"]',
                 'second input default input exists',
             );
             $t->attr_is(
-                'form [name="input[1].value"]',
+                'form [name="input[1].config"]',
                 value => 'In the center',
                 'second input default value input value is correct',
             );
@@ -815,11 +816,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'location',
                 'input[0].type' => 'string',
                 'input[0].description' => 'Where to put the bomb',
-                'input[0].value' => 'In the center',
+                'input[0].config' => 'In the center',
                 'input[1].name' => 'delay',
                 'input[1].type' => 'number',
                 'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].value' => '0.4',
+                'input[1].config' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -929,14 +930,16 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in hours',
-            value => encode_json( '0.4' ),
+            config => encode_json( '0.4' ),
+            value => encode_json( undef ),
         };
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
             type => 'string',
             description => 'Where to put the bomb',
-            value => encode_json( 'In the center' ),
+            config => encode_json( 'In the center' ),
+            value => encode_json( undef ),
         };
 
         my @got_tests = $t->app->yancy->list(
@@ -978,11 +981,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'location',
                 'input[0].type' => 'string',
                 'input[0].description' => 'Where to put the bomb',
-                'input[0].value' => 'In the center',
+                'input[0].config' => 'In the center',
                 'input[1].name' => 'delay',
                 'input[1].type' => 'number',
                 'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].value' => '0.4',
+                'input[1].config' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1105,14 +1108,16 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in hours',
-            value => encode_json( '0.4' ),
+            config => encode_json( '0.4' ),
+            value => encode_json( undef ),
         };
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
             type => 'string',
             description => 'Where to put the bomb',
-            value => encode_json( 'In the center' ),
+            config => encode_json( 'In the center' ),
+            value => encode_json( undef ),
         };
 
         my @got_tests = $t->app->yancy->list(
@@ -1154,11 +1159,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'prank_name',
                 'input[0].type' => 'string',
                 'input[0].description' => 'A funny name to demoralize the Mighty One',
-                'input[0].value' => 'I.C. Weiner',
+                'input[0].config' => 'I.C. Weiner',
                 'input[1].name' => 'delay',
                 'input[1].type' => 'number',
                 'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].value' => '0.4',
+                'input[1].config' => '0.4',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1273,7 +1278,7 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'delay',
                 'input[0].type' => 'number',
                 'input[0].description' => 'Time to give crew to survive, in minutes',
-                'input[0].value' => '60',
+                'input[0].config' => '60',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1306,7 +1311,8 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
-            value => encode_json( '60' ),
+            config => encode_json( '60' ),
+            value => encode_json( undef ),
         };
     };
 
@@ -1318,11 +1324,11 @@ subtest 'edit existing plan' => sub {
                 'input[0].name' => 'delay',
                 'input[0].type' => 'number',
                 'input[0].description' => 'Time to give crew to survive, in minutes',
-                'input[0].value' => '60',
+                'input[0].config' => '60',
                 'input[1].name' => 'location',
                 'input[1].type' => 'string',
                 'input[1].description' => 'Where to place the bomb',
-                'input[1].value' => 'In the center',
+                'input[1].config' => 'In the center',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1355,14 +1361,16 @@ subtest 'edit existing plan' => sub {
             name => 'delay',
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
-            value => encode_json( '60' ),
+            config => encode_json( '60' ),
+            value => encode_json( undef ),
         };
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
             type => 'string',
             description => 'Where to place the bomb',
-            value => encode_json( 'In the center' ),
+            config => encode_json( 'In the center' ),
+            value => encode_json( undef ),
         };
     };
 
@@ -1576,7 +1584,7 @@ subtest 'run a plan' => sub {
                 name => 'destination',
                 type => 'string',
                 description => 'Where to send the crew to their doom',
-                value => encode_json( 'Chapek 9' ),
+                config => encode_json( 'Chapek 9' ),
             },
         ],
     });
@@ -1588,7 +1596,7 @@ subtest 'run a plan' => sub {
             ->attr_is( "form[action=/plan/$plan_id/run]", enctype => 'multipart/form-data', 'form allows uploads' )
             ->text_is( '[data-input=0] [data-input-name]', 'destination', 'input label correct' )
             ->element_exists( '[name="input[0].value"]', 'input field exists' )
-            ->attr_is( '[name="input[0].value"]', value => 'Chapek 9', 'input value is correct' )
+            ->attr_is( '[name="input[0].value"]', value => 'Chapek 9', 'input default value is correct' )
             ->element_exists( '[name="input[0].name"]', 'input name exists' )
             ->attr_is( '[name="input[0].name"]', value => 'destination', 'input name is correct' )
             ->element_exists( '[name="input[0].type"]', 'input type exists' )
@@ -1617,6 +1625,7 @@ subtest 'run a plan' => sub {
                 destination => {
                     type => 'string',
                     value => 'Galaxy of Terror',
+                    config => 'Chapek 9',
                 },
             },
             'run input is correct';
@@ -1642,6 +1651,7 @@ subtest 'run a plan' => sub {
                     destination => {
                         type => 'string',
                         value => 'Galaxy of Terror',
+                        config => 'Chapek 9',
                     },
                 },
                 run_id => $run_id,
@@ -1747,7 +1757,7 @@ subtest 'view run status' => sub {
                 name => 'Character',
                 type => 'string',
                 description => 'Which character should ask the question?',
-                value => encode_json( 'Leela' ),
+                config => encode_json( 'Leela' ),
             },
         ],
     });

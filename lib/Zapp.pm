@@ -73,6 +73,7 @@ sub startup( $self ) {
         integer => 'Zapp::Type::Text',
         boolean => 'Zapp::Type::Text',
         file => 'Zapp::Type::File',
+        enum => 'Zapp::Type::Enum',
     );
     $self->helper( 'zapp.types' => sub( $c ) { state %types; \%types } );
     $self->helper( 'zapp.add_type' => sub( $c, $name, $type ) {
@@ -340,6 +341,7 @@ CREATE TABLE zapp_plan_inputs (
     name VARCHAR(255) NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
+    config JSON,
     value JSON,
     PRIMARY KEY ( plan_id, name ),
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
@@ -457,6 +459,7 @@ CREATE TABLE zapp_plan_inputs (
     name VARCHAR(255) NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
+    config JSON,
     value JSON,
     PRIMARY KEY ( plan_id, name )
 );

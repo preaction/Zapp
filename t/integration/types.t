@@ -18,17 +18,17 @@ use Zapp::Util qw( get_path_from_data get_path_from_schema );
 
 my $t = Test::Zapp->new( 'Zapp' );
 
+# Configured types
+my %added_types = (
+    enum_output => Zapp::Type::Enum->new( [qw( Scruffy Katrina Xanthor )] ),
+);
+$t->app->zapp->add_type( $_ => $added_types{ $_ } ) for keys %added_types;
+
 # Dir to store files for Zapp::Type::File
 my $temp = tempdir();
 my $uploads_dir = $temp->child( 'uploads' )->make_path;
 $t->app->home( $temp );
 my $file_value = $uploads_dir->child( 'file.txt' )->spurt( 'File content' )->to_rel( $uploads_dir );
-
-# Types that require configuration to use
-my %added_types = (
-    enum => Zapp::Type::Enum->new( [qw( Scruffy Katrina Xanthor )] ),
-);
-$t->app->zapp->add_type( $_ => $added_types{ $_ } ) for keys %added_types;
 
 # Create a plan with input of every type
 my %plan_data = (
@@ -38,32 +38,41 @@ my %plan_data = (
         {
             name => 'boolean',
             type => 'boolean',
-            value => encode_json( 1 ),
+            config => encode_json( 1 ),
         },
         {
             name => 'enum',
             type => 'enum',
-            value => encode_json( 'Scruffy' ),
+            config => encode_json(
+                {
+                    options => [
+                        { label => 'Scruffy', value => 'Scruffy' },
+                        { label => 'Katrina', value => 'Katrina' },
+                        { label => 'Xanthor', value => 'Xanthor' },
+                    ],
+                    selected_index => 0,
+                },
+            ),
         },
         {
             name => 'file',
             type => 'file',
-            value => encode_json( "$file_value" ),
+            config => undef,
         },
         {
             name => 'integer',
             type => 'integer',
-            value => encode_json( 56 ),
+            config => encode_json( 56 ),
         },
         {
             name => 'number',
             type => 'number',
-            value => encode_json( 1.234 ),
+            config => encode_json( 1.234 ),
         },
         {
             name => 'string',
             type => 'string',
-            value => encode_json( 'string' ),
+            config => encode_json( 'string' ),
         },
     ],
 );
@@ -74,49 +83,45 @@ subtest 'plan input' => sub {
         $t->get_ok( '/plan/' . $plan->{plan_id} )->status_is( 200 );
 
         subtest 'input 0 - boolean' => sub {
-            $t->element_exists( 'form [name="input[0].value"]' )
-              ->attr_is( 'form [name="input[0].value"]', type => 'text' )
-              ->attr_is( 'form [name="input[0].value"]', value => 1 )
+            $t->element_exists( 'form [name="input[0].config"]' )
+              ->attr_is( 'form [name="input[0].config"]', type => 'text' )
+              ->attr_is( 'form [name="input[0].config"]', value => 1 )
               ->attr_is( 'form [name="input[0].type"]', value => 'boolean' )
               ->attr_is( 'form [name="input[0].name"]', value => 'boolean' )
         };
 
         subtest 'input 1 - enum' => sub {
-            $t->element_exists( 'form [name="input[1].value"]' )
-              ->element_exists( 'form select[name="input[1].value"]', 'tag is <select>' )
-              ->attr_is( 'form [name="input[1].value"] [selected]', value => 'Scruffy' )
+            $t->element_exists( 'form [name="input[1].config.options[0].label"]' )
               ->attr_is( 'form [name="input[1].type"]', value => 'enum' )
               ->attr_is( 'form [name="input[1].name"]', value => 'enum' )
         };
 
         subtest 'input 2 - file' => sub {
-            $t->element_exists( 'form [name="input[2].value"]' )
-              ->attr_is( 'form [name="input[2].value"]', type => 'file' )
-              ->attr_is( 'form [name="input[2].value"]', value => $file_value->basename )
+            $t->element_exists( 'form [name="input[2].type"]' )
               ->attr_is( 'form [name="input[2].type"]', value => 'file' )
               ->attr_is( 'form [name="input[2].name"]', value => 'file' )
         };
 
         subtest 'input 3 - number' => sub {
-            $t->element_exists( 'form [name="input[3].value"]' )
-              ->attr_is( 'form [name="input[3].value"]', type => 'text' )
-              ->attr_is( 'form [name="input[3].value"]', value => '56' )
+            $t->element_exists( 'form [name="input[3].config"]' )
+              ->attr_is( 'form [name="input[3].config"]', type => 'text' )
+              ->attr_is( 'form [name="input[3].config"]', value => '56' )
               ->attr_is( 'form [name="input[3].type"]', value => 'integer' )
               ->attr_is( 'form [name="input[3].name"]', value => 'integer' )
         };
 
         subtest 'input 4 - number' => sub {
-            $t->element_exists( 'form [name="input[4].value"]' )
-              ->attr_is( 'form [name="input[4].value"]', type => 'text' )
-              ->attr_is( 'form [name="input[4].value"]', value => '1.234' )
+            $t->element_exists( 'form [name="input[4].config"]' )
+              ->attr_is( 'form [name="input[4].config"]', type => 'text' )
+              ->attr_is( 'form [name="input[4].config"]', value => '1.234' )
               ->attr_is( 'form [name="input[4].type"]', value => 'number' )
               ->attr_is( 'form [name="input[4].name"]', value => 'number' )
         };
 
         subtest 'input 5 - string' => sub {
-            $t->element_exists( 'form [name="input[5].value"]' )
-              ->attr_is( 'form [name="input[5].value"]', type => 'text' )
-              ->attr_is( 'form [name="input[5].value"]', value => 'string' )
+            $t->element_exists( 'form [name="input[5].config"]' )
+              ->attr_is( 'form [name="input[5].config"]', type => 'text' )
+              ->attr_is( 'form [name="input[5].config"]', value => 'string' )
               ->attr_is( 'form [name="input[5].type"]', value => 'string' )
               ->attr_is( 'form [name="input[5].name"]', value => 'string' )
         };
@@ -129,61 +134,68 @@ subtest 'plan input' => sub {
 
             'input[0].name' => 'boolean',
             'input[0].type' => 'boolean',
-            'input[0].value' => 0,
+            'input[0].config' => 0,
 
-            'input[1].name' => 'integer',
-            'input[1].type' => 'integer',
-            'input[1].value' => 67,
+            'input[1].name' => 'enum',
+            'input[1].type' => 'enum',
+            'input[1].config.options[0].label' => 'Scruffy',
+            'input[1].config.options[0].value' => 'Scruffy',
+            'input[1].config.options[1].label' => 'Katrina',
+            'input[1].config.options[1].value' => 'Katrina',
+            'input[1].config.options[2].label' => 'Xanthor',
+            'input[1].config.options[2].value' => 'Xanthor',
+            'input[1].config.selected_index' => 1,
 
-            'input[2].name' => 'enum',
-            'input[2].type' => 'enum',
-            'input[2].value' => 'Katrina',
+            'input[2].name' => 'file',
+            'input[2].type' => 'file',
 
-            'input[3].name' => 'file',
-            'input[3].type' => 'file',
-            'input[3].value' => {
-                content => 'New File',
-                filename => 'file.txt',
-            },
+            'input[3].name' => 'integer',
+            'input[3].type' => 'integer',
+            'input[3].config' => 67,
 
             'input[4].name' => 'number',
             'input[4].type' => 'number',
-            'input[4].value' => 2.345,
+            'input[4].config' => 2.345,
 
             'input[5].name' => 'string',
             'input[5].type' => 'string',
-            'input[5].value' => 'new string',
+            'input[5].config' => 'new string',
 
         } )->status_is( 302 );
 
         my @inputs = $t->app->yancy->list( zapp_plan_inputs => { plan_id => $plan->{plan_id} } );
 
         subtest 'input 0 - boolean' => sub {
-            is decode_json( $inputs[0]{value} ), 0;
+            is decode_json( $inputs[0]{config} ), 0;
         };
 
         subtest 'input 1 - enum' => sub {
-            is decode_json( $inputs[1]{value} ), 'Katrina';
+            is_deeply decode_json( $inputs[1]{config} ),
+                {
+                    options => [
+                        { label => 'Scruffy', value => 'Scruffy' },
+                        { label => 'Katrina', value => 'Katrina' },
+                        { label => 'Xanthor', value => 'Xanthor' },
+                    ],
+                    selected_index => 1,
+                },
+                'config is correct';
         };
 
         subtest 'input 2 - file' => sub {
-            is decode_json( $inputs[2]{value} ),
-                "zK/-F/7nUyf8dI45-sohZhmQEd5Bo/file.txt";
-            my $file = $t->app->home->child( 'uploads', decode_json( $inputs[2]{value} ) );
-            ok -e $file, 'file exists';
-            is $file->slurp, 'New File', 'file content correct';
+            is_deeply decode_json( $inputs[2]{config} ), {}, 'no config';
         };
 
         subtest 'input 3 - integer' => sub {
-            is decode_json( $inputs[3]{value} ), 67;
+            is decode_json( $inputs[3]{config} ), 67;
         };
 
         subtest 'input 4 - number' => sub {
-            is decode_json( $inputs[4]{value} ), 2.345;
+            is decode_json( $inputs[4]{config} ), 2.345;
         };
 
         subtest 'input 5 - string' => sub {
-            is decode_json( $inputs[5]{value} ), 'new string';
+            is decode_json( $inputs[5]{config} ), 'new string';
         };
     };
 
@@ -210,7 +222,6 @@ subtest 'plan input' => sub {
         subtest 'input 2 - file' => sub {
             $t->element_exists( 'form [name="input[2].value"]' )
               ->attr_is( 'form [name="input[2].value"]', type => 'file' )
-              ->attr_is( 'form [name="input[2].value"]', value => $file_value->basename )
               ->attr_is( 'form [name="input[2].type"]', value => 'file' )
               ->attr_is( 'form [name="input[2].name"]', value => 'file' )
         };
@@ -416,7 +427,7 @@ subtest 'task input/output' => sub {
                     script => 'echo -n Katrina',
                 }),
                 output => encode_json([
-                    { name => 'enum_output', type => 'enum', expr => 'output' },
+                    { name => 'enum_output', type => 'enum_output', expr => 'output' },
                 ]),
             },
         ],
@@ -449,30 +460,21 @@ subtest 'task input/output' => sub {
         enum => {
             type => 'enum',
             value => 'Scruffy',
+            config => {
+                options => [
+                    { label => 'Scruffy', value => 'Scruffy' },
+                    { label => 'Katrina', value => 'Katrina' },
+                    { label => 'Xanthor', value => 'Xanthor' },
+                ],
+                selected_index => 0,
+            },
         },
     };
     my $run = $t->app->enqueue( $plan->{plan_id}, $input );
     $t->run_queue;
 
-    # The context isn't created after the last job runs, so we have to
-    # create it ourselves...
-    # XXX: zapp_run_tasks could store both input and output contexts, or
-    # just output, with the next job merging input from all parents'
-    # output (or from run input, if no parent)
-    my $last_task = $t->app->yancy->get( zapp_run_tasks => $run->{tasks}[-1]{task_id} );
-    my $output = $t->app->minion->job( $last_task->{job_id} )->info->{result};
-    my $output_saves = decode_json( $last_task->{output} // '[]' );
-    my $context = decode_json( $last_task->{context} );
-    for my $save ( @$output_saves ) {
-        my $type_name = $save->{type};
-        my $type = $t->app->zapp->types->{ $type_name }
-            or die "Could not find type name $type_name";
-        my $value = get_path_from_data( $save->{expr}, $output );
-        $context->{ $save->{name} } = {
-            value => $type->task_output( $value ),
-            type => $type_name,
-        };
-    }
+    my $finished_run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
+    my $context = decode_json( $finished_run->{output} );
 
     subtest 'string: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[0]{job_id} );

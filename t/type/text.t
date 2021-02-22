@@ -15,38 +15,47 @@ my $t = Test::Zapp->new( 'Zapp' );
 my $type = Zapp::Type::Text->new;
 $t->app->zapp->add_type( text => $type );
 
+subtest 'config_field' => sub {
+    my $c = $t->app->build_controller;
+    my $html = $type->config_field( $c, 'foo' );
+    my $dom = Mojo::DOM->new( $html );
+
+    is $dom->children->[0]->tag, 'input', 'config field is an input tag'
+        or diag explain $dom->children->[0];
+    is $dom->at( 'input' )->attr( 'type' ), 'text', 'config input tag type "text"';
+    is $dom->at( 'input' )->attr( 'value' ), 'foo', 'config input tag value correct';
+};
+
+subtest 'process_config' => sub {
+    my $c = $t->app->build_controller;
+    my $config = $type->process_config( $c, 'foo' );
+    is $config, 'foo', 'process_config returns value';
+};
+
 subtest 'input_field' => sub {
-    subtest 'values only' => sub {
-        my $c = $t->app->build_controller;
-        my $html = $type->input_field( $c, 'foo' );
-        my $dom = Mojo::DOM->new( $html );
+    my $c = $t->app->build_controller;
+    my $html = $type->input_field( $c, 'foo' );
+    my $dom = Mojo::DOM->new( $html );
 
-        is $dom->children->[0]->tag, 'input', 'field is an input tag'
-            or diag explain $dom->children->[0];
-        is $dom->at( 'input' )->attr( 'type' ), 'text', 'input tag type "text"';
-        is $dom->at( 'input' )->attr( 'value' ), 'foo', 'input tag value correct';
-    };
+    is $dom->children->[0]->tag, 'input', 'field is an input tag'
+        or diag explain $dom->children->[0];
+    is $dom->at( 'input' )->attr( 'type' ), 'text', 'input tag type "text"';
+    is $dom->at( 'input' )->attr( 'value' ), 'foo', 'input tag value correct';
 };
 
-subtest 'plan_input' => sub {
+subtest 'process_input' => sub {
     my $c = $t->app->build_controller;
-    my $type_value = $type->plan_input( $c, 'foo' );
-    is $type_value, 'foo', 'plan_input returns value';
-};
-
-subtest 'run_input' => sub {
-    my $c = $t->app->build_controller;
-    my $type_value = $type->run_input( $c, 'foo' );
-    is $type_value, 'foo', 'plan_input returns value';
+    my $input_value = $type->process_input( $c, 'default', 'foo' );
+    is $input_value, 'foo', 'process_input returns value';
 };
 
 subtest 'task_input' => sub {
-    my $task_value = $type->task_input( 'foo' );
+    my $task_value = $type->task_input( 'default', 'foo' );
     is $task_value, 'foo', 'task_input returns value';
 };
 
 subtest 'task_output' => sub {
-    my $type_value = $type->task_output( 'foo' );
+    my $type_value = $type->task_output( 'default', 'foo' );
     is $type_value, 'foo', 'task_output returns value';
 };
 

@@ -63,7 +63,8 @@ sub context( $self ) {
         # XXX: Remove run/task from task_input
         $context->{ $name } = {
             type => $input->{type},
-            value => $type->task_input( $input->{value} ),
+            config => $input->{config},
+            value => $type->task_input( $input->{config}, $input->{value} ),
         };
     }
     return $context;
@@ -170,12 +171,16 @@ sub finish( $self, $output=undef ) {
                 name => $save->{name},
                 value => $value,
                 type => $type_name,
+                config => $context->{config},
             } )
         );
 
         $context->{ $save->{name} } = {
-            value => $type->task_output( $value ),
+            value => $type->task_output( $context->{config}, $value ),
             type => $type_name,
+            # XXX: Task output does not have configuration, but do we
+            # want to allow it? It's _complicated_.
+            config => $context->{config},
         };
         ; $self->app->log->debug( "Saved context: " . $self->app->dumper( $context->{ $save->{name} } ) );
     }

@@ -4,6 +4,12 @@ package Zapp::Type;
 
 =head1 DESCRIPTION
 
+1. User sees blank config field
+2. User sees filled-in config field
+3. User sees blank input field
+4. User sees filled-in input field
+5. User sees display field
+
 =head2 Type Value
 
 The type value is returned from the input methods and should contain all
@@ -21,14 +27,6 @@ Another example could be a map of user passwords in a config file. The
 type value could be the username, which would be stored in the database
 for the plan/run. Then when a task needed the password, it could be
 looked up using the username.
-
-XXX: Types are in a hierarchy:
-
-String <-> Boolean
-String <-> Integer
-String <-> Number <-> Integer
-String <-> File
-String <-> Enum[String]
 
 =head1 SEE ALSO
 
@@ -50,25 +48,65 @@ has app =>;
 
 =head1 METHODS
 
-=head2 plan_input
+=head2 config_field
 
-Process the form value when saving a plan. Return the type value to be
-stored in the database.
+Get the field for configuration input. Reads the C<@@ config.html.ep>
+file from the C<__DATA__> section of the type class.
 
 =cut
 
-sub plan_input( $self, $c, $form_value ) {
+sub config_field( $self, $c, $config_value=undef ) {
+    my $class = blessed $self;
+    my $tmpl = data_section( $class, 'config.html.ep' );
+    return '' if !$tmpl;
+    # XXX: Use Mojo::Template directly to get better names than 'inline
+    # template XXXXXXXXXXXX'?
+    return $c->render_to_string(
+        inline => $tmpl,
+        self => $self,
+        config => $config_value,
+    );
+}
+
+=head2 process_config
+
+Process the form value for configuring this type. Return the type config
+to be stored in the database.
+
+=cut
+
+sub process_config( $self, $c, $form_value ) {
     ...;
 }
 
-=head2 run_input
+=head2 input_field
+
+Get the field for user input. Reads the C<@@ input.html.ep> file from
+the C<__DATA__> section of the type class.
+
+=cut
+
+sub input_field( $self, $c, $config_value, $input_value=undef ) {
+    my $class = blessed $self;
+    my $tmpl = data_section( $class, 'input.html.ep' );
+    # XXX: Use Mojo::Template directly to get better names than 'inline
+    # template XXXXXXXXXXXX'?
+    return $c->render_to_string(
+        inline => $tmpl,
+        self => $self,
+        config => $config_value,
+        value => $input_value,
+    );
+}
+
+=head2 process_input
 
 Process the form value when saving a run. Return the type value to be
 stored in the database.
 
 =cut
 
-sub run_input( $self, $c, $form_value ) {
+sub process_input( $self, $c, $config_value, $form_value ) {
     ...;
 }
 
@@ -79,7 +117,7 @@ task.
 
 =cut
 
-sub task_input( $self, $type_value ) {
+sub task_input( $self, $config_value, $input_value ) {
     ...;
 }
 
@@ -90,27 +128,8 @@ the database.
 
 =cut
 
-sub task_output( $self, $task_value ) {
+sub task_output( $self, $config_value, $task_value ) {
     ...;
-}
-
-=head2 input_field
-
-Get the form field to input this value. Reads the C<@@ input.html.ep> file
-from the C<__DATA__> section of the type class.
-
-=cut
-
-sub input_field( $self, $c, $type_value=undef ) {
-    my $class = blessed $self;
-    my $tmpl = data_section( $class, 'input.html.ep' );
-    # XXX: Use Mojo::Template directly to get better names than 'inline
-    # template XXXXXXXXXXXX'?
-    return $c->render_to_string(
-        inline => $tmpl,
-        self => $self,
-        value => $type_value,
-    );
 }
 
 1;

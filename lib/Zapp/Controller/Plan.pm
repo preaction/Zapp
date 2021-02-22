@@ -35,7 +35,9 @@ sub _get_plan( $self, $plan_id ) {
             $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'name' } ),
         ];
         for my $input ( @$inputs ) {
-            $input->{value} = decode_json( $input->{value} );
+            if ( my $config = $input->{config} ) {
+                $input->{config} = decode_json( $config );
+            }
         }
     }
     return $plan;
@@ -77,7 +79,7 @@ sub _get_run_tasks( $self, $run_id ) {
                 my $input = $run_task->{context}{ $name };
                 my $type = $self->app->zapp->types->{ $input->{type} }
                     or die qq{Could not find type "$input->{type}"};
-                $values{ $name } = $type->task_input( $input->{value} );
+                $values{ $name } = $type->task_input( $input->{config}, $input->{value} );
             }
             $run_task->{input} = fill_input( \%values, $run_task->{input} );
         }
@@ -100,6 +102,7 @@ sub _get_run( $self, $run_id ) {
             $self->yancy->list( zapp_run_inputs => { run_id => $run_id }, { order_by => 'name' } ),
         ];
         for my $input ( @$inputs ) {
+            $input->{config} = decode_json( $input->{config} );
             $input->{value} = decode_json( $input->{value} );
             $input->{value} = $run->{input}{ $input->{name} };
         }
@@ -176,12 +179,12 @@ sub save_plan( $self ) {
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
         eval {
-            $input->{value} = $type->plan_input( $self, $input->{value} );
+            $input->{config} = $type->process_config( $self, $input->{config} );
         };
         if ( $@ ) {
             push @errors, {
                 name => "input[$i].name",
-                error => qq{Error validating input "$input->{name}" type "$input->{type}" value "$input->{value}": $@},
+                error => qq{Error validating input config "$input->{name}" type "$input->{type}": $@},
             };
         }
     }
@@ -285,7 +288,7 @@ sub save_plan( $self ) {
     for my $form_input ( @$form_inputs ) {
         ; $self->log->debug( "Input: " . $self->dumper( $form_input ) );
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        for my $json_field ( qw( value ) ) {
+        for my $json_field ( qw( value config ) ) {
             $form_input->{ $json_field } = encode_json( $form_input->{ $json_field } );
         }
 
@@ -369,14 +372,18 @@ sub save_run( $self ) {
 
     my $input_fields = $self->build_data_from_params( 'input' );
     my $run_input = {};
-    for my $input ( @$input_fields ) {
+    for my $i ( 0..$#$input_fields ) {
+        my $input = $input_fields->[ $i ];
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
+        my $config = $input->{config} // $plan->{inputs}[ $i ]{config};
         $run_input->{ $input->{name} } = {
             type => $input->{type},
-            value => $type->run_input( $self, $input->{value} ),
+            config => $config,
+            value => $type->process_input( $self, $config, $input->{value} ),
         };
     }
+    ; $self->log->debug( 'Run input: ' . $self->dumper( $run_input ) );
 
     my $run_id = $self->stash( 'run_id' );
     if ( !$run_id ) {

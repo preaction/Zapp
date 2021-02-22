@@ -215,7 +215,7 @@ __DATA__
             class => 'form-control',
         %>
     </div>
-    <div data-zapp-if="auth.type eq 'bearer'" class="col align-self-end">
+    <div data-zapp-if="auth.type eq 'bearer'" class="col align-self-end <%= $input->{auth}{type} eq 'bearer' ? 'zapp-visible' : '' %>">
         %= text_field 'auth.token', value => $input->{auth}{token}, class => 'form-control'
     </div>
 </div>

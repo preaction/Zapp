@@ -257,18 +257,15 @@
                 %= text_field "input[$input_num].name", $input->{name}, placeholder => 'Name', class => 'form-control'
             </div>
             <div class="col">
-                <label for="input[<%= $input_num %>].value">Default Value</label>
-                <div>
-                    <% if ( my $type_name = $input->{type} ) {
-                        my $type = $c->zapp->types->{ $type_name }
-                            or die qq{Could not find type "$type_name"};
-                        my $input_field = include inline => $type->input_field( $c, $input->{value} ), self => $type, input => $input;
-                        my $input_dom = prefix_field( $input_field, "input[$input_num]" );
-                        %><%== $input_dom %><%
-                    } else {
-                        %><span data-input-value></span><%
-                    } %>
-                </div>
+                <% if ( my $type_name = $input->{type} ) {
+                    my $type = $c->zapp->types->{ $type_name }
+                        or die qq{Could not find type "$type_name"};
+                    my $input_field = include inline => $type->config_field( $c, $input->{config} ), self => $type, input => $input;
+                    my $input_dom = prefix_field( $input_field, "input[$input_num]" );
+                    %><%== $input_dom %><%
+                } else {
+                    %><span data-input-value></span><%
+                } %>
             </div>
         </div>
         <div class="form-row">
@@ -307,7 +304,7 @@
 % for my $type_name ( sort keys $c->zapp->types->%* ) {
     % my $type = $c->zapp->types->{ $type_name };
     <template data-type-input="<%= $type_name %>">
-        %= include inline => $type->input_field( $c ), input => {}, self => $type
+        %= include inline => $type->config_field( $c ), config => {}, input => {}, self => $type
     </template>
 % }
 

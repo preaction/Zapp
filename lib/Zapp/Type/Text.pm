@@ -11,27 +11,32 @@ use Mojo::Loader qw( data_section );
 # "die" for validation errors
 
 # Form value -> Type value
-sub plan_input( $self, $c, $form_value ) {
+sub process_config( $self, $c, $form_value ) {
     return $form_value;
 }
-sub run_input( $self, $c, $form_value ) {
-    return $form_value;
+
+sub process_input( $self, $c, $config_value, $form_value ) {
+    return $form_value // $config_value;
 }
 
 # Type value -> Task value
-sub task_input( $self, $type_value ) {
-    return $type_value;
+sub task_input( $self, $config_value, $input_value ) {
+    return $input_value;
 }
 
 # Task value -> Type value
-sub task_output( $self, $task_value ) {
+sub task_output( $self, $config_value, $task_value ) {
     return $task_value;
 }
 
 1;
 __DATA__
 @@ input.html.ep
-%= text_field 'value', value => $value, class => 'form-control'
+%= text_field 'value', value => $value // $config, class => 'form-control'
+
+@@ config.html.ep
+<label for="config">Value</label>
+%= text_field 'config', value => $config, class => 'form-control'
 
 @@ output.html.ep
 %= $value

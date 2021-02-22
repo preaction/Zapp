@@ -27,7 +27,7 @@
                     my $type_name = $input->{type};
                     my $type = $c->zapp->types->{ $type_name }
                         or die qq{Could not find type "$type_name"};
-                    my $input_field = include inline => $type->input_field( $c, $input->{value} ), self => $type, input => $input;
+                    my $input_field = include inline => $type->input_field( $c, $input->{config}, $input->{value} ), self => $type, input => $input;
                     my $input_dom = prefix_field( $input_field, "input[$input_num]" );
                     $input_dom->children->[0]->attr( 'aria-describedby', "input[$input_num].description" );
                 %><%== $input_dom %>
