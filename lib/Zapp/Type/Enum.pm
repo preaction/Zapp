@@ -9,27 +9,6 @@ use Mojo::Loader qw( data_section );
 
 has default_options => sub { undef };
 
-sub new( $class, @args ) {
-    my $self = $class->SUPER::new;
-    if ( @args ) {
-        my @default_options;
-        if ( @args == 1 ) {
-            @default_options = $args[0]->@*;
-        }
-        else {
-            @default_options = @args;
-        }
-        $self->default_options([
-            map {
-                ref $_ eq 'ARRAY'
-                ? { label => $_->[0], value => $_->[1] }
-                : { label => $_, value => $_ }
-            } @default_options
-        ]);
-    }
-    return $self;
-}
-
 sub _value_label( $self, $config, $value ) {
     my ( $label ) = first { $_->{value} eq $value } $config->{options}->@*;
     return $label // $value;
@@ -79,27 +58,43 @@ sub task_output( $self, $config_value, $task_value ) {
 __DATA__
 @@ config.html.ep
 <%
-    my @options = @{
-        $config->{options} // $self->default_options // [ {} ]
-    };
+    my @options = (
+        @{
+            $config->{options} // $self->default_options // [ {} ]
+        }
+    );
     $c->log->debug( 'Rendering options: ' . $c->dumper( \@options ) );
     my $selected_index = $config->{selected_index} // 0;
 %>
 % my $enum_tmpl = begin
     % my ( $i, $opt ) = @_;
-    %= text_field "config.options[$i].label", $opt->{label} // '', class => 'form-control'
-    %= text_field "config.options[$i].value", $opt->{value} // '', class => 'form-control'
-    %= radio_button 'config.selected_index', $i, ( checked => 'checked' )x!!( $i eq $selected_index ), class => 'form-control'
-% end
-<template id="enum-tmpl"><%= $enum_tmpl->( '#', {} ) %></template>
-<div data-zapp-array>
-    % for my $i ( 0 .. $#options ) {
-        <div data-zapp-array-row class="d-flex">
-            %= $enum_tmpl->( $i, $options[$i] )
-            <button type="button" data-zapp-array-remove>-</button>
+    <div data-zapp-array-row class="form-row">
+        <div class="col flex-grow-1">
+            <% if ( $i eq 0 ) { %><label for="config.options[<%= $i %>].label">Label</label><% } %>
+            %= text_field "config.options[$i].label", $opt->{label} // '', class => 'form-control'
         </div>
+        <div class="col flex-grow-1">
+            <% if ( $i eq 0 ) { %><label for="config.options[<%= $i %>].value">Value</label><% } %>
+            %= text_field "config.options[$i].value", $opt->{value} // '', class => 'form-control'
+        </div>
+        <div class="col-auto align-self-end py-2">
+            %= radio_button 'config.selected_index', $i, ( checked => 'checked' )x!!( $i eq $selected_index )
+        </div>
+        <button type="button" class="btn btn-outline-danger align-self-end" data-zapp-array-remove>
+            <i class="fa fa-times-circle"></i>
+        </button>
+    </div>
+% end
+<div data-zapp-array>
+    <template><%= $enum_tmpl->( '#', {} ) %></template>
+    % for my $i ( 0 .. $#options ) {
+        %= $enum_tmpl->( $i, $options[$i] )
     % }
-    <button type="button" data-zapp-array-add="#enum-tmpl">+</button>
+    <div class="form-row justify-content-end">
+        <button type="button" class="btn btn-outline-success" data-zapp-array-add>
+            <i class="fa fa-plus"></i>
+        </button>
+    </div>
 </div>
 
 @@ input.html.ep

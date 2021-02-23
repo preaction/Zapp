@@ -431,9 +431,18 @@ function prefixField( el, prefix ) {
 
     var labels = el.querySelectorAll( 'label' );
     labels.forEach( function ( el ) {
-        var sep = el.attributes.for.value.startsWith( '[' ) ? '' : '.';
-        el.attributes.for.value = `${prefix}${sep}${el.attributes.for.value}`;
+        if ( el.attributes.for ) {
+            var sep = el.attributes.for.value.startsWith( '[' ) ? '' : '.';
+            el.attributes.for.value = `${prefix}${sep}${el.attributes.for.value}`;
+        }
     } );
+
+    // Also prefix any included templates
+    el.querySelectorAll( 'template' ).forEach(
+        function ( tmpl ) {
+            prefixField( tmpl.content, prefix );
+        }
+    );
 
     return el;
 }
@@ -679,7 +688,9 @@ function addInput( event ) {
     );
     valueForm.querySelectorAll( 'label' ).forEach(
         function( el ) {
-            el.for = el.for.replace( /^value/, 'value' );
+            if ( el.attributes.for ) {
+                el.attributes.for.value = el.attributes.for.value.replace( /^value/, 'value' );
+            }
         }
     );
     prefixField( valueForm, 'input[0]' );
@@ -727,7 +738,9 @@ function reindexInputs() {
         } );
         var inputLabels = inputForm.querySelectorAll( 'label' );
         inputLabels.forEach( function ( el ) {
-            el.attributes.for.value = el.attributes.for.value.replace( /^input\[\d+\]/, `input[${i}]` );
+            if ( el.attributes.for.value ) {
+                el.attributes.for.value = el.attributes.for.value.replace( /^input\[\d+\]/, `input[${i}]` );
+            }
         } );
 
         if ( i == 0 ) {
@@ -858,6 +871,60 @@ function changeTaskTab( event ) {
     tabPaneContainer.childNodes[ tabIndex ].classList.add( 'show', 'active' );
 }
 
+function addArrayRow( event ) {
+    var btn = event.target,
+        arrayEl = btn.closest( '[data-zapp-array]' ),
+        rows = arrayEl.querySelectorAll( '[data-zapp-array-row]' ),
+        lastRow = rows[ rows.length - 1 ],
+        tmplEl = arrayEl.querySelector( 'template' ),
+        newRow = tmplEl.content.cloneNode( true ).children[0];
+    // Elements inside template should already be prefixed
+    lastRow.insertAdjacentElement( 'afterend', newRow );
+    reindexArray( arrayEl );
+}
+
+function removeArrayRow( event ) {
+    var btn = event.target,
+        arrayEl = btn.closest( '[data-zapp-array]' ),
+        rowEl = btn.closest( '[data-zapp-array-row]' );
+    arrayEl.removeChild( rowEl );
+    reindexArray( arrayEl );
+}
+
+function reindexArray( arrayEl ) {
+    // XXX: Templates inside tasks/inputs need to be edited as well
+    var arrayDepth = 1;
+    var parentNode = arrayEl.parentNode;
+    while ( parentNode.closest( '[data-zapp-array]' ) ) {
+        arrayDepth++;
+        parentNode = parentNode.parentNode.closest( '[data-zapp-array]' );
+    }
+    arrayEl.querySelectorAll( '[data-zapp-array-row]' ).forEach(
+        function ( el, i ) {
+            el.querySelectorAll( 'input,select,textarea' ).forEach(
+                function ( el ) {
+                    var parts = el.name.split( /(\[[\d#]+\])/ );
+                    if ( parts.length <= arrayDepth * 2 + 1 ) {
+                        return;
+                    }
+                    parts[ arrayDepth * 2 + 1 ] = '[' + i + ']';
+                    el.name = parts.join( "" );
+                    el.id = el.name;
+                }
+            );
+            el.querySelectorAll( 'label' ).forEach(
+                function ( el ) {
+                    if ( el.attributes.for ) {
+                        var parts = el.attributes.for.value.split( /(\[[\d#]+\])/ );
+                        parts[ arrayDepth * 2 + 1 ] = '[' + i + ']';
+                        el.attributes.for.value = parts.join( "" );
+                    }
+                }
+            );
+        }
+    );
+}
+
 document.addEventListener('DOMContentLoaded', function ( event ) {
     document.querySelectorAll( '.grow-wrap textarea' ).forEach( function (el) {
         // This causes a slight blink when the DOM is loaded. It would
@@ -879,6 +946,8 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'click', 'button.input-move-up', moveInputUp );
     delegateEvent( 'click', 'button.input-move-down', moveInputDown );
     delegateEvent( 'click', 'button.input-remove', removeInput );
+    delegateEvent( 'click', 'button[data-zapp-array-add]', addArrayRow );
+    delegateEvent( 'click', 'button[data-zapp-array-remove]', removeArrayRow );
 });
 
 % for my $js ( grep !!$_, map { data_section( $_, 'input.js.ep' ) } @{ stash 'tasks' } ) {

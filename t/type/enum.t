@@ -12,7 +12,7 @@ use Mojo::DOM;
 use Zapp::Type::Enum;
 
 my $t = Test::Zapp->new( 'Zapp' );
-my $type = Zapp::Type::Enum->new( [qw( foo bar baz )] );
+my $type = Zapp::Type::Enum->new( default_options => [qw( foo bar baz )] );
 $t->app->zapp->add_type( enum => $type );
 
 subtest 'config_field' => sub {
