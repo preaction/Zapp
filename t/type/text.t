@@ -20,8 +20,6 @@ subtest 'config_field' => sub {
     my $html = $type->config_field( $c, 'foo' );
     my $dom = Mojo::DOM->new( $html );
 
-    is $dom->children->[0]->tag, 'input', 'config field is an input tag'
-        or diag explain $dom->children->[0];
     is $dom->at( 'input' )->attr( 'type' ), 'text', 'config input tag type "text"';
     is $dom->at( 'input' )->attr( 'value' ), 'foo', 'config input tag value correct';
 };
@@ -37,8 +35,6 @@ subtest 'input_field' => sub {
     my $html = $type->input_field( $c, 'foo' );
     my $dom = Mojo::DOM->new( $html );
 
-    is $dom->children->[0]->tag, 'input', 'field is an input tag'
-        or diag explain $dom->children->[0];
     is $dom->at( 'input' )->attr( 'type' ), 'text', 'input tag type "text"';
     is $dom->at( 'input' )->attr( 'value' ), 'foo', 'input tag value correct';
 };

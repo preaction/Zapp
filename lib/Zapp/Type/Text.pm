@@ -3,9 +3,6 @@ use Mojo::Base 'Zapp::Type', -signatures;
 use Mojo::Loader qw( data_section );
 
 # XXX: Array type to hold another type
-# XXX: Enum type to choose from values of any type
-# XXX: EnumArray type to choose one or more values of any type
-# XXX: File type to upload files and pass file paths to tasks
 # XXX: KeyValue type?
 
 # "die" for validation errors

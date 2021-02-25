@@ -2,16 +2,14 @@
 =head1 DESCRIPTION
 
 This tests all types can be used in creating plans, running plans, and
-viewing runs. This tests all base types as created in Zapp by default,
-as well as some examples of types that require configuration like
-L<Zapp::Type::Enum>.
+viewing runs. This tests all base types as created in Zapp by default.
 
 =cut
 
 use Mojo::Base -strict, -signatures;
 use Test::More;
 use Test::Zapp;
-use Zapp::Type::Enum;
+use Zapp::Type::SelectBox;
 use Mojo::File qw( tempdir tempfile );
 use Mojo::JSON qw( encode_json decode_json );
 use Zapp::Util qw( get_path_from_data get_path_from_schema );
@@ -20,7 +18,12 @@ my $t = Test::Zapp->new( 'Zapp' );
 
 # Configured types
 my %added_types = (
-    enum_output => Zapp::Type::Enum->new( [qw( Scruffy Katrina Xanthor )] ),
+    selectbox_output => Zapp::Type::SelectBox->new(
+        default_options => [
+            map +{ label => $_, value => $_ },
+            qw( Scruffy Katrina Xanthor ),
+        ],
+    ),
 );
 $t->app->zapp->add_type( $_ => $added_types{ $_ } ) for keys %added_types;
 
@@ -41,8 +44,8 @@ my %plan_data = (
             config => encode_json( 1 ),
         },
         {
-            name => 'enum',
-            type => 'enum',
+            name => 'selectbox',
+            type => 'selectbox',
             config => encode_json(
                 {
                     options => [
@@ -90,10 +93,10 @@ subtest 'plan input' => sub {
               ->attr_is( 'form [name="input[0].name"]', value => 'boolean' )
         };
 
-        subtest 'input 1 - enum' => sub {
+        subtest 'input 1 - selectbox' => sub {
             $t->element_exists( 'form [name="input[1].config.options[0].label"]' )
-              ->attr_is( 'form [name="input[1].type"]', value => 'enum' )
-              ->attr_is( 'form [name="input[1].name"]', value => 'enum' )
+              ->attr_is( 'form [name="input[1].type"]', value => 'selectbox' )
+              ->attr_is( 'form [name="input[1].name"]', value => 'selectbox' )
         };
 
         subtest 'input 2 - file' => sub {
@@ -136,8 +139,8 @@ subtest 'plan input' => sub {
             'input[0].type' => 'boolean',
             'input[0].config' => 0,
 
-            'input[1].name' => 'enum',
-            'input[1].type' => 'enum',
+            'input[1].name' => 'selectbox',
+            'input[1].type' => 'selectbox',
             'input[1].config.options[0].label' => 'Scruffy',
             'input[1].config.options[0].value' => 'Scruffy',
             'input[1].config.options[1].label' => 'Katrina',
@@ -163,13 +166,13 @@ subtest 'plan input' => sub {
 
         } )->status_is( 302 );
 
-        my @inputs = $t->app->yancy->list( zapp_plan_inputs => { plan_id => $plan->{plan_id} } );
+        my @inputs = $t->app->yancy->list( zapp_plan_inputs => { plan_id => $plan->{plan_id} }, { order_by => 'rank' } );
 
         subtest 'input 0 - boolean' => sub {
             is decode_json( $inputs[0]{config} ), 0;
         };
 
-        subtest 'input 1 - enum' => sub {
+        subtest 'input 1 - selectbox' => sub {
             is_deeply decode_json( $inputs[1]{config} ),
                 {
                     options => [
@@ -211,12 +214,12 @@ subtest 'plan input' => sub {
               ->attr_is( 'form [name="input[0].name"]', value => 'boolean' )
         };
 
-        subtest 'input 1 - enum' => sub {
+        subtest 'input 1 - selectbox' => sub {
             $t->element_exists( 'form [name="input[1].value"]' )
               ->element_exists( 'form select[name="input[1].value"]', 'tag is <select>' )
               ->attr_is( 'form [name="input[1].value"] [selected]', value => 'Scruffy' )
-              ->attr_is( 'form [name="input[1].type"]', value => 'enum' )
-              ->attr_is( 'form [name="input[1].name"]', value => 'enum' )
+              ->attr_is( 'form [name="input[1].type"]', value => 'selectbox' )
+              ->attr_is( 'form [name="input[1].name"]', value => 'selectbox' )
         };
 
         subtest 'input 2 - file' => sub {
@@ -258,8 +261,8 @@ subtest 'plan input' => sub {
             'input[0].type' => 'boolean',
             'input[0].value' => 1,
 
-            'input[1].name' => 'enum',
-            'input[1].type' => 'enum',
+            'input[1].name' => 'selectbox',
+            'input[1].type' => 'selectbox',
             'input[1].value' => 'Xanthor',
 
             'input[2].name' => 'file',
@@ -291,8 +294,8 @@ subtest 'plan input' => sub {
             is $input->{boolean}{value}, 1;
         };
 
-        subtest 'input 1 - enum' => sub {
-            is $input->{enum}{value}, 'Xanthor';
+        subtest 'input 1 - selectbox' => sub {
+            is $input->{selectbox}{value}, 'Xanthor';
         };
 
         subtest 'input 2 - file' => sub {
@@ -414,20 +417,20 @@ subtest 'task input/output' => sub {
             },
 
             {
-                name => 'enum: input',
+                name => 'selectbox: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo -n {{enum}}',
+                    script => 'echo -n {{selectbox}}',
                 }),
             },
             {
-                name => 'enum: output',
+                name => 'selectbox: output',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo -n Katrina',
                 }),
                 output => encode_json([
-                    { name => 'enum_output', type => 'enum_output', expr => 'output' },
+                    { name => 'selectbox_output', type => 'selectbox_output', expr => 'output' },
                 ]),
             },
         ],
@@ -457,8 +460,8 @@ subtest 'task input/output' => sub {
             type => 'file',
             value => $file->to_rel( $uploads_dir ),
         },
-        enum => {
-            type => 'enum',
+        selectbox => {
+            type => 'selectbox',
             value => 'Scruffy',
             config => {
                 options => [
@@ -527,13 +530,13 @@ subtest 'task input/output' => sub {
         is $file->slurp, "File output\n", 'file content is correct';
     };
 
-    subtest 'enum: input' => sub {
+    subtest 'selectbox: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[10]{job_id} );
         my $result = $job->info->{result};
-        is $result->{output}, $input->{enum}{value}, 'enum input correct';
+        is $result->{output}, $input->{selectbox}{value}, 'selectbox input correct';
     };
-    subtest 'enum: output' => sub {
-        is $context->{enum_output}{value}, 'Katrina', 'enum output correct';
+    subtest 'selectbox: output' => sub {
+        is $context->{selectbox_output}{value}, 'Katrina', 'selectbox output correct';
     };
 };
 

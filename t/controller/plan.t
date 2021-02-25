@@ -213,6 +213,7 @@ subtest 'create new plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'prank_name',
+            rank => 0,
             type => 'string',
             description => 'A funny name to demoralize the Mighty One',
             config => encode_json( 'I.C. Weiner' ),
@@ -302,16 +303,16 @@ subtest 'edit existing plan' => sub {
         ],
         inputs => [
             {
-                name => 'location',
-                type => 'string',
-                description => 'Where to place the bomb',
-                config => encode_json( 'In the center' ),
-            },
-            {
                 name => 'delay',
                 type => 'number',
                 description => 'Time to give crew to survive, in minutes',
                 config => encode_json( 25 ),
+            },
+            {
+                name => 'location',
+                type => 'string',
+                description => 'Where to place the bomb',
+                config => encode_json( 'In the center' ),
             },
         ],
     } );
@@ -813,14 +814,14 @@ subtest 'edit existing plan' => sub {
             form => {
                 name => 'Save NNY',
                 description => 'Save New New York City',
-                'input[0].name' => 'location',
-                'input[0].type' => 'string',
-                'input[0].description' => 'Where to put the bomb',
-                'input[0].config' => 'In the center',
-                'input[1].name' => 'delay',
-                'input[1].type' => 'number',
-                'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].config' => '0.4',
+                'input[0].name' => 'delay',
+                'input[0].type' => 'number',
+                'input[0].description' => 'Time to give crew to survive, in hours',
+                'input[0].config' => '0.4',
+                'input[1].name' => 'location',
+                'input[1].type' => 'string',
+                'input[1].description' => 'Where to put the bomb',
+                'input[1].config' => 'In the center',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -928,6 +929,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in hours',
             config => encode_json( '0.4' ),
@@ -936,6 +938,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
+            rank => 1,
             type => 'string',
             description => 'Where to put the bomb',
             config => encode_json( 'In the center' ),
@@ -978,14 +981,14 @@ subtest 'edit existing plan' => sub {
             form => {
                 name => 'Save NNY',
                 description => 'Save New New York City',
-                'input[0].name' => 'location',
-                'input[0].type' => 'string',
-                'input[0].description' => 'Where to put the bomb',
-                'input[0].config' => 'In the center',
-                'input[1].name' => 'delay',
-                'input[1].type' => 'number',
-                'input[1].description' => 'Time to give crew to survive, in hours',
-                'input[1].config' => '0.4',
+                'input[0].name' => 'delay',
+                'input[0].type' => 'number',
+                'input[0].description' => 'Time to give crew to survive, in hours',
+                'input[0].config' => '0.4',
+                'input[1].name' => 'location',
+                'input[1].type' => 'string',
+                'input[1].description' => 'Where to put the bomb',
+                'input[1].config' => 'In the center',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
@@ -1106,6 +1109,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in hours',
             config => encode_json( '0.4' ),
@@ -1114,6 +1118,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
+            rank => 1,
             type => 'string',
             description => 'Where to put the bomb',
             config => encode_json( 'In the center' ),
@@ -1309,6 +1314,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
             config => encode_json( '60' ),
@@ -1359,6 +1365,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
             config => encode_json( '60' ),
@@ -1367,6 +1374,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
+            rank => 1,
             type => 'string',
             description => 'Where to place the bomb',
             config => encode_json( 'In the center' ),

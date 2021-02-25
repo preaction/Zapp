@@ -32,7 +32,7 @@ sub _get_plan( $self, $plan_id ) {
         }
 
         my $inputs = $plan->{inputs} = [
-            $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'name' } ),
+            $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'rank' } ),
         ];
         for my $input ( @$inputs ) {
             if ( my $config = $input->{config} ) {
@@ -99,7 +99,7 @@ sub _get_run( $self, $run_id ) {
         $run->{tasks} = $self->_get_run_tasks( $run_id );
 
         my $inputs = [
-            $self->yancy->list( zapp_run_inputs => { run_id => $run_id }, { order_by => 'name' } ),
+            $self->yancy->list( zapp_run_inputs => { run_id => $run_id }, { order_by => 'rank' } ),
         ];
         for my $input ( @$inputs ) {
             $input->{config} = decode_json( $input->{config} );
@@ -285,7 +285,9 @@ sub save_plan( $self ) {
     }
 
     my %input_to_delete = map { $_->{name} => $_ } $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id } );
-    for my $form_input ( @$form_inputs ) {
+    for my $i ( 0 .. $#$form_inputs ) {
+        my $form_input = $form_inputs->[ $i ];
+        $form_input->{rank} = $i;
         ; $self->log->debug( "Input: " . $self->dumper( $form_input ) );
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         for my $json_field ( qw( value config ) ) {

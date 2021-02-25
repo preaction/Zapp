@@ -18,7 +18,7 @@ use Test::Zapp;
 use Mojo::JSON qw( encode_json decode_json );
 
 BEGIN {
-    eval "use Test::Mojo::Role::Selenium 0.16; 1"
+    $ENV{TEST_SELENIUM} && eval "use Test::Mojo::Role::Selenium 0.16; 1"
         or plan skip_all => 'Test::Mojo::Role::Selenium >= 0.16 required to run this test';
 };
 
@@ -43,9 +43,9 @@ subtest 'config' => sub {
         # Required plan information
         ->send_keys_ok( '[name=name]', 'Enum test' )
 
-        # Add enum field
+        # Add selectbox field
         ->click_ok( 'select.add-input' )
-        ->click_ok( 'select.add-input option[value=enum]' )
+        ->click_ok( 'select.add-input option[value=selectbox]' )
         ->wait_for( '[name="input[0].name"]' )
 
         ->send_keys_ok( '[name="input[0].name"]', 'Beer_Name' )
@@ -112,8 +112,9 @@ subtest 'config' => sub {
         {
             plan_id => $plan_id,
             name => 'Beer_Name',
+            rank => 0,
             description => '',
-            type => 'enum',
+            type => 'selectbox',
             value => undef,
             config => {
                 options => [

@@ -18,7 +18,7 @@ use Test::Mojo;
 use Mojo::JSON qw( encode_json decode_json );
 
 BEGIN {
-    eval "use Test::Mojo::Role::Selenium 0.16; 1"
+    $ENV{TEST_SELENIUM} && eval "use Test::Mojo::Role::Selenium 0.16; 1"
         or plan skip_all => 'Test::Mojo::Role::Selenium >= 0.16 required to run this test';
 };
 
@@ -54,7 +54,7 @@ subtest 'create a plan' => sub {
       ->click_ok( 'select.add-input option[value=integer]' )
       ->wait_for( '[name="input[0].name"]' )
       ->send_keys_ok( '[name="input[0].name"]', 'Felony_Count' )
-      ->send_keys_ok( '[name="input[0].value"]', '0' )
+      ->send_keys_ok( '[name="input[0].config"]', '0' )
       ->send_keys_ok( '[name="input[0].description"]', 'The number of felonies perpetrated by the Feministas' )
       ;
 
@@ -152,8 +152,10 @@ subtest 'create a plan' => sub {
             plan_id => $plan_id,
             name => 'Felony_Count',
             type => 'integer',
-            value => q{"0"}, # json-encoded
+            config => q{"0"}, # json-encoded
+            value => q{null}, # json-encoded
             description => 'The number of felonies perpetrated by the Feministas',
+            rank => 0,
         },
         'input is correct';
 
@@ -181,7 +183,7 @@ subtest 'create a plan' => sub {
             input => {
                 method => 'GET',
                 url => 'http://example.com',
-                body => '',
+                body => { json => '', file => '' },
                 content_type => '',
                 auth => {
                     type => '',
@@ -206,7 +208,7 @@ subtest 'create a plan' => sub {
             input => {
                 method => 'GET',
                 url => 'http://example.com',
-                body => '',
+                body => { json => '', file => '' },
                 content_type => '',
                 auth => {
                     type => '',

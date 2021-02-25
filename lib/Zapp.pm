@@ -73,7 +73,7 @@ sub startup( $self ) {
         integer => 'Zapp::Type::Text',
         boolean => 'Zapp::Type::Text',
         file => 'Zapp::Type::File',
-        enum => 'Zapp::Type::Enum',
+        selectbox => 'Zapp::Type::SelectBox',
     );
     $self->helper( 'zapp.types' => sub( $c ) { state %types; \%types } );
     $self->helper( 'zapp.add_type' => sub( $c, $name, $type ) {
@@ -147,8 +147,9 @@ sub create_plan( $self, $plan ) {
     my @tasks = @{ delete $plan->{tasks} // [] };
     my $plan_id = $self->yancy->create( zapp_plans => $plan );
 
-    for my $input ( @inputs ) {
-        $input->{plan_id} = $plan_id;
+    for my $i ( 0..$#inputs ) {
+        $inputs[$i]{plan_id} = $plan_id;
+        my $input = { %{ $inputs[$i] }, rank => $i };
         $self->yancy->create( zapp_plan_inputs => $input );
     }
 
@@ -339,6 +340,7 @@ CREATE TABLE zapp_plan_task_parents (
 CREATE TABLE zapp_plan_inputs (
     plan_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
+    `rank` INTEGER NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
     config JSON,
@@ -388,6 +390,7 @@ CREATE TABLE zapp_run_task_parents (
 CREATE TABLE zapp_run_inputs (
     run_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
+    `rank` INTEGER NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
     value JSON,
@@ -457,6 +460,7 @@ CREATE TABLE zapp_plan_task_parents (
 CREATE TABLE zapp_plan_inputs (
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
+    rank INTEGER NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
     config JSON,
@@ -500,6 +504,7 @@ CREATE TABLE zapp_run_task_parents (
 CREATE TABLE zapp_run_inputs (
     run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
+    rank INTEGER NOT NULL,
     type VARCHAR(255) NOT NULL,
     description TEXT,
     value JSON,

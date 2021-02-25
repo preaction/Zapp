@@ -1,7 +1,7 @@
 
 =head1 DESCRIPTION
 
-This tests the Zapp::Type::Enum class
+This tests the Zapp::Type::SelectBox class
 
 =cut
 
@@ -9,15 +9,30 @@ use Mojo::Base -strict, -signatures;
 use Test::More;
 use Test::Zapp;
 use Mojo::DOM;
-use Zapp::Type::Enum;
+use Zapp::Type::SelectBox;
 
 my $t = Test::Zapp->new( 'Zapp' );
-my $type = Zapp::Type::Enum->new( default_options => [qw( foo bar baz )] );
-$t->app->zapp->add_type( enum => $type );
+my $type = Zapp::Type::SelectBox->new(
+    default_options => [
+        {
+            label => 'foo',
+            value => 'foo',
+        },
+        {
+            label => 'bar',
+            value => 'bar',
+        },
+        {
+            label => 'baz',
+            value => 'baz',
+        },
+    ]
+);
+$t->app->zapp->add_type( selectbox => $type );
 
 subtest 'config_field' => sub {
     subtest 'blank' => sub {
-        my $type = Zapp::Type::Enum->new;
+        my $type = Zapp::Type::SelectBox->new;
         my $config_value = undef;
         my $c = $t->app->build_controller;
         my $html = $type->config_field( $c, $config_value );
@@ -34,47 +49,48 @@ subtest 'config_field' => sub {
         my $html = $type->config_field( $c, $config_value );
         diag $html;
         my $dom = Mojo::DOM->new( $html );
-        ok $dom->at( '[name="config.options[0].label"]' ), 'first label field exists';
-        is $dom->at( '[name="config.options[0].label"]' )->attr( 'value' ),
+        my @rows = $dom->find( ':not(template) > [data-zapp-array-row]' )->each;
+        ok $rows[0]->at( '[name="config.options[0].label"]' ), 'first label field exists';
+        is $rows[0]->at( '[name="config.options[0].label"]' )->attr( 'value' ),
             'foo',
             'first label field value is correct';
-        ok $dom->at( '[name="config.options[0].value"]' ), 'first value field exists';
-        is $dom->at( '[name="config.options[0].value"]' )->attr( 'value' ),
+        ok $rows[0]->at( '[name="config.options[0].value"]' ), 'first value field exists';
+        is $rows[0]->at( '[name="config.options[0].value"]' )->attr( 'value' ),
             'foo',
             'first value field value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(1) [type=radio][name="config.selected_index"]' ), 'selected index radio exists';
-        is $dom->at( '[data-zapp-array-row]:nth-child(1) [type=radio][name="config.selected_index"]' )->attr( 'value' ),
+        ok $rows[0]->at( '[type=radio][name="config.selected_index"]' ), 'selected index radio exists';
+        is $rows[0]->at( '[type=radio][name="config.selected_index"]' )->attr( 'value' ),
             '0',
             'first selected index radio value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(1) [type=radio][name="config.selected_index"]' )->attr( 'checked' ),
+        ok $rows[0]->at( '[type=radio][name="config.selected_index"]' )->attr( 'checked' ),
             'first selected index radio is checked';
-        ok $dom->at( '[name="config.options[1].label"]' ), 'second label field exists';
-        is $dom->at( '[name="config.options[1].label"]' )->attr( 'value' ),
+        ok $rows[1]->at( '[name="config.options[1].label"]' ), 'second label field exists';
+        is $rows[1]->at( '[name="config.options[1].label"]' )->attr( 'value' ),
             'bar',
             'second label field value is correct';
-        ok $dom->at( '[name="config.options[1].value"]' ), 'second value field exists';
-        is $dom->at( '[name="config.options[1].value"]' )->attr( 'value' ),
+        ok $rows[1]->at( '[name="config.options[1].value"]' ), 'second value field exists';
+        is $rows[1]->at( '[name="config.options[1].value"]' )->attr( 'value' ),
             'bar',
             'second value field value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(2) [type=radio][name="config.selected_index"]' ), 'selected index radio exists';
-        is $dom->at( '[data-zapp-array-row]:nth-child(2) [type=radio][name="config.selected_index"]' )->attr( 'value' ),
+        ok $rows[1]->at( '[type=radio][name="config.selected_index"]' ), 'selected index radio exists';
+        is $rows[1]->at( '[type=radio][name="config.selected_index"]' )->attr( 'value' ),
             '1',
             'second selected index radio value is correct';
-        ok !$dom->at( '[data-zapp-array-row]:nth-child(2) [type=radio][name="config.selected_index"]' )->attr( 'checked' ),
+        ok !$rows[1]->at( '[type=radio][name="config.selected_index"]' )->attr( 'checked' ),
             'second selected index radio is not checked';
-        ok $dom->at( '[name="config.options[2].label"]' ), 'third label field exists';
-        is $dom->at( '[name="config.options[2].label"]' )->attr( 'value' ),
+        ok $rows[2]->at( '[name="config.options[2].label"]' ), 'third label field exists';
+        is $rows[2]->at( '[name="config.options[2].label"]' )->attr( 'value' ),
             'baz',
             'third label field value is correct';
-        ok $dom->at( '[name="config.options[2].value"]' ), 'third value field exists';
-        is $dom->at( '[name="config.options[2].value"]' )->attr( 'value' ),
+        ok $rows[2]->at( '[name="config.options[2].value"]' ), 'third value field exists';
+        is $rows[2]->at( '[name="config.options[2].value"]' )->attr( 'value' ),
             'baz',
             'third value field value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(3) [type=radio][name="config.selected_index"]' ), 'selected index radio exists';
-        is $dom->at( '[data-zapp-array-row]:nth-child(3) [type=radio][name="config.selected_index"]' )->attr( 'value' ),
+        ok $rows[2]->at( '[type=radio][name="config.selected_index"]' ), 'selected index radio exists';
+        is $rows[2]->at( '[type=radio][name="config.selected_index"]' )->attr( 'value' ),
             '2',
             'third selected index radio value is correct';
-        ok !$dom->at( '[data-zapp-array-row]:nth-child(3) [type=radio][name="config.selected_index"]' )->attr( 'checked' ),
+        ok !$rows[2]->at( '[type=radio][name="config.selected_index"]' )->attr( 'checked' ),
             'third selected index radio is not checked';
     };
 
@@ -90,47 +106,48 @@ subtest 'config_field' => sub {
         my $c = $t->app->build_controller;
         my $html = $type->config_field( $c, $config_value );
         my $dom = Mojo::DOM->new( $html );
-        ok $dom->at( '[name="config.options[0].label"]' ), 'first label field exists';
-        is $dom->at( '[name="config.options[0].label"]' )->attr( 'value' ),
+        my @rows = $dom->find( ':not(template) > [data-zapp-array-row]' )->each;
+        ok $rows[0]->at( '[name="config.options[0].label"]' ), 'first label field exists';
+        is $rows[0]->at( '[name="config.options[0].label"]' )->attr( 'value' ),
             'foo',
             'first label field value is correct';
-        ok $dom->at( '[name="config.options[0].value"]' ), 'first value field exists';
-        is $dom->at( '[name="config.options[0].value"]' )->attr( 'value' ),
+        ok $rows[0]->at( '[name="config.options[0].value"]' ), 'first value field exists';
+        is $rows[0]->at( '[name="config.options[0].value"]' )->attr( 'value' ),
             'foo',
             'first value field value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(1) [type=radio][name="config.selected_index"]' ), 'selected index radio exists';
-        is $dom->at( '[data-zapp-array-row]:nth-child(1) [type=radio][name="config.selected_index"]' )->attr( 'value' ),
+        ok $rows[0]->at( '[type=radio][name="config.selected_index"]' ), 'selected index radio exists';
+        is $rows[0]->at( '[type=radio][name="config.selected_index"]' )->attr( 'value' ),
             '0',
             'first selected index radio value is correct';
-        ok !$dom->at( '[data-zapp-array-row]:nth-child(1) [type=radio][name="config.selected_index"]' )->attr( 'checked' ),
+        ok !$rows[0]->at( '[type=radio][name="config.selected_index"]' )->attr( 'checked' ),
             'first selected index radio is not selected';
-        ok $dom->at( '[name="config.options[1].label"]' ), 'second label field exists';
-        is $dom->at( '[name="config.options[1].label"]' )->attr( 'value' ),
+        ok $rows[1]->at( '[name="config.options[1].label"]' ), 'second label field exists';
+        is $rows[1]->at( '[name="config.options[1].label"]' )->attr( 'value' ),
             'BAR',
             'second label field value is correct';
-        ok $dom->at( '[name="config.options[1].value"]' ), 'second value field exists';
-        is $dom->at( '[name="config.options[1].value"]' )->attr( 'value' ),
+        ok $rows[1]->at( '[name="config.options[1].value"]' ), 'second value field exists';
+        is $rows[1]->at( '[name="config.options[1].value"]' )->attr( 'value' ),
             'BAR',
             'second value field value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(2) [type=radio][name="config.selected_index"]' ), 'selected index radio exists';
-        is $dom->at( '[data-zapp-array-row]:nth-child(2) [type=radio][name="config.selected_index"]' )->attr( 'value' ),
+        ok $rows[1]->at( '[type=radio][name="config.selected_index"]' ), 'selected index radio exists';
+        is $rows[1]->at( '[type=radio][name="config.selected_index"]' )->attr( 'value' ),
             '1',
             'second selected index radio value is correct';
-        ok !$dom->at( '[data-zapp-array-row]:nth-child(2) [type=radio][name="config.selected_index"]' )->attr( 'checked' ),
+        ok !$rows[1]->at( '[type=radio][name="config.selected_index"]' )->attr( 'checked' ),
             'second selected index radio is not selected';
-        ok $dom->at( '[name="config.options[2].label"]' ), 'third label field exists';
-        is $dom->at( '[name="config.options[2].label"]' )->attr( 'value' ),
+        ok $rows[2]->at( '[name="config.options[2].label"]' ), 'third label field exists';
+        is $rows[2]->at( '[name="config.options[2].label"]' )->attr( 'value' ),
             'Baz',
             'third label field value is correct';
-        ok $dom->at( '[name="config.options[2].value"]' ), 'third value field exists';
-        is $dom->at( '[name="config.options[2].value"]' )->attr( 'value' ),
+        ok $rows[2]->at( '[name="config.options[2].value"]' ), 'third value field exists';
+        is $rows[2]->at( '[name="config.options[2].value"]' )->attr( 'value' ),
             'baz',
             'third value field value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(3) [type=radio][name="config.selected_index"]' ), 'selected index radio exists';
-        is $dom->at( '[data-zapp-array-row]:nth-child(3) [type=radio][name="config.selected_index"]' )->attr( 'value' ),
+        ok $rows[2]->at( '[type=radio][name="config.selected_index"]' ), 'selected index radio exists';
+        is $rows[2]->at( '[type=radio][name="config.selected_index"]' )->attr( 'value' ),
             '2',
             'third selected index radio value is correct';
-        ok $dom->at( '[data-zapp-array-row]:nth-child(3) [type=radio][name="config.selected_index"]' )->attr( 'checked' ),
+        ok $rows[2]->at( '[type=radio][name="config.selected_index"]' )->attr( 'checked' ),
             'third selected index radio is selected';
     };
 };

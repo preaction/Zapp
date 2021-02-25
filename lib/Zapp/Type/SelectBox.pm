@@ -1,4 +1,4 @@
-package Zapp::Type::Enum;
+package Zapp::Type::SelectBox;
 use Mojo::Base 'Zapp::Type', -signatures;
 use List::Util qw( any first );
 use Mojo::Loader qw( data_section );
@@ -28,7 +28,7 @@ sub _field_values( $self, $config, $selected_value ) {
 
 sub _check_value( $self, $options, $value ) {
     $options //= $self->default_options;
-    die "Invalid value for enum: $value"
+    die "Invalid value for selectbox: $value"
         unless any { $_->{value} eq $value } @{$options};
 }
 
@@ -66,7 +66,7 @@ __DATA__
     $c->log->debug( 'Rendering options: ' . $c->dumper( \@options ) );
     my $selected_index = $config->{selected_index} // 0;
 %>
-% my $enum_tmpl = begin
+% my $selectbox_tmpl = begin
     % my ( $i, $opt ) = @_;
     <div data-zapp-array-row class="form-row">
         <div class="col flex-grow-1">
@@ -86,9 +86,9 @@ __DATA__
     </div>
 % end
 <div data-zapp-array>
-    <template><%= $enum_tmpl->( '#', {} ) %></template>
+    <template><%= $selectbox_tmpl->( '#', {} ) %></template>
     % for my $i ( 0 .. $#options ) {
-        %= $enum_tmpl->( $i, $options[$i] )
+        %= $selectbox_tmpl->( $i, $options[$i] )
     % }
     <div class="form-row justify-content-end">
         <button type="button" class="btn btn-outline-success" data-zapp-array-add>

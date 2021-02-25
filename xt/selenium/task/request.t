@@ -18,7 +18,7 @@ use Test::Mojo;
 use Mojo::JSON qw( encode_json decode_json );
 
 BEGIN {
-    eval "use Test::Mojo::Role::Selenium 0.16; 1"
+    $ENV{TEST_SELENIUM} && eval "use Test::Mojo::Role::Selenium 0.16; 1"
         or plan skip_all => 'Test::Mojo::Role::Selenium >= 0.16 required to run this test';
 };
 
