@@ -132,4 +132,18 @@ sub task_output( $self, $config_value, $task_value ) {
     ...;
 }
 
+# For display on run view pages
+sub display_value( $self, $c, $config_value, $input_value ) {
+    my $class = blessed $self;
+    my $tmpl = data_section( $class, 'output.html.ep' );
+    # XXX: Use Mojo::Template directly to get better names than 'inline
+    # template XXXXXXXXXXXX'?
+    return $c->render_to_string(
+        inline => $tmpl,
+        self => $self,
+        config => $config_value,
+        value => $input_value,
+    );
+}
+
 1;

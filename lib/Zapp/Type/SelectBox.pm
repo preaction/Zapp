@@ -10,7 +10,7 @@ use Mojo::Loader qw( data_section );
 has default_options => sub { undef };
 
 sub _value_label( $self, $config, $value ) {
-    my ( $label ) = first { $_->{value} eq $value } $config->{options}->@*;
+    my ( $label ) = map { $_->{label} } first { $_->{value} eq $value } $config->{options}->@*;
     return $label // $value;
 }
 

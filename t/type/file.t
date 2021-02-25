@@ -52,7 +52,7 @@ subtest 'process_input' => sub {
     my $type_value = $type->process_input( $c, undef, $upload );
     is $type_value, 'Cg/qf/KmdylCVXq1NV12r0Qvj2XgE/foo.txt',
         'form_input returns path';
-    my $file = $temp->child( 'uploads', split m{/}, $type_value );
+    my $file = $temp->child( 'public', split m{/}, $type_value );
     ok -e $file, 'file exists';
     is $file->slurp, 'Hello, World!', 'file content is correct';
 
@@ -69,10 +69,10 @@ subtest 'process_input' => sub {
 
 subtest 'task_input' => sub {
     my $type_value = 'task_input';
-    my $input_file = $temp->child( uploads => $type_value )->spurt( 'Goodbye, World!' );
+    my $input_file = $temp->child( 'public', $type_value )->spurt( 'Goodbye, World!' );
     my $task_value = $type->task_input( undef, $type_value );
     isa_ok $task_value, 'Mojo::File';
-    is $task_value, $t->app->home->child( uploads => $type_value ),
+    is $task_value, $t->app->home->child( 'public', $type_value ),
         'task_value path is correct';
 };
 
@@ -82,7 +82,7 @@ subtest 'task_output' => sub {
     my $type_value = $type->task_output( undef, $task_value );
     is $type_value, 'qj/OR/3yrB7CZSKh0leolWSXSF-nY/' . $tmp->basename,
         'type_value is correct';
-    my $file = $t->app->home->child( 'uploads', split m{/}, $type_value );
+    my $file = $t->app->home->child( 'public', split m{/}, $type_value );
     ok -e $file, 'file exists';
     is $file->slurp, 'Goodbye, World!', 'file content is correct';
 };

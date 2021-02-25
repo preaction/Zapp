@@ -62,15 +62,22 @@
     </div>
 </div>
 
-% if ( @{ $run->{inputs} // [] } ) {
+% if ( my @inputs = keys %{ $run->{input} // {} } ) {
     <h2>Input</h2>
-    XXX Show read-only input
+    % for my $input_name ( @inputs ) {
+        <h3><%= $input_name =~ s/_/ /gr %></h3>
+        % my $input = $run->{input}{ $input_name };
+        % my $type = $self->app->zapp->types->{ $input->{type} } or die qq{Could not find type "$input->{type}"};
+        <p>
+            %= $type->display_value( $c, $input->{config}, $input->{value} )
+        </p>
+    % }
 % }
 
 <h2>Tasks</h2>
 % for my $task ( @{ $run->{tasks} } ) {
     <div data-task="<%= $task->{task_id} %>">
-        <div class="task-bar">
+        <div class="task-bar mt-2">
             <div data-task-state class="text-white <%= $state_bg{ $task->{state} } // $default_bg %>"><%= $task->{state} %></div>
             <div>
                 <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %></b>
@@ -107,4 +114,18 @@
             %# XXX: Show what values are saved to the context from the output
     </div>
 % }
+
+<pre><%= dumper $run->{output} %></pre>
+% if ( my @output = keys %{ $run->{output} // {} } ) {
+    <h2>Output</h2>
+    % for my $output_name ( @output ) {
+        <h3><%= $output_name =~ s/_/ /gr %></h3>
+        % my $output = $run->{output}{ $output_name };
+        % my $type = $self->app->zapp->types->{ $output->{type} } or die qq{Could not find type "$output->{type}"};
+        <p>
+            %= $type->display_value( $c, $output->{config}, $output->{value} )
+        </p>
+    % }
+% }
+
 

@@ -29,7 +29,7 @@ $t->app->zapp->add_type( $_ => $added_types{ $_ } ) for keys %added_types;
 
 # Dir to store files for Zapp::Type::File
 my $temp = tempdir();
-my $uploads_dir = $temp->child( 'uploads' )->make_path;
+my $uploads_dir = $temp->child( 'public' )->make_path;
 $t->app->home( $temp );
 my $file_value = $uploads_dir->child( 'file.txt' )->spurt( 'File content' )->to_rel( $uploads_dir );
 
@@ -300,7 +300,7 @@ subtest 'plan input' => sub {
 
         subtest 'input 2 - file' => sub {
             like $input->{file}{value}, qr{Pw/Qd/XOBNWd9H5Zc5lIXvadI_0pk/file\.txt};
-            my $file = $t->app->home->child( 'uploads', $input->{file}{value} );
+            my $file = $t->app->home->child( 'public', $input->{file}{value} );
             ok -e $file, 'file exists';
             is $file->slurp, 'Run File', 'file content correct';
         };
@@ -518,14 +518,14 @@ subtest 'task input/output' => sub {
     subtest 'file: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[8]{job_id} );
         my $result = $job->info->{result};
-        my $path = $t->app->home->child( 'uploads', $input->{file}{value} );
+        my $path = $t->app->home->child( 'public', $input->{file}{value} );
         is $result->{output}, $path->slurp, 'file input correct';
     };
     subtest 'file: output' => sub {
         my $path = $context->{file_output}{value};
         is $path, 'sp/Vj/PbsjGT3QuqhRN2B1qtTDV1w/zapp',
             'file output correct';
-        my $file = $t->app->home->child( 'uploads', $path );
+        my $file = $t->app->home->child( 'public', $path );
         ok -e $file, 'path exists';
         is $file->slurp, "File output\n", 'file content is correct';
     };

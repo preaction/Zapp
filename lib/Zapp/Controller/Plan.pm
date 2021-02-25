@@ -96,7 +96,7 @@ sub _get_run( $self, $run_id ) {
     if ( my $run_id = $run->{run_id} ) {
         # XXX: Run input should be array in rank order
         $run->{input} = decode_json( $run->{input} );
-        $run->{output} = decode_json( $run->{output} );
+        $run->{output} = decode_json( $run->{output} // '{}' );
         $run->{tasks} = $self->_get_run_tasks( $run_id );
     }
     return $run;

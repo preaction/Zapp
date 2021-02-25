@@ -4,7 +4,8 @@ use Mojo::Base 'Zapp::Type', -signatures;
 use Mojo::File;
 use Mojo::Asset::File;
 
-has path => sub( $self ) { $self->app->home->child( 'uploads' ) };
+has path => sub( $self ) { $self->app->home->child( 'public' ) };
+has url => sub( $self ) { '/' };
 
 # "die" for validation errors
 
@@ -43,11 +44,6 @@ sub process_input( $self, $c, $config_value, $form_value ) {
     return $self->_save_upload( $c, $form_value );
 }
 
-# For display on run view pages
-sub display_value( $self, $c, $input_value ) {
-    return $self->app->home->child( $input_value )->basename;
-}
-
 # Type value -> Task value
 sub task_input( $self, $config_value, $input_value ) {
     ; say "Task input (file): $input_value";
@@ -73,5 +69,5 @@ __DATA__
 
 @@ output.html.ep
 %# Show a link to download the file
-%= link_to $value => $value
+%= link_to $value => $self->url . $value
 
