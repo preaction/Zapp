@@ -59,10 +59,6 @@ sub startup( $self ) {
                 # XXX: Fix read_schema to detect compound primary keys
                 'x-id-field' => [qw( plan_id name )],
             },
-            zapp_run_inputs => {
-                # XXX: Fix read_schema to detect compound primary keys
-                'x-id-field' => [qw( run_id name )],
-            },
         },
     );
 
@@ -387,17 +383,6 @@ CREATE TABLE zapp_run_task_parents (
     CONSTRAINT FOREIGN KEY ( parent_task_id ) REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE
 );
 
-CREATE TABLE zapp_run_inputs (
-    run_id BIGINT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    `rank` INTEGER NOT NULL,
-    type VARCHAR(255) NOT NULL,
-    description TEXT,
-    value JSON,
-    PRIMARY KEY ( run_id, name ),
-    CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 CREATE TABLE zapp_plan_tests (
     test_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     plan_id BIGINT NOT NULL,
@@ -499,16 +484,6 @@ CREATE TABLE zapp_run_task_parents (
     task_id BIGINT REFERENCES zapp_run_tasks ( task_id ) ON DELETE CASCADE,
     parent_task_id BIGINT REFERENCES zapp_run_tasks ( task_id ) ON DELETE RESTRICT,
     PRIMARY KEY ( task_id, parent_task_id )
-);
-
-CREATE TABLE zapp_run_inputs (
-    run_id BIGINT REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    rank INTEGER NOT NULL,
-    type VARCHAR(255) NOT NULL,
-    description TEXT,
-    value JSON,
-    PRIMARY KEY ( run_id, name )
 );
 
 CREATE TABLE zapp_plan_tests (

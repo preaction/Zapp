@@ -94,20 +94,11 @@ sub _get_run_tasks( $self, $run_id ) {
 sub _get_run( $self, $run_id ) {
     my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
     if ( my $run_id = $run->{run_id} ) {
+        # XXX: Run input should be array in rank order
         $run->{input} = decode_json( $run->{input} );
-
+        $run->{output} = decode_json( $run->{output} );
         $run->{tasks} = $self->_get_run_tasks( $run_id );
-
-        my $inputs = [
-            $self->yancy->list( zapp_run_inputs => { run_id => $run_id }, { order_by => 'rank' } ),
-        ];
-        for my $input ( @$inputs ) {
-            $input->{config} = decode_json( $input->{config} );
-            $input->{value} = decode_json( $input->{value} );
-            $input->{value} = $run->{input}{ $input->{name} };
-        }
     }
-
     return $run;
 }
 
