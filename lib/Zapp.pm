@@ -102,32 +102,32 @@ sub startup( $self ) {
         ->to( 'plan#delete_plan' )->name( 'zapp.delete_plan' );
     $self->routes->post( '/plan/:plan_id/delete' )
         ->to( 'plan#delete_plan' )->name( 'zapp.delete_plan_confirm' );
-
-    # Create/view runs
     $self->routes->get( '/' )
         ->to( 'plan#list_plans' )->name( 'zapp.list_plans' );
+
+    # Create/view runs
     $self->routes->get( '/plan/:plan_id/run', { run_id => undef } )
-        ->to( 'plan#edit_run' )->name( 'zapp.new_run' );
+        ->to( 'run#edit_run' )->name( 'zapp.new_run' );
     $self->routes->post( '/plan/:plan_id/run', { run_id => undef } )
-        ->to( 'plan#save_run' )->name( 'zapp.create_run' );
+        ->to( 'run#save_run' )->name( 'zapp.create_run' );
     $self->routes->get( '/run/:run_id' )
-        ->to( 'plan#get_run' )->name( 'zapp.get_run' );
+        ->to( 'run#get_run' )->name( 'zapp.get_run' );
     $self->routes->get( '/run/:run_id/task/:task_id' )
-        ->to( 'plan#get_run_task' )->name( 'zapp.get_run_task' );
+        ->to( 'run#get_run_task' )->name( 'zapp.get_run_task' );
     # $self->routes->get( '/run/:run_id/edit' )
-    # ->to( 'plan#edit_run' )->name( 'zapp.edit_run' );
+    # ->to( 'run#edit_run' )->name( 'zapp.edit_run' );
     # $self->routes->post( '/run/:run_id/edit' )
-    # ->to( 'plan#save_run' )->name( 'zapp.save_run' );
+    # ->to( 'run#save_run' )->name( 'zapp.save_run' );
     $self->routes->get( '/run/:run_id/stop' )
-        ->to( 'plan#stop_run' )->name( 'zapp.stop_run' );
+        ->to( 'run#stop_run' )->name( 'zapp.stop_run' );
     $self->routes->post( '/run/:run_id/stop' )
-        ->to( 'plan#stop_run' )->name( 'zapp.stop_run_confirm' );
+        ->to( 'run#stop_run' )->name( 'zapp.stop_run_confirm' );
     $self->routes->post( '/run/:run_id/start' )
-        ->to( 'plan#start_run' )->name( 'zapp.start_run_confirm' );
+        ->to( 'run#start_run' )->name( 'zapp.start_run_confirm' );
     $self->routes->get( '/run/:run_id/kill' )
-        ->to( 'plan#kill_run' )->name( 'zapp.kill_run' );
+        ->to( 'run#kill_run' )->name( 'zapp.kill_run' );
     $self->routes->post( '/run/:run_id/kill' )
-        ->to( 'plan#kill_run' )->name( 'zapp.kill_run_confirm' );
+        ->to( 'run#kill_run' )->name( 'zapp.kill_run_confirm' );
 
 }
 
@@ -175,6 +175,40 @@ sub create_plan( $self, $plan ) {
     $plan->{plan_id} = $plan_id;
     $plan->{tasks} = \@tasks;
 
+    return $plan;
+}
+
+sub get_plan( $self, $plan_id ) {
+    my $plan = $self->yancy->get( zapp_plans => $plan_id ) || {};
+    if ( my $plan_id = $plan->{plan_id} ) {
+        my $tasks = $plan->{tasks} = [
+            $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id }, { order_by => 'task_id' } ),
+        ];
+        for my $task ( @$tasks ) {
+            $task->{input} = decode_json( $task->{input} );
+            $task->{output} = decode_json( $task->{output} // '[]' );
+            $task->{tests} = [
+                $self->yancy->list(
+                    zapp_plan_tests =>
+                    {
+                        task_id => $task->{task_id},
+                    },
+                    {
+                        order_by => 'test_id',
+                    },
+                )
+            ];
+        }
+
+        my $inputs = $plan->{inputs} = [
+            $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'rank' } ),
+        ];
+        for my $input ( @$inputs ) {
+            if ( my $config = $input->{config} ) {
+                $input->{config} = decode_json( $config );
+            }
+        }
+    }
     return $plan;
 }
 

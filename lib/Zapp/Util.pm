@@ -2,7 +2,32 @@ package Zapp::Util;
 
 use Mojo::Base 'Exporter', -signatures;
 use Text::Balanced qw( extract_delimited );
-our @EXPORT_OK = qw( get_path_from_schema get_slot_from_data get_path_from_data fill_input prefix_field rename_field parse_zapp_attrs );
+our @EXPORT_OK = qw(
+    build_data_from_params get_path_from_schema get_slot_from_data
+    get_path_from_data fill_input prefix_field rename_field parse_zapp_attrs
+);
+
+sub build_data_from_params( $c, $prefix ) {
+    my $data = '';
+    # XXX: Move to Yancy (Util? Controller?)
+    my @params = grep /^$prefix(?:\[\d+\]|\.\w+)/, $c->req->params->names->@*;
+    for my $param ( @params ) {
+        ; $c->log->debug( "Param: $param" );
+        my $value = $c->param( $param );
+        my $path = $param =~ s/^$prefix//r;
+        my $slot = get_slot_from_data( $path, \$data );
+        $$slot = $value;
+    }
+    my @uploads = grep $_->name =~ /^$prefix(?:\[\d+\]|\.\w+)/, $c->req->uploads->@*;
+    for my $upload ( @uploads ) {
+        ; $c->log->debug( "Upload: " . $upload->name );
+        my $path = $upload->name =~ s/^$prefix//r;
+        my $slot = get_slot_from_data( $path, \$data );
+        $$slot = $upload;
+    }
+    ; $c->log->debug( "Build data: " . $c->dumper( $data ) );
+    return $data ne '' ? $data : undef;
+}
 
 sub get_path_from_schema( $path, $schema ) {
     my $slot = $schema;
