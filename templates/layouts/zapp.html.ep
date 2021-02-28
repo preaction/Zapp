@@ -6,7 +6,7 @@
 %= javascript '/yancy/popper.js'
 %= javascript '/yancy/bootstrap.js'
 <style>
-    header {
+    main header {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
@@ -34,6 +34,21 @@
 
 
 <body>
+    <header class="container">
+        <nav class="navbar navbar-expand-md navbar-light bg-light">
+            %= link_to Zapp => 'zapp.list_plans', class => 'navbar-brand'
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+                <div class="navbar-nav">
+                    %= link_to Plans => 'zapp.list_plans', class => join( ' ', 'nav-link', ('active')x!!(current_route =~ /plans?$/) )
+                    %#= link_to Runs => 'zapp.list_runs', class => join( ' ', 'nav-link', ('active')x!!(current_route =~ /runs?$/) )
+                    %#= link_to Triggers => 'zapp.list_triggers', class => join( ' ', 'nav-link', ('active')x!!(current_route =~ /triggers?$/) )
+                </div>
+            </div>
+        </nav>
+    </header>
     <main class="container">
         %= content
     </main>
