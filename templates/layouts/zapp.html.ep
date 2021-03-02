@@ -43,7 +43,7 @@
             <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
                 <div class="navbar-nav">
                     %= link_to Plans => 'zapp.list_plans', class => join( ' ', 'nav-link', ('active')x!!(current_route =~ /plans?$/) )
-                    %#= link_to Runs => 'zapp.list_runs', class => join( ' ', 'nav-link', ('active')x!!(current_route =~ /runs?$/) )
+                    %= link_to Runs => 'zapp.list_runs', class => join( ' ', 'nav-link', ('active')x!!(current_route =~ /runs?$/) )
                     %#= link_to Triggers => 'zapp.list_triggers', class => join( ' ', 'nav-link', ('active')x!!(current_route =~ /triggers?$/) )
                 </div>
             </div>

@@ -529,6 +529,60 @@ subtest 'stop/kill run' => sub {
     };
 };
 
+subtest 'list runs' => sub {
+    $t->Test::Yancy::clear_backend;
+    my @runs = (
+        {
+            name => 'Cannibalon',
+            description => q{Food's good},
+            state => 'inactive',
+            created => '2021-02-01 00:00:00',
+        },
+        {
+            name => 'Nude Beach Planet',
+            description => 'Bar stool softener',
+            state => 'active',
+            created => '2021-01-01 00:00:00',
+            started => '2021-02-01 01:00:00',
+        },
+    );
+    $_->{run_id} = $t->app->yancy->create( zapp_runs => $_ ) for @runs;
+
+    $t->get_ok( '/run' )->status_is( 200 );
+
+    subtest 'run list and items are displayed' => sub {
+        $t->element_exists( '[data-runs]', 'run list exist' );
+        $t->element_exists( "[data-run-id=$runs[0]{run_id}]", 'first run is in list' );
+        $t->element_exists( "[data-run-id=$runs[1]{run_id}]", 'second run is in list' );
+    };
+
+    subtest 'run item data is correct' => sub {
+        $t->attr_is(
+            "[data-run-id=$runs[0]{run_id}]",
+            href => "/run/$runs[0]{run_id}",
+            'first run link is correct',
+        );
+        $t->attr_is(
+            "[data-run-id=$runs[1]{run_id}]",
+            href => "/run/$runs[1]{run_id}",
+            'second run link is correct',
+        );
+    };
+
+    subtest 'run list is in correct order' => sub {
+        $t->attr_is(
+            '[data-runs] > :nth-child(1)',
+            'data-run-id' => $runs[1]{run_id},
+            'active run is shown first',
+        )->or( sub { diag $t->tx->res->dom->at( '[data-runs]' ) } );
+        $t->attr_is(
+            '[data-runs] > :nth-child(2)',
+            'data-run-id' => $runs[0]{run_id},
+            'inactive run is shown after active runs',
+        )->or( sub { diag $t->tx->res->dom->at( '[data-runs]' ) } );
+    };
+};
+
 done_testing;
 
 sub Test::Yancy::clear_backend {
@@ -538,6 +592,7 @@ sub Test::Yancy::clear_backend {
         zapp_plan_inputs => [ 'plan_id', 'name' ],
         zapp_plan_tasks => 'task_id',
         zapp_plan_task_parents => 'task_id',
+        zapp_runs => 'run_id',
     );
     for my $table ( keys %tables ) {
         my $id_field = $tables{ $table };

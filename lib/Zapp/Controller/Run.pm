@@ -276,4 +276,21 @@ sub get_run_task( $self ) {
     return $self->render( inline => $template, task => $run_task );
 }
 
+sub list_runs( $self ) {
+    my @runs = $self->yancy->list( zapp_runs => {}, {} );
+    # XXX: Order should be:
+    #   1. Jobs that have not started
+    #   2. Jobs that have not finished
+    #   3. Jobs by finished datetime
+    #   4. Jobs by started datetime
+    #   5. Jobs by created datetime
+    @runs = sort {
+        ( $b->{state} =~ /(in)?active/n ) cmp ( $a->{state} =~ /(in)?active/n )
+        || $b->{finished} cmp $a->{finished}
+        || $b->{started} cmp $a->{started}
+        || $b->{created} cmp $a->{created}
+    } @runs;
+    $self->render( 'zapp/run/list', runs => \@runs );
+}
+
 1;
