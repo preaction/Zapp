@@ -270,6 +270,7 @@ subtest 'view run status' => sub {
     subtest 'before execution' => sub {
         $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
             ->element_exists( '[href=/]', 'link back to plans exists' )
+            ->text_like( '.task-tabs .active', qr/Info/, 'info tab is selected for inactive tasks' )
             ->text_is( '[data-run-state]', 'inactive', 'run state is correct' )
             ->text_is( '[data-run-started]', 'N/A', 'run started is correct' )
             ->text_is( '[data-run-finished]', 'N/A', 'run finished is correct' )
@@ -299,6 +300,7 @@ subtest 'view run status' => sub {
     subtest 'after execution' => sub {
         $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
             ->element_exists( '[href=/]', 'link back to plans exists' )
+            ->text_like( '.task-tabs .active', qr/Output/, 'output tab is selected for finished tasks' )
             ->text_is( '[data-run-state]', 'finished', 'run state is correct' )
             ->text_like( '[data-run-started]', qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run started is formatted correctly' )
             ->text_like( '[data-run-finished]',  qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run finished is formatted correctly' )

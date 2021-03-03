@@ -9,23 +9,53 @@
     my $default_bg = 'bg-secondary text-white';
 %>
 
+<div class="d-flex justify-content-between mt-2">
+    %= link_to 'zapp.list_runs', class => 'btn btn-secondary', begin
+        <i class="fa fa-arrow-left"></i> Back to Runs
+    % end
+    % if ( my $plan_id = $run->{plan_id} ) {
+        %= link_to 'zapp.edit_plan', { plan_id => $plan_id }, class => 'btn btn-secondary', begin
+            <i class="fa fa-arrow-up"></i> Edit Plan
+        % end
+    % }
+</div>
+
 <header>
     <h1>Run Plan: <%= $run->{plan}{name} %></h1>
-    %= link_to 'zapp.list_plans', class => 'btn btn-secondary', begin
-        <i class="fa fa-arrow-left"></i> Back to Plans
-    % end
 </header>
 
-<dl>
-    <dt>Started: </dt>
-    <dd data-run-started><%= $run->{started} // 'N/A' %></dd>
-    <dt>Finished: </dt>
-    <dd data-run-finished><%= $run->{finished} // 'N/A' %></dd>
-    <dt>State: </dt>
-    <dd data-run-state><%= $run->{state} %></dd>
-</dl>
-
-<div class="d-flex justify-content-end">
+<div class="d-flex justify-content-between mb-2">
+    <ul class="task-tabs nav nav-pills" role="tablist">
+        <li class="nav-item" role="presentation">
+            <%= tag a => href => '#tab-info', id => 'tab-info-label',
+                class => 'nav-link ' . ( $run->{state} eq 'inactive' ? 'active' : '' ),
+                ( 'aria-selected' => 'true' )x!!( $run->{state} eq 'inactive' ),
+                'data-toggle' => 'tab', role => 'tab', 'aria-controls' => 'tab-info',
+                begin %>
+                    Info
+            <% end %>
+        </li>
+        <li class="nav-item" role="presentation">
+            <%= tag a => href => '#tab-tasks', id => 'tab-tasks-label',
+                class => 'nav-link ' . ( $run->{state} eq 'inactive' ? 'disabled' : $run->{state} ne 'finished' ? 'active' : '' ),
+                'data-toggle' => 'tab', role => 'tab', 'aria-controls' => 'tab-tasks',
+                ( 'aria-selected' => 'true' )x!!( $run->{state} ne 'finished' && $run->{state} ne 'inactive' ),
+                ( tabindex => -1, 'aria-disabled' => 'true' )x!!( $run->{state} eq 'inactive' ),
+                begin %>
+                    Tasks
+            <% end %>
+        </li>
+        <li class="nav-item" role="presentation">
+            <%= tag a => href => '#tab-output', id => 'tab-output-label',
+                class => 'nav-link ' . ( $run->{state} eq 'finished' ? 'active' : 'disabled' ),
+                'data-toggle' => 'tab', role => 'tab', 'aria-controls' => 'tab-output',
+                ( 'aria-selected' => 'true' )x!!( $run->{state} eq 'finished' ),
+                ( tabindex => -1, 'aria-disabled' => 'true' )x!!( $run->{state} ne 'finished' ),
+                begin %>
+                    Output
+            <% end %>
+        </li>
+    </ul>
     <div class="btn-toolbar" role="toolbar" aria-label="Job control">
         <%
             my $start_btn_class
@@ -62,70 +92,88 @@
     </div>
 </div>
 
-% if ( my @inputs = keys %{ $run->{input} // {} } ) {
-    <h2>Input</h2>
-    % for my $input_name ( @inputs ) {
-        <h3><%= $input_name =~ s/_/ /gr %></h3>
-        % my $input = $run->{input}{ $input_name };
-        % my $type = $self->app->zapp->types->{ $input->{type} } or die qq{Could not find type "$input->{type}"};
-        <p>
-            %= $type->display_value( $c, $input->{config}, $input->{value} )
-        </p>
-    % }
-% }
+<div class="tab-content">
+    <div class="tab-pane <%= $run->{state} eq 'inactive' ? 'show active' : '' %>"
+        id="tab-info" role="tabpanel" aria-labelledby="tab-info-label"
+    >
+        <dl>
+            <dt>Started: </dt>
+            <dd data-run-started><%= $run->{started} // 'N/A' %></dd>
+            <dt>Finished: </dt>
+            <dd data-run-finished><%= $run->{finished} // 'N/A' %></dd>
+            <dt>State: </dt>
+            <dd data-run-state><%= $run->{state} %></dd>
+        </dl>
 
-<h2>Tasks</h2>
-% for my $task ( @{ $run->{tasks} } ) {
-    <div data-task="<%= $task->{task_id} %>">
-        <div class="task-bar mt-2">
-            <div data-task-state class="text-white <%= $state_bg{ $task->{state} } // $default_bg %>"><%= $task->{state} %></div>
-            <div>
-                <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %></b>
-                % if ( $task->{name} ) {
-                    - <%= $task->{name} %>
-                % }
-            </div>
-        </div>
-        <div class="ml-4">
-            %= include inline => data_section( $task->{class}, 'output.html.ep' ) // '', task => $task;
-            % if ( my @tests = @{ $task->{tests} // [] } ) {
-                <h3>Tests</h3>
-                <table class="table table-sm table-borderless">
-                    <thead>
-                        <tr>
-                            <th>Test Expression</th>
-                            <th>Got Value</th>
-                            <th>Op</th>
-                            <th>Expect Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        % for my $test ( @tests ) {
-                            <tr class="<%= !defined $test->{pass} ? 'table-secondary' : $test->{pass} ? 'table-success' : 'table-danger' %>">
-                                %= tag td => $test->{expr}
-                                %= tag td => $test->{expr_value} // ''
-                                %= tag td => $test->{op}
-                                %= tag td => $test->{value}
-                            </tr>
-                        % }
-                    </tbody>
-                </table>
+        % if ( my @inputs = keys %{ $run->{input} // {} } ) {
+            <h2>Input</h2>
+            % for my $input_name ( @inputs ) {
+                <h3><%= $input_name =~ s/_/ /gr %></h3>
+                % my $input = $run->{input}{ $input_name };
+                % my $type = $self->app->zapp->types->{ $input->{type} } or die qq{Could not find type "$input->{type}"};
+                <p>
+                    %= $type->display_value( $c, $input->{config}, $input->{value} )
+                </p>
             % }
-            %# XXX: Show what values are saved to the context from the output
+        % }
     </div>
-% }
 
-<pre><%= dumper $run->{output} %></pre>
-% if ( my @output = keys %{ $run->{output} // {} } ) {
-    <h2>Output</h2>
-    % for my $output_name ( @output ) {
-        <h3><%= $output_name =~ s/_/ /gr %></h3>
-        % my $output = $run->{output}{ $output_name };
-        % my $type = $self->app->zapp->types->{ $output->{type} } or die qq{Could not find type "$output->{type}"};
-        <p>
-            %= $type->display_value( $c, $output->{config}, $output->{value} )
-        </p>
-    % }
-% }
+    <div class="tab-pane <%= $run->{state} !~ /^(?:inactive|finished)/ ? 'show active' : '' %>"
+        id="tab-tasks" role="tabpanel" aria-labelledby="tab-tasks-label"
+    >
+        % for my $task ( @{ $run->{tasks} } ) {
+            <div data-task="<%= $task->{task_id} %>">
+                <div class="task-bar mt-2">
+                    <div data-task-state class="text-white <%= $state_bg{ $task->{state} } // $default_bg %>"><%= $task->{state} %></div>
+                    <div>
+                        <b><%= ( $task->{class} // '' ) =~ s/^Zapp::Task:://r %></b>
+                        % if ( $task->{name} ) {
+                            - <%= $task->{name} %>
+                        % }
+                    </div>
+                </div>
+                <div class="ml-4">
+                    %= include inline => data_section( $task->{class}, 'output.html.ep' ) // '', task => $task;
+                    % if ( my @tests = @{ $task->{tests} // [] } ) {
+                        <h3>Tests</h3>
+                        <table class="table table-sm table-borderless">
+                            <thead>
+                                <tr>
+                                    <th>Test Expression</th>
+                                    <th>Got Value</th>
+                                    <th>Op</th>
+                                    <th>Expect Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                % for my $test ( @tests ) {
+                                    <tr class="<%= !defined $test->{pass} ? 'table-secondary' : $test->{pass} ? 'table-success' : 'table-danger' %>">
+                                        %= tag td => $test->{expr}
+                                        %= tag td => $test->{expr_value} // ''
+                                        %= tag td => $test->{op}
+                                        %= tag td => $test->{value}
+                                    </tr>
+                                % }
+                            </tbody>
+                        </table>
+                    % }
+                    %# XXX: Show what values are saved to the context from the output
+                </div>
+            </div>
+        % }
+    </div>
 
+    <div class="tab-pane <%= $run->{state} eq 'finished' ? 'show active' : '' %>"
+        id="tab-output" role="tabpanel" aria-labelledby="tab-output-label"
+    >
+        % for my $output_name ( sort keys %{ $run->{output} // {} } ) {
+            <h3><%= $output_name =~ s/_/ /gr %></h3>
+            % my $output = $run->{output}{ $output_name };
+            % my $type = $self->app->zapp->types->{ $output->{type} } or die qq{Could not find type "$output->{type}"};
+            <p>
+                %= $type->display_value( $c, $output->{config}, $output->{value} )
+            </p>
+        % }
+    </div>
 
+</div>
