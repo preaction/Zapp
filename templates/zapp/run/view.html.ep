@@ -134,30 +134,6 @@
                 </div>
                 <div class="ml-4">
                     %= include inline => data_section( $task->{class}, 'output.html.ep' ) // '', task => $task;
-                    % if ( my @tests = @{ $task->{tests} // [] } ) {
-                        <h3>Tests</h3>
-                        <table class="table table-sm table-borderless">
-                            <thead>
-                                <tr>
-                                    <th>Test Expression</th>
-                                    <th>Got Value</th>
-                                    <th>Op</th>
-                                    <th>Expect Value</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                % for my $test ( @tests ) {
-                                    <tr class="<%= !defined $test->{pass} ? 'table-secondary' : $test->{pass} ? 'table-success' : 'table-danger' %>">
-                                        %= tag td => $test->{expr}
-                                        %= tag td => $test->{expr_value} // ''
-                                        %= tag td => $test->{op}
-                                        %= tag td => $test->{value}
-                                    </tr>
-                                % }
-                            </tbody>
-                        </table>
-                    % }
-                    %# XXX: Show what values are saved to the context from the output
                 </div>
             </div>
         % }

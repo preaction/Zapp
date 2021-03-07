@@ -75,19 +75,6 @@ subtest 'create a plan' => sub {
       ->send_keys_ok( '[name="task[0].input.url"]', 'http://example.com' )
       ;
 
-    # Add a test
-    $t->click_ok( '#all-tasks > :nth-child(1) .tests-tab' )
-      ->wait_for( '#all-tasks > :nth-child(1) .all-tests.active' )
-      ->click_ok( '#all-tasks > :nth-child(1) button.test-add' )
-      ->wait_for( '[name="task[0].tests[0].expr"]' )
-      ->active_element_is( '[name="task[0].tests[0].expr"]' )
-      ->live_text_is( '#all-tasks > :nth-child(1) [data-test-count]', 1, 'test count updated' )
-      ->send_keys_ok( '[name="task[0].tests[0].expr"]', 'frequency' )
-      ->click_ok( '[name="task[0].tests[0].op"]' )
-      ->click_ok( '[name="task[0].tests[0].op"] option[value="=="]' )
-      ->send_keys_ok( '[name="task[0].tests[0].value"]', '1138' )
-      ;
-
     # Add a Request
     $t->click_ok( 'select.add-task' )
       ->click_ok( 'select.add-task option[value="Zapp::Task::Request"]' )
@@ -96,32 +83,6 @@ subtest 'create a plan' => sub {
       ->send_keys_ok( '[name="task[1].name"]', 'Open a hailing channel' )
       ->send_keys_ok( '[name="task[1].description"]', 'For my victory yodel' )
       ->send_keys_ok( '[name="task[1].input.url"]', 'http://example.com' )
-      ;
-
-    # Add a test
-    $t->click_ok(
-        '#all-tasks > :nth-child(2) .tests-tab [data-test-count]',
-        'can click on test count to switch tabs',
-      )
-      ->wait_for( '#all-tasks > :nth-child(2) .all-tests.active' )
-      ->click_ok( '#all-tasks > :nth-child(2) button.test-add' )
-      ->wait_for( '[name="task[1].tests[0].expr"]' )
-      ->active_element_is( '[name="task[1].tests[0].expr"]' )
-      ->live_text_is( '#all-tasks > :nth-child(2) [data-test-count]', 1, 'test count updated' )
-      ->send_keys_ok( '[name="task[1].tests[0].expr"]', 'frequency' )
-      ->click_ok( '[name="task[1].tests[0].op"]' )
-      ->click_ok( '[name="task[1].tests[0].op"] option[value="=="]' )
-      ->send_keys_ok( '[name="task[1].tests[0].value"]', '1138' )
-      ;
-
-    $t->click_ok( '#all-tasks > :nth-child(2) button.test-add' )
-      ->wait_for( '[name="task[1].tests[1].expr"]' )
-      ->active_element_is( '[name="task[1].tests[1].expr"]' )
-      ->live_text_is( '#all-tasks > :nth-child(2) [data-test-count]', 2, 'test count updated' )
-      ->send_keys_ok( '[name="task[1].tests[1].expr"]', 'volume' )
-      ->click_ok( '[name="task[1].tests[1].op"]' )
-      ->click_ok( '[name="task[1].tests[1].op"] option[value=">"]' )
-      ->send_keys_ok( '[name="task[1].tests[1].value"]', 'loud' )
       ;
 
     # Save the plan
@@ -228,46 +189,6 @@ subtest 'create a plan' => sub {
         parent_task_id => $got_tasks[0]{task_id},
     };
 
-    my @got_tests = $t->app->yancy->list(
-        zapp_plan_tests => {
-            plan_id => $plan_id,
-        },
-        {
-            order_by => [ qw( test_id task_id ) ],
-        },
-    );
-    is scalar @got_tests, 3, 'got 3 tests for plan';
-    is_deeply $got_tests[0],
-        {
-            test_id => $got_tests[0]{test_id},
-            plan_id => $plan_id,
-            task_id => $got_tasks[0]{task_id},
-            expr => 'frequency',
-            op => '==',
-            value => '1138',
-        },
-        'task 1 test 1 is correct';
-    is_deeply $got_tests[1],
-        {
-            test_id => $got_tests[1]{test_id},
-            plan_id => $plan_id,
-            task_id => $got_tasks[1]{task_id},
-            expr => 'frequency',
-            op => '==',
-            value => '1138',
-        },
-        'task 2 test 1 is correct';
-    is_deeply $got_tests[2],
-        {
-            test_id => $got_tests[2]{test_id},
-            plan_id => $plan_id,
-            task_id => $got_tasks[1]{task_id},
-            expr => 'volume',
-            op => '>',
-            value => 'loud',
-        },
-        'task 2 test 2 is correct';
-
 };
 
 subtest 'edit a plan' => sub {
@@ -298,30 +219,6 @@ subtest 'edit a plan' => sub {
         } ),
     );
 
-    my @test_ids = (
-        $t->app->yancy->create( zapp_plan_tests => {
-            plan_id => $plan_id,
-            task_id => $task_ids[0],
-            expr => 'exit',
-            op => '==',
-            value => '0',
-        } ),
-        $t->app->yancy->create( zapp_plan_tests => {
-            plan_id => $plan_id,
-            task_id => $task_ids[1],
-            expr => 'bomb.timer',
-            op => '==',
-            value => '25:00',
-        } ),
-        $t->app->yancy->create( zapp_plan_tests => {
-            plan_id => $plan_id,
-            task_id => $task_ids[1],
-            expr => 'bomb.rotation',
-            op => '==',
-            value => '180',
-        } ),
-    );
-
     $t->app->yancy->create( zapp_plan_task_parents => {
         task_id => $task_ids[1],
         parent_task_id => $task_ids[0],
@@ -340,24 +237,10 @@ subtest 'edit a plan' => sub {
         ->live_value_is( '[name="task[0].name"]', 'Deploy the Bomb' )
         ->live_value_is( '[name="task[0].description"]', 'Deploy the bomb between the Bart Simpson dolls.' )
         ->live_value_is( '[name="task[0].input.script"]', "liftoff;\ndrop the_bomb\n" )
-        ->live_value_is( '[name="task[0].tests[0].test_id"]', $test_ids[0] )
-        ->live_value_is( '[name="task[0].tests[0].expr"]', 'exit' )
-        ->live_value_is( '[name="task[0].tests[0].op"]', '==' )
-        ->live_value_is( '[name="task[0].tests[0].value"]', '0' )
         ->live_value_is( '[name="task[1].class"]', 'Zapp::Task::Script' )
         ->live_value_is( '[name="task[1].task_id"]', $task_ids[1] )
         ->live_value_is( '[name="task[1].name"]', 'Verify bomb placement' )
         ->live_value_is( '[name="task[1].description"]', q{Let's blow it up already!} )
-        ->live_value_is( '[name="task[1].tests[0].test_id"]', $test_ids[1] )
-        ->live_value_is( '[name="task[1].tests[0].expr"]', 'bomb.timer' )
-        ->live_value_is( '[name="task[1].tests[0].op"]', '==' )
-        ->live_value_is( '[name="task[1].tests[0].value"]', '25:00' )
-        ->live_value_is( '[name="task[1].tests[1].test_id"]', $test_ids[2] )
-        ->live_value_is( '[name="task[1].tests[1].expr"]', 'bomb.rotation' )
-        ->live_value_is( '[name="task[1].tests[1].op"]', '==' )
-        ->live_value_is( '[name="task[1].tests[1].value"]', '180' )
-        ->live_text_is( '#all-tasks > :nth-child(1) [data-test-count]', 1, 'test count for task 1 correct' )
-        ->live_text_is( '#all-tasks > :nth-child(2) [data-test-count]', 2, 'test count for task 2 correct' )
         ->live_element_exists(
             '#all-tasks > :first-child button.task-move-up.disabled',
             q{Can't click button to move up at the top},
@@ -383,30 +266,6 @@ subtest 'edit a plan' => sub {
         ->send_keys_ok( '[name="task[1].name"]', 'Verify Bomb' )
         ->main::clear_ok( '[name="task[1].description"]' )
         ->send_keys_ok( '[name="task[1].description"]', 'Make sure this time' )
-        ->click_ok( '#all-tasks > :nth-child(2) .tests-tab' )
-        ->wait_for( '#all-tasks > :nth-child(2) .all-tests.active' )
-        ->main::clear_ok( '[name="task[1].tests[0].expr"]' )
-        ->send_keys_ok( '[name="task[1].tests[0].expr"]', 'bomb.orientation' )
-        ->click_ok( '[name="task[1].tests[0].op"]' )
-        ->click_ok( '[name="task[1].tests[0].op"] option[value="!="]' )
-        ->main::clear_ok( '[name="task[1].tests[0].value"]' )
-        ->send_keys_ok( '[name="task[1].tests[0].value"]', 'reverse' )
-        ;
-
-    # Add a new test
-    $t->click_ok( '#all-tasks > :nth-child(1) .tests-tab' )
-        ->wait_for( '#all-tasks > :nth-child(1) .all-tests.active' )
-        ->click_ok( '#all-tasks > :nth-child(1) button.test-add' )
-        ->wait_for( '[name="task[0].tests[1].expr"]' )
-        ->live_text_is( '#all-tasks > :nth-child(1) [data-test-count]', 2, 'test count updated' )
-        ->send_keys_ok( '[name="task[0].tests[1].expr"]', 'bomb.timer' )
-        ->click_ok( '[name="task[0].tests[1].op"]' )
-        ->click_ok( '[name="task[0].tests[1].op"] option[value="=="]' )
-        ->send_keys_ok( '[name="task[0].tests[1].value"]', '25:00' )
-        ;
-
-    # Remove the new test
-    $t->click_ok( '#all-tasks > :nth-child(1) .all-tests > ul > :nth-child(2) button.test-remove' )
         ;
 
     # Move the second task up
@@ -511,46 +370,6 @@ subtest 'edit a plan' => sub {
             task_id => $task_ids[1],
             parent_task_id => $task_ids[0],
         };
-
-        my @got_tests = $t->app->yancy->list(
-            zapp_plan_tests => {
-                plan_id => $plan_id,
-            },
-            {
-                order_by => [ qw( test_id task_id ) ],
-            },
-        );
-        is scalar @got_tests, 3, 'got 3 tests for plan';
-        is_deeply $got_tests[0],
-            {
-                plan_id => $plan_id,
-                task_id => $got_tasks[0]{task_id},
-                test_id => $got_tests[0]{test_id},
-                expr => 'exit',
-                op => '==',
-                value => '0',
-            },
-            'task 1 test 1 is correct';
-        is_deeply $got_tests[1],
-            {
-                plan_id => $plan_id,
-                task_id => $got_tasks[1]{task_id},
-                test_id => $got_tests[1]{test_id},
-                expr => 'bomb.orientation',
-                op => '!=',
-                value => 'reverse',
-            },
-            'task 2 test 1 is correct';
-        is_deeply $got_tests[2],
-            {
-                plan_id => $plan_id,
-                task_id => $got_tasks[1]{task_id},
-                test_id => $got_tests[2]{test_id},
-                expr => 'bomb.rotation',
-                op => '==',
-                value => '180',
-            },
-            'task 2 test 2 is correct';
 
     };
 

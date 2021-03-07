@@ -46,13 +46,6 @@ subtest 'run a plan' => sub {
                 input => encode_json({
                     script => 'echo Chapek 9',
                 }),
-                tests => [
-                    {
-                        expr => 'output',
-                        op => '!=',
-                        value => '',
-                    },
-                ],
             },
             {
                 name => 'Deliver package',
@@ -60,18 +53,6 @@ subtest 'run a plan' => sub {
                 input => encode_json({
                     script => 'echo Certain Doom',
                 }),
-                tests => [
-                    {
-                        expr => 'output',
-                        op => '!=',
-                        value => '',
-                    },
-                    {
-                        expr => 'exit',
-                        op => '==',
-                        value => '0',
-                    },
-                ],
             },
         ],
         inputs => [
@@ -172,49 +153,6 @@ subtest 'run a plan' => sub {
             },
             'second job is correct'
                 or diag explain $tasks[1];
-
-        # Tests are copied to allow modifying job
-        my @tests = $t->app->yancy->list(
-            zapp_run_tests => { run_id => $run_id },
-            { order_by => [ 'task_id', 'test_id' ] },
-        );
-        is scalar @tests, 3, 'three run tests created';
-        is_deeply $tests[0],
-            {
-                run_id => $run_id,
-                task_id => $tasks[0]{task_id},
-                test_id => $tests[0]{test_id},
-                expr => 'output',
-                op => '!=',
-                value => '',
-                pass => undef,
-                expr_value => undef,
-            },
-            'run task 1 test 1 is correct';
-        is_deeply $tests[1],
-            {
-                run_id => $run_id,
-                task_id => $tasks[1]{task_id},
-                test_id => $tests[1]{test_id},
-                expr => 'output',
-                op => '!=',
-                value => '',
-                pass => undef,
-                expr_value => undef,
-            },
-            'run task 2 test 1 is correct';
-        is_deeply $tests[2],
-            {
-                run_id => $run_id,
-                task_id => $tasks[1]{task_id},
-                test_id => $tests[2]{test_id},
-                expr => 'exit',
-                op => '==',
-                value => '0',
-                pass => undef,
-                expr_value => undef,
-            },
-            'run task 2 test 2 is correct';
 
         # Enqueued in Minion
         my $mjob = $t->app->minion->job( $tasks[0]{job_id} );

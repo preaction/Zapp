@@ -89,69 +89,10 @@ sub execute( $self, @args ) {
     return $self->SUPER::execute( @args );
 }
 
-sub tests( $self ) {
-    my $run_job = $self->zapp_task;
-    my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
-    return $self->app->yancy->list(
-        zapp_run_tests => {
-            run_id => $run_id,
-            task_id => $task_id,
-        },
-        { order_by => 'test_id' },
-    );
-}
-
 sub finish( $self, $output=undef ) {
     return $self->SUPER::finish if !defined $output; # XXX: Minion calls this again after we do inside the task?
     my $run_job = $self->zapp_task;
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
-
-    # Verify tests
-    ; $self->app->log->info( 'Running tests' );
-    my @tests = $self->tests;
-    for my $test ( @tests ) {
-        # Stringify whatever data we get because the value to test
-        # against can only ever be a string.
-        # XXX: Support JSON comparisons?
-        my $expr_value = $test->{ expr_value } = "".get_path_from_data( $test->{expr}, $output );
-        # XXX: Add good, robust logging to help debug job problems
-        #; $self->app->log->debug( sprintf 'Test expr %s has value %s (%s %s)', $test->@{qw( expr expr_value op value )} );
-        my $pass;
-        if ( $test->{op} eq '==' ) {
-            $pass = ( $expr_value eq $test->{value} );
-        }
-        elsif ( $test->{op} eq '!=' ) {
-            $pass = ( $expr_value ne $test->{value} );
-        }
-        elsif ( $test->{op} eq '>' ) {
-            $pass = ( $expr_value gt $test->{value} );
-        }
-        elsif ( $test->{op} eq '<' ) {
-            $pass = ( $expr_value lt $test->{value} );
-        }
-        elsif ( $test->{op} eq '>=' ) {
-            $pass = ( $expr_value ge $test->{value} );
-        }
-        elsif ( $test->{op} eq '<=' ) {
-            $pass = ( $expr_value le $test->{value} );
-        }
-        $test->{pass} = $pass;
-
-        my $rows = $self->app->yancy->backend->set(
-            zapp_run_tests => $test->{test_id},
-            {
-                expr_value => $test->{expr_value},
-                pass => $test->{pass},
-            },
-        );
-        if ( !$pass ) {
-            $self->app->log->debug(
-                sprintf "Run %s failed test %s %s %s with value %s",
-                    $test->@{qw( run_id expr op value expr_value )},
-            );
-            return $self->fail( $output );
-        }
-    }
 
     # Save assignments to child contexts
     # XXX: Make zapp_run_tasks a copy of zapp_plan_tasks

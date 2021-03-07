@@ -21,16 +21,6 @@ sub _get_run_tasks( $self, $run_id ) {
         my $run_task = {
             ( $minion_job ? $minion_job->info->%* : () ),
             %$task,
-            tests => [
-                $self->app->yancy->list( zapp_run_tests =>
-                    {
-                        $task->%{qw( run_id task_id )},
-                    },
-                    {
-                        order_by => 'test_id',
-                    },
-                ),
-            ],
         };
 
         delete $run_task->{args};

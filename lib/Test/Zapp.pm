@@ -59,7 +59,11 @@ sub run_queue {
 }
 
 sub run_task {
-    my ( $self, $task_class, $input, $name ) = @_;
+    my ( $self, $task_class, $input, $context, $name ) = @_;
+    if ( !ref $context ) {
+        $name = $context;
+        $context = {};
+    }
     my $plan = $self->{zapp}{plan} = $self->app->create_plan({
         name => $name // $task_class,
         tasks => [
@@ -70,7 +74,7 @@ sub run_task {
             },
         ],
     });
-    my $run = $self->{zapp}{run} = $self->app->enqueue( $plan->{plan_id}, {} );
+    my $run = $self->{zapp}{run} = $self->app->enqueue( $plan->{plan_id}, $context );
 
     my $worker = $self->app->minion->worker->register;
     my $job = $self->{zapp}{job} = $worker->dequeue;

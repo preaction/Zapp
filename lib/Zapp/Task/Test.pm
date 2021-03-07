@@ -1,0 +1,128 @@
+package Zapp::Task::Test;
+
+use Mojo::Base 'Zapp::Task', -signatures;
+use Zapp::Util qw( get_path_from_data );
+
+sub run( $self, $input ) {
+    my $context = $self->context;
+    my %values;
+    for my $key ( keys %$context ) {
+        $values{ $key } = $context->{ $key }{value};
+    }
+
+    my $fail = 0;
+    ; $self->app->log->info( 'Running tests' );
+    my @tests = $input->{tests}->@*;
+    for my $test ( @tests ) {
+        # Stringify whatever data we get because the value to test
+        # against can only ever be a string.
+        # XXX: Support JSON comparisons?
+        my $expr_value = $test->{ expr_value } = "".get_path_from_data( $test->{expr}, \%values );
+        # XXX: Add good, robust logging to help debug job problems
+        #; $self->app->log->debug( sprintf 'Test expr %s has value %s (%s %s)', $test->@{qw( expr expr_value op value )} );
+        my $pass;
+        if ( $test->{op} eq '==' ) {
+            $pass = ( $expr_value eq $test->{value} );
+        }
+        elsif ( $test->{op} eq '!=' ) {
+            $pass = ( $expr_value ne $test->{value} );
+        }
+        elsif ( $test->{op} eq '>' ) {
+            $pass = ( $expr_value gt $test->{value} );
+        }
+        elsif ( $test->{op} eq '<' ) {
+            $pass = ( $expr_value lt $test->{value} );
+        }
+        elsif ( $test->{op} eq '>=' ) {
+            $pass = ( $expr_value ge $test->{value} );
+        }
+        elsif ( $test->{op} eq '<=' ) {
+            $pass = ( $expr_value le $test->{value} );
+        }
+        $test->{pass} = $pass;
+        if ( !$pass ) {
+            $fail = 1;
+            # XXX: Should be $self->log and logs should be added to job
+            # notes
+            $self->app->log->debug(
+                sprintf "Failed test %s %s %s with value %s",
+                    $test->@{qw( expr op value expr_value )},
+            );
+        }
+    }
+    my $method = $fail ? 'fail' : 'finish';
+    return $self->$method( $input );
+}
+
+1;
+__DATA__
+@@ input.html.ep
+<%
+    my $input = stash( 'input' ) // { tests => [{}] };
+    my @tests = $input->{tests}->@*;
+%>
+% my $row_tmpl = begin
+    % my ( $i, $test ) = @_;
+    <div data-zapp-array-row class="form-row">
+        <input type="hidden" name="tests[<%= $i %>].test_id" value="<%= $test->{test_id} // '' %>" />
+        <div class="col">
+            <label for="tests[<%= $i %>].expr">Expression</label>
+            <input type="text" name="tests[<%= $i %>].expr" value="<%= $test->{expr} %>" class="form-control">
+        </div>
+        <div class="col-auto align-self-end">
+            <select name="tests[<%= $i %>].op" class="form-control">
+                <option value="==" <%= $test->{op} eq '==' ? 'selected' : '' %>>==</option>
+                <option value="!=" <%= $test->{op} eq '!=' ? 'selected' : '' %>>!=</option>
+                <option value="&gt;" <%= $test->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
+                <option value="&lt;" <%= $test->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
+            </select>
+        </div>
+        <div class="col">
+            <label for="tests[<%= $i %>].value">Value</label>
+            <input type="text" name="tests[<%= $i %>].value" value="<%= $test->{value} %>" class="form-control">
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="button" class="btn btn-outline-danger align-self-end" data-zapp-array-remove>
+                <i class="fa fa-times-circle"></i>
+            </button>
+        </div>
+    </div>
+% end
+<div data-zapp-array>
+    <template><%= $row_tmpl->( '#', {} ) %></template>
+    % for my $i ( 0 .. $#tests ) {
+        %= $row_tmpl->( $i, $tests[$i] )
+    % }
+    <div class="form-row justify-content-end">
+        <button type="button" class="btn btn-outline-success" data-zapp-array-add>
+            <i class="fa fa-plus"></i>
+        </button>
+    </div>
+</div>
+
+@@ output.html.ep
+% if ( $task->{output} && !ref $task->{output} ) {
+    <h4>Error</h4>
+    <div data-error class="alert alert-danger"><%= $task->{output} %></div>
+% } else {
+    <table class="table table-sm table-borderless">
+        <thead>
+            <tr>
+                <th>Test Expression</th>
+                <th>Got Value</th>
+                <th>Op</th>
+                <th>Expect Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            % for my $test ( @{ $task->{output}{tests} // $task->{input}{tests} } ) {
+                <tr class="<%= !defined $test->{pass} ? 'table-secondary' : $test->{pass} ? 'table-success' : 'table-danger' %>">
+                    %= tag td => $test->{expr}
+                    %= tag td => $test->{expr_value} // ''
+                    %= tag td => $test->{op}
+                    %= tag td => $test->{value}
+                </tr>
+            % }
+        </tbody>
+    </table>
+% }

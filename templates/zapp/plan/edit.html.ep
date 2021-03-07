@@ -60,37 +60,6 @@
 
 </style>
 
-%# Form for a single test
-% my $test_tmpl = begin
-    % my ( $i, $test ) = @_;
-    <div class="form-row test-form">
-        <input type="hidden" name="tests[<%= $i %>].test_id" value="<%= $test->{test_id} // '' %>" />
-        <div class="col">
-            <label for="tests[<%= $i %>].expr">Expression</label>
-            <input type="text" name="tests[<%= $i %>].expr" value="<%= $test->{expr} %>" class="form-control">
-        </div>
-        <div class="col-auto align-self-end">
-            <select name="tests[<%= $i %>].op" class="form-control">
-                <option value="==" <%= $test->{op} eq '==' ? 'selected' : '' %>>==</option>
-                <option value="!=" <%= $test->{op} eq '!=' ? 'selected' : '' %>>!=</option>
-                <option value="&gt;" <%= $test->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
-                <option value="&lt;" <%= $test->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
-            </select>
-        </div>
-        <div class="col">
-            <label for="tests[<%= $i %>].value">Value</label>
-            <input type="text" name="tests[<%= $i %>].value" value="<%= $test->{value} %>" class="form-control">
-        </div>
-        <div class="col-auto align-self-end">
-            <button type="button" class="test-remove btn btn-outline-danger"
-                aria-label="Delete test"
-            >
-                <i class="fa fa-times-circle"></i>
-            </button>
-        </div>
-    </div>
-% end
-
 %# Form for saving output
 % my $output_tmpl = begin
     % my ( $i, $output ) = @_;
@@ -180,12 +149,6 @@
                     <a class="input-tab nav-link active" href="#">Input</a>
                 </li>
                 <li class="nav-item">
-                    <a class="tests-tab nav-link d-flex justify-content-between align-items-center" href="#">
-                        <span>Tests</span>
-                        <span data-test-count class="ml-2 border border-dark badge badge-light"><%= scalar @{$task->{tests}} %></span>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="output-tab nav-link d-flex justify-content-between align-items-center" href="#">
                         <span>Output</span>
                         <span data-output-count class="ml-2 border border-dark badge badge-light"><%= scalar @{$task->{output}} %></span>
@@ -196,17 +159,6 @@
             <div class="col tab-content task-tabs-content">
                 <section class="tab-pane show active all-input">
                     <div data-input-form></div>
-                </section>
-
-                <section class="tab-pane all-tests">
-                    <ul class="tests list-unstyled">
-                    % for my $i ( 0 .. $#{$task->{tests}} ) {
-                        <li><%= $test_tmpl->( $i, $task->{tests}[ $i ] ) %></li>
-                    % }
-                    </ul>
-                    <button class="test-add btn btn-secondary" type="button">
-                        <i class="fa fa-plus"></i> Add Test
-                    </button>
                 </section>
 
                 <section class="tab-pane all-output">
@@ -285,9 +237,6 @@
 
 <template id="task-form">
     %= $task_tmpl->( {} )
-</template>
-<template id="test-form">
-    %= $test_tmpl->( 0, { op => '=='} )
 </template>
 <template id="output-form">
     %= $output_tmpl->( 0, {} )
@@ -545,68 +494,6 @@ function moveTaskDown( event ) {
     task.scrollIntoView({block: "start", inline: "nearest"});
 }
 
-function addTest( event ) {
-    // Clone the blank row from the template
-    var button = event.target,
-        list = button.previousElementSibling,
-        task = button.closest( '.task-form' ),
-        newTest = document.querySelector( 'template#test-form' ).content.cloneNode(true),
-        newIndex = list.querySelectorAll('li').length,
-        // Find an input so we can see which task we're in
-        nameAttr = task.querySelector( 'input' ).attributes.getNamedItem( 'name' ).value,
-        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') );
-
-    // Reset expr, op, value
-    newTest.querySelectorAll( 'input,select' ).forEach( function (el) {
-        if ( el.tagName == 'SELECT' ) {
-            el.selectedIndex = 0;
-        }
-        else {
-            el.value = '';
-        }
-        el.name = el.name.replace( /tests\[\d+\]/, 'task[' + taskIndex + '].tests[' + newIndex + ']' );
-        el.id = el.name;
-    } );
-    // XXX: Labels
-
-    // Append
-    var newRow = document.createElement( 'li' );
-    newRow.appendChild( newTest );
-    list.appendChild( newRow );
-
-    // Increment test count
-    var testCount = task.querySelector( '[data-test-count]' );
-    var count = parseInt( testCount.innerHTML );
-    count++;
-    testCount.innerHTML = count;
-
-    // Focus test expression field
-    newRow.querySelector( '[name$="expr"]' ).focus();
-}
-
-function removeTest( event ) {
-    var button = event.target,
-        task = button.closest( '.task-form' ),
-        row = button.closest( '.test-form' ).parentNode,
-        list = row.parentElement;
-
-    row.parentNode.removeChild( row );
-    // Reset indexes in remaining test rows
-    list.querySelectorAll( 'li' ).forEach( function (row, i) {
-        row.querySelectorAll( 'input,select' ).forEach( function (el) {
-            el.name = el.name.replace( /tests\[\d+\]/, 'tests[' + i + ']' );
-            el.id = el.name;
-        });
-        // XXX: Labels
-    } );
-
-    // Decrement test count
-    var testCount = task.querySelector( '[data-test-count]' );
-    var count = parseInt( testCount.innerHTML );
-    count--;
-    testCount.innerHTML = count;
-}
-
 function addOutput( event ) {
     // Clone the blank row from the template
     var button = event.target,
@@ -653,7 +540,7 @@ function removeOutput( event ) {
         list = row.parentElement;
 
     row.parentNode.removeChild( row );
-    // Reset indexes in remaining test rows
+    // Reset indexes in remaining output rows
     list.querySelectorAll( 'li' ).forEach( function (row, i) {
         row.querySelectorAll( 'input,select' ).forEach( function (el) {
             el.name = el.name.replace( /output\[\d+\]/, 'output[' + i + ']' );
@@ -936,8 +823,6 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'click', 'button.task-remove', removeTask );
     delegateEvent( 'click', 'button.task-move-up', moveTaskUp );
     delegateEvent( 'click', 'button.task-move-down', moveTaskDown );
-    delegateEvent( 'click', 'button.test-add', addTest );
-    delegateEvent( 'click', 'button.test-remove', removeTest );
     delegateEvent( 'click', 'button.output-add', addOutput );
     delegateEvent( 'click', 'button.output-remove', removeOutput );
     delegateEvent( 'change', '*', checkZappExpressions );
