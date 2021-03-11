@@ -36,7 +36,10 @@ subtest 'execute' => sub {
                 name => 'Plan trip',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo {{destination}}',
+                    vars => [
+                        { name => 'dest', value => '{{destination}}' },
+                    ],
+                    script => 'echo $dest',
                 }),
                 output => encode_json([
                     { name => 'initial_destination', type => 'string', expr => 'output' },
@@ -46,7 +49,10 @@ subtest 'execute' => sub {
                 name => 'Deliver package',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo Certain Doom on {{destination}}',
+                    vars => [
+                        { name => 'dest', value => '{{destination}}' },
+                    ],
+                    script => 'echo Certain Doom on $dest',
                 }),
                 output => encode_json([
                     { name => 'final_destination', type => 'string', expr => 'output' },
@@ -161,7 +167,10 @@ subtest 'execute' => sub {
             is_deeply $job->args,
                 [
                     {
-                        script => 'echo Nude Beach Planet',
+                        vars => [
+                            { name => 'dest', value => 'Nude Beach Planet' },
+                        ],
+                        script => 'echo $dest',
                     },
                 ],
                 'minion job args are interpolated input';
@@ -261,7 +270,10 @@ subtest 'execute' => sub {
             is_deeply $job->args,
                 [
                     {
-                        script => 'echo Certain Doom on Nude Beach Planet',
+                        vars => [
+                            { name => 'dest', value => 'Nude Beach Planet' },
+                        ],
+                        script => 'echo Certain Doom on $dest',
                     },
                 ],
                 'minion job args are interpolated input';

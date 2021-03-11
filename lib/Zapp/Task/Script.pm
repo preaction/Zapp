@@ -11,6 +11,20 @@ sub schema( $class ) {
             type => 'object',
             required => [qw( script )],
             properties => {
+                env => {
+                    type => 'array',
+                    items => {
+                        type => 'object',
+                        properties => {
+                            name => {
+                                type => 'string',
+                            },
+                            value => {
+                                type => 'string',
+                            },
+                        },
+                    },
+                },
                 script => {
                     type => 'string',
                     format => 'textarea',
@@ -54,14 +68,22 @@ sub run( $self, $input ) {
 
     my ( $stdout, $stderr, $pid );
     $stderr = gensym;
-    if ( $input->{script} =~ /^\#!/ ) {
-        $file->chmod( 0700 );
-        $pid = open3( my $stdin, $stdout, $stderr, $file );
+
+    {
+        local %ENV = %ENV;
+        for my $var ( @{ $input->{vars} // [] } ) {
+            $ENV{ $var->{name} } = $var->{value};
+        }
+
+        if ( $input->{script} =~ /^\#!/ ) {
+            $file->chmod( 0700 );
+            $pid = open3( my $stdin, $stdout, $stderr, $file );
+        }
+        else {
+            $pid = open3( my $stdin, $stdout, $stderr, $ENV{SHELL} // '/bin/sh', $file );
+        }
+        # XXX: Put PID somewhere we can use it
     }
-    else {
-        $pid = open3( my $stdin, $stdout, $stderr, $ENV{SHELL} // '/bin/sh', $file );
-    }
-    # XXX: Put PID somewhere we can use it
 
     if ( !$pid || $pid <= 0 ) {
         chdir $cwd;
@@ -109,8 +131,42 @@ sub run( $self, $input ) {
 __DATA__
 
 @@ input.html.ep
-% my $input = stash( 'input' ) // { script => '' };
+<%
+    my $input = stash( 'input' ) // { script => '' };
+    my @vars = @{ $input->{vars} // [ {} ] };
+%>
+% my $row_tmpl = begin
+    % my ( $i, $env ) = @_;
+    <div data-zapp-array-row class="form-row">
+        <div class="col">
+            <label for="vars[<%= $i %>].name">Name</label>
+            <input type="text" name="vars[<%= $i %>].name" value="<%= $env->{name} %>" class="form-control">
+        </div>
+        <div class="col">
+            <label for="vars[<%= $i %>].value">Value</label>
+            <input type="text" name="vars[<%= $i %>].value" value="<%= $env->{value} %>" class="form-control">
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="button" class="btn btn-outline-danger align-self-end" data-zapp-array-remove>
+                <i class="fa fa-times-circle"></i>
+            </button>
+        </div>
+    </div>
+% end
 <div class="form-group">
+    <label for="vars">Environment Variables</label>
+    <div data-zapp-array>
+        <template><%= $row_tmpl->( '#', {} ) %></template>
+        % for my $i ( 0 .. $#vars ) {
+            %= $row_tmpl->( $i, $vars[$i] )
+        % }
+        <div class="form-row justify-content-end">
+            <button type="button" class="btn btn-outline-success" data-zapp-array-add>
+                <i class="fa fa-plus"></i>
+            </button>
+        </div>
+    </div>
+
     <label for="script">Script</label>
     <div class="grow-wrap">
         <!-- XXX: support markdown -->
@@ -123,6 +179,15 @@ __DATA__
 
 @@ output.html.ep
 <h3>Script</h3>
+% if ( my @vars = @{ $task->{input}{vars} // [] } ) {
+    <h4>Environment Variables</h4>
+    <dl>
+        % for my $var ( @{ $task->{input}{vars} } ) {
+            <dt><%= $var->{name} %></dt>
+            <dd><%= $var->{value} %></dd>
+        % }
+    </dl>
+% }
 <pre data-input class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
 % if ( $task->{output} && !ref $task->{output} ) {
     <h3>Error</h3>

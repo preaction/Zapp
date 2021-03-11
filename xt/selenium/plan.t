@@ -338,6 +338,7 @@ subtest 'edit a plan' => sub {
                 name => 'Build',
                 description => 'Build a bomb',
                 input => {
+                    vars => [ { name => '', value => '' } ],
                     script => 'make thebomb',
                 },
                 output => [],
@@ -356,6 +357,7 @@ subtest 'edit a plan' => sub {
                 name => 'Verify Bomb',
                 description => 'Make sure this time',
                 input => {
+                    vars => [ { name => '', value => '' } ],
                     script => 'make check',
                 },
                 output => [],

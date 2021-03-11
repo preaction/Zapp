@@ -91,6 +91,22 @@ subtest 'run' => sub {
             $t->task_output_is( info => 'Script exited with value: 1', 'info is correct' );
         };
     };
+
+    subtest 'environment variables' => sub {
+        $t->run_task(
+            'Zapp::Task::Script' => {
+                vars => [
+                    { name => 'WHO', value => 'World' },
+                ],
+                script => qq{echo Hello, \$WHO\015\012},
+            },
+            'Test: environment variables',
+        );
+        $t->task_info_is( state => 'finished', 'job finished' );
+        $t->task_output_is( exit => 0, 'exit is correct' );
+        $t->task_output_is( output => "Hello, World\n", 'output is correct' );
+    };
+
 };
 
 subtest 'output view' => sub {

@@ -330,7 +330,10 @@ subtest 'task input/output' => sub {
                 name => 'string: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo -n {{string}}',
+                    vars => [
+                        { name => 'string', value => '{{string}}' },
+                    ],
+                    script => 'echo -n $string',
                 }),
             },
             {
@@ -348,7 +351,10 @@ subtest 'task input/output' => sub {
                 name => 'integer: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo -n {{integer}}',
+                    vars => [
+                        { name => 'int', value => '{{integer}}' },
+                    ],
+                    script => 'echo -n $int',
                 }),
             },
             {
@@ -366,7 +372,10 @@ subtest 'task input/output' => sub {
                 name => 'number: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo -n {{number}}',
+                    vars => [
+                        { name => 'num', value => '{{number}}' },
+                    ],
+                    script => 'echo -n $num',
                 }),
             },
             {
@@ -384,7 +393,10 @@ subtest 'task input/output' => sub {
                 name => 'boolean: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo -n {{boolean}}',
+                    vars => [
+                        { name => 'bool', value => '{{boolean}}' },
+                    ],
+                    script => 'echo -n $bool',
                 }),
             },
             {
@@ -402,7 +414,10 @@ subtest 'task input/output' => sub {
                 name => 'file: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'cat {{file}}',
+                    vars => [
+                        { name => 'file', value => '{{file}}' },
+                    ],
+                    script => 'cat $file',
                 }),
             },
             {
@@ -420,7 +435,10 @@ subtest 'task input/output' => sub {
                 name => 'selectbox: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
-                    script => 'echo -n {{selectbox}}',
+                    vars => [
+                        { name => 'val', value => '{{selectbox}}' },
+                    ],
+                    script => 'echo -n $val',
                 }),
             },
             {
