@@ -3,7 +3,8 @@ use Mojo::Base 'Mojolicious::Controller', -signatures;
 use Mojo::JSON qw( decode_json encode_json );
 use Mojo::Loader qw( data_section );
 use Time::Piece;
-use Zapp::Util qw( fill_input build_data_from_params );
+use Zapp::Task;
+use Zapp::Util qw( build_data_from_params );
 
 sub _get_run_tasks( $self, $run_id ) {
     my @run_tasks;
@@ -26,14 +27,16 @@ sub _get_run_tasks( $self, $run_id ) {
         delete $run_task->{args};
         if ( $run_task->{context} ) {
             $run_task->{context} = decode_json( $run_task->{context} );
-            my %values;
-            for my $name ( keys %{ $run_task->{context} } ) {
-                my $input = $run_task->{context}{ $name };
-                my $type = $self->app->zapp->types->{ $input->{type} }
-                    or die qq{Could not find type "$input->{type}"};
-                $values{ $name } = $type->task_input( $input->{config}, $input->{value} );
+            if ( keys %{ $run_task->{context} } ) {
+                my %values;
+                for my $name ( keys %{ $run_task->{context} } ) {
+                    my $input = $run_task->{context}{ $name };
+                    my $type = $self->app->zapp->types->{ $input->{type} }
+                        or die qq{Could not find type "$input->{type}"};
+                    $values{ $name } = $type->task_input( $input->{config}, $input->{value} );
+                }
+                $run_task->{input} = Zapp::Task::fill_input( \%values, $run_task->{input} );
             }
-            $run_task->{input} = fill_input( \%values, $run_task->{input} );
         }
 
         $run_task->{output} = delete $run_task->{result};

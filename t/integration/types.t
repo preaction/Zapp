@@ -331,7 +331,7 @@ subtest 'task input/output' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'string', value => '{{string}}' },
+                        { name => 'string', value => '=string' },
                     ],
                     script => 'echo -n $string',
                 }),
@@ -352,7 +352,7 @@ subtest 'task input/output' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'int', value => '{{integer}}' },
+                        { name => 'int', value => '=integer' },
                     ],
                     script => 'echo -n $int',
                 }),
@@ -373,7 +373,7 @@ subtest 'task input/output' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'num', value => '{{number}}' },
+                        { name => 'num', value => '=number' },
                     ],
                     script => 'echo -n $num',
                 }),
@@ -394,7 +394,7 @@ subtest 'task input/output' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'bool', value => '{{boolean}}' },
+                        { name => 'bool', value => '=boolean' },
                     ],
                     script => 'echo -n $bool',
                 }),
@@ -415,7 +415,7 @@ subtest 'task input/output' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'file', value => '{{file}}' },
+                        { name => 'file', value => '=file' },
                     ],
                     script => 'cat $file',
                 }),
@@ -436,7 +436,7 @@ subtest 'task input/output' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'val', value => '{{selectbox}}' },
+                        { name => 'val', value => '=selectbox' },
                     ],
                     script => 'echo -n $val',
                 }),

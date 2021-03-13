@@ -4,7 +4,7 @@ use Mojo::Base 'Exporter', -signatures;
 use Text::Balanced qw( extract_delimited );
 our @EXPORT_OK = qw(
     build_data_from_params get_path_from_schema get_slot_from_data
-    get_path_from_data fill_input prefix_field rename_field parse_zapp_attrs
+    get_path_from_data prefix_field rename_field parse_zapp_attrs
 );
 
 sub build_data_from_params( $c, $prefix ) {
@@ -67,26 +67,6 @@ sub get_slot_from_data( $path, $data ) {
 sub get_path_from_data( $path, $data ) {
     my $slot = get_slot_from_data( $path, \$data );
     return $$slot;
-}
-
-sub fill_input( $input, $data ) {
-    if ( !ref $data ) {
-        my $keys = join '|', keys %$input;
-        return scalar $data =~ s{(?<!\\)\{\{($keys)\}\}}{$input->{$1}}reg
-    }
-    elsif ( ref $data eq 'ARRAY' ) {
-        return [
-            map { fill_input( $input, $_ ) }
-            $data->@*
-        ];
-    }
-    elsif ( ref $data eq 'HASH' ) {
-        return {
-            map { $_ => fill_input( $input, $data->{$_} ) }
-            keys $data->%*
-        };
-    }
-    die "Unknown ref type for data: " . ref $data;
 }
 
 sub prefix_field( $dom, $prefix ) {

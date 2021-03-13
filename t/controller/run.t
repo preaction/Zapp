@@ -175,7 +175,7 @@ subtest 'view run status' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'Character', value => '{{Character}}', },
+                        { name => 'Character', value => '=Character', },
                     ],
                     script => 'echo $Character',
                 }),
@@ -185,7 +185,7 @@ subtest 'view run status' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'Character', value => '{{Character}}', },
+                        { name => 'Character', value => '=Character', },
                     ],
                     script => 'echo $Character',
                 }),
@@ -223,7 +223,8 @@ subtest 'view run status' => sub {
             ->text_like( "[data-task=$run->{tasks}[0]{task_id}] dd", qr/Zanthor/, 'first task input are interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'inactive', 'second task state is correct' )
             ->or( sub { diag $t->tx->res->dom( "[data-task=$run->{tasks}[1]{task_id}]" ) } )
-            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] dd", qr/\{\{Character\}\}/, 'second task input are not yet interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[1]{task_id}] dd", qr/^=Character/, 'second task input are not yet interpolated' )
+            ->or( sub { diag $t->tx->res->dom( "[data-task=$run->{tasks}[1]{task_id}]" )->each } )
             ;
 
         $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
@@ -235,7 +236,7 @@ subtest 'view run status' => sub {
         $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )
             ->status_is( 200 )
             ->element_exists_not( 'body', 'not inside layout' )
-            ->text_like( "dd", qr/\{\{Character\}\}/, 'second task input are not interpolated' )
+            ->text_like( "dd", qr/^=Character/, 'second task input are not interpolated' )
             ;
     };
 

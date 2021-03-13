@@ -10,6 +10,7 @@ use Test::Mojo;
 use Test::More;
 use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
+use Zapp::Task;
 
 my $mysqld = Test::mysqld->new(
     my_cnf => {
@@ -27,6 +28,76 @@ my $t = Test::Mojo->new( 'Zapp', {
     },
 } );
 
+subtest 'eval_expr' => sub {
+
+    # Zapp::Task::result must, after a successful parse, be an array
+    # with a single element: An arrayref containing the result of the
+    # parse (an Abstract Syntax Tree). If it contains zero things, the
+    # parse failed. If it contains more than one thing, the parse failed
+    # in a strange way.
+
+    my $result = Zapp::Task::eval_expr( {}, q{="string"} );
+    is $result, 'string', 'string literal';
+
+    $result = Zapp::Task::eval_expr( {}, q{="hello, \"doug\""} );
+    is $result, 'hello, "doug"', 'string literal with escaped quotes';
+
+    $result = Zapp::Task::eval_expr( { FOO => { BAR => 'success' } }, q{=FOO.BAR} );
+    is $result, 'success', 'variable lookup from context';
+
+    $result = Zapp::Task::eval_expr( {}, q{=UPPER("foo")} );
+    is $result, 'FOO', 'function call';
+
+    $result = Zapp::Task::eval_expr( { Foo => 'Baz' }, q{=Foo&"Bar"} );
+    is $result, 'BazBar', 'binary operator';
+
+    $result = Zapp::Task::eval_expr( { Bar => 'Baz' }, q{=UPPER("foo"&Bar)} );
+    is $result, 'FOOBAZ', 'function call takes binary operator expr as argument';
+
+    $result = Zapp::Task::eval_expr( {}, q{=LEFT("foo",2)} );
+    is $result, 'fo', 'function call with multiple arguments';
+
+    $result = Zapp::Task::eval_expr( { Foo => 'FOO' }, q{=LEFT(LOWER(Foo),2)} );
+    is $result, 'fo', 'function call with function call as argument';
+
+    $result = Zapp::Task::eval_expr( { Bar => 'BAZ' }, q{=UPPER("foo")&LOWER(Bar)} );
+    is $result, "FOObaz", 'binary operator with function call as operands';
+
+    subtest 'parse_expr' => sub {
+        my $tree = Zapp::Task::parse_expr( q{="string"} );
+        is_deeply $tree, [ string => q{"string"} ], 'string parsed correctly';
+
+        $tree = Zapp::Task::parse_expr( q{=foo.bar} );
+        is_deeply $tree, [ var => q{foo.bar} ], 'var parsed correctly';
+
+        $tree = Zapp::Task::parse_expr( q{=UPPER("string")} );
+        is_deeply $tree, [ call => UPPER => [ string => q{"string"} ] ],
+            'function call parsed correctly';
+
+        $tree = Zapp::Task::parse_expr( q{=LEFT(LOWER(Foo),2)} );
+        is_deeply $tree,
+            [
+                call => 'LEFT',
+                [
+                    call => 'LOWER',
+                    [
+                        var => 'Foo',
+                    ],
+                ],
+                [
+                    number => 2,
+                ],
+            ],
+            'function call with function call as argument parsed correctly';
+
+        eval { Zapp::Task::parse_expr( {}, q{=UPPER(Foo&"Bar)} ) };
+        ok $@, 'parse expr dies for syntax error';
+        eval { Zapp::Task::parse_expr( {}, q{=UPPER(LOWER(Foo)&)} ) };
+        ok $@, 'parse expr dies for syntax error';
+    };
+
+};
+
 subtest 'execute' => sub {
     my $plan = $t->app->create_plan({
         name => 'Deliver a package',
@@ -37,7 +108,7 @@ subtest 'execute' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'dest', value => '{{destination}}' },
+                        { name => 'dest', value => '=destination' },
                     ],
                     script => 'echo $dest',
                 }),
@@ -50,7 +121,7 @@ subtest 'execute' => sub {
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
-                        { name => 'dest', value => '{{destination}}' },
+                        { name => 'dest', value => '=destination' },
                     ],
                     script => 'echo Certain Doom on $dest',
                 }),

@@ -3,7 +3,7 @@ use Mojo::Base 'Minion::Job', -signatures;
 use List::Util qw( uniq );
 use Time::Piece;
 use Mojo::JSON qw( decode_json encode_json );
-use Zapp::Util qw( get_path_from_data get_path_from_schema fill_input );
+use Zapp::Util qw( get_path_from_data get_path_from_schema );
 
 has zapp_task => sub( $self ) {
     my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $self->id } );
@@ -156,6 +156,171 @@ sub finish( $self, $output=undef ) {
 sub fail( $self, @args ) {
     $self->set( state => 'failed' );
     return $self->SUPER::fail( @args );
+}
+
+our %BINOPS = (
+    '+' => sub { $_[0] + $_[1] },
+    '-' => sub { $_[0] - $_[1] },
+    '*' => sub { $_[0] * $_[1] },
+    '/' => sub { $_[0] / $_[1] },
+    '^' => sub { $_[0] ** $_[1] },
+    '&' => sub { $_[0] . $_[1] },
+    # XXX: Logical binops need to detect numbers vs. strings and change
+    # comparisons
+    '=' => sub { $_[0] eq $_[1] },
+    '>' => sub { $_[0] gt $_[1] },
+    '<' => sub { $_[0] lt $_[1] },
+    '>=' => sub { $_[0] ge $_[1] },
+    '<=' => sub { $_[0] le $_[1] },
+    '<>' => sub { $_[0] ne $_[1] },
+);
+
+our %FUNCTIONS = (
+    ### Text functions
+    # Case manipulation
+    LOWER => sub( $str ) { lc $str },
+    UPPER => sub( $str ) { uc $str },
+    PROPER => sub( $str ) { ( lc $str ) =~ s/(?:^|[^a-zA-Z'])([a-z])/uc $1/er },
+    # Substrings
+    LEFT => sub( $str, $len ) { substr $str, 0, $len },
+    RIGHT => sub( $str, $len ) { substr $str, -$len },
+);
+
+my ( @term, @args, @binop, @call );
+our $GRAMMAR = qr{
+    (?(DEFINE)
+        (?<EXPR>
+            # Expressions can recurse, so we need to use a stack. When
+            # we recurse, we must take the result off the stack and save
+            # it until we can put it back on the stack (somewhere)
+            (?:
+                # Terminator first, to escape infinite loops
+                (?> (?&TERM) ) (?! (?&OP) | \( )
+                (?{ push @Zapp::Task::result, pop @term })
+            |
+                (?> (?&CALL) ) (?! (?&OP) )
+                (?{ push @Zapp::Task::result, [ call => @{ pop @call } ] })
+            |
+                (?{ push @binop, [] })
+                (?>
+                    (?> (?&CALL) )
+                    (?{ push @{ $binop[-1] }, [ call => @{ pop @call } ] })
+                |
+                    (?> (?&TERM) )
+                    (?{ push @{ $binop[-1] }, [ @{ pop @term } ] })
+                )
+                (?<op> (?&OP) )
+                (?>
+                    (?> (?&CALL) )
+                    (?{ push @{ $binop[-1] }, [ call => @{ pop @call } ] })
+                |
+                    (?> (?&TERM) )
+                    (?{ push @{ $binop[-1] }, [ @{ pop @term } ] })
+                )
+                (?{ push @Zapp::Task::result, [ binop => $+{op}, @{ pop @binop } ] })
+            )
+        )
+        (?<OP> @{[ join '|', map quotemeta, keys %BINOPS ]} )
+        (?<CALL>
+            (?<name> (?&VAR) )
+            \(
+                (?{ push @args, [] })
+                (?> (?&EXPR) )
+                (?{ push @{ $args[-1] }, pop @Zapp::Task::result })
+                (?:
+                    , (?> (?&EXPR) )
+                    (?{ push @{ $args[-1] }, pop @Zapp::Task::result })
+                )*
+            \)
+            (?{ push @call, [ $+{name}, @{ pop @args } ] })
+        )
+        (?<TERM>
+            (?:
+                (?<string> (?&STRING) )
+                (?{ push @term, [ %+{'string'} ] })
+            |
+                (?<number> (?&NUMBER) )
+                (?{ push @term, [ %+{'number'} ] })
+            |
+                (?<var> (?&VAR) )
+                (?{ push @term, [ %+{'var'} ] })
+            )
+        )
+        (?<VAR> [a-zA-Z][a-zA-Z0-9_.]* )
+        (?<STRING> " [^"\\]*+  (?: \\" [^"\\]*+ )*+ " )
+        (?<NUMBER> -? \d+ %? | -? \d* \. \d+ %? )
+    )
+}xms;
+
+# XXX: Strings that look like money amounts can be coerced into numbers
+# XXX: Strings that look like dates can be coerced into dates
+#       ... Or maybe not, since that's one of the biggest complaints
+#       about Excel. Though, that might just refer to the
+#       auto-formatting thing, which we will not be doing.
+
+sub parse_expr( $expr ) {
+    local @Zapp::Task::result = ();
+    $expr =~ /${GRAMMAR}=(?&EXPR)/;
+    # XXX: Parse error handling. DCONWAY has numerous
+    # (?{ $expected = '...'; $failed_at = pos() }) in his
+    # Keyword::Declare grammar. If parsing stops, the last value in
+    # those vars is used to show an error message.
+    die "Syntax error" unless @Zapp::Task::result;
+    return $Zapp::Task::result[0];
+}
+
+sub eval_expr( $context, $expr ) {
+    my $tree = parse_expr( $expr );
+    my $handle = sub( $tree ) {
+        if ( $tree->[0] eq 'string' ) {
+            # XXX: strip slashes
+            my $string = substr $tree->[1], 1, -1;
+            $string =~ s/\\(?!\\)//g;
+            return $string;
+        }
+        if ( $tree->[0] eq 'number' ) {
+            return $tree->[1];
+        }
+        if ( $tree->[0] eq 'var' ) {
+            return get_path_from_data( $tree->[1], $context );
+        }
+        if ( $tree->[0] eq 'call' ) {
+            my $name = $tree->[1];
+            my @args = map { __SUB__->( $_ ) } @{$tree}[2 .. $#{$tree}];
+            return $FUNCTIONS{ $name }->( @args );
+        }
+        if ( $tree->[0] eq 'binop' ) {
+            my $op = $tree->[1];
+            my $left = __SUB__->( $tree->[2] );
+            my $right = __SUB__->( $tree->[3] );
+            return $BINOPS{ $op }->( $left, $right );
+        }
+        die "Unknown parse result: $tree->[0]";
+    };
+    my $result = $handle->( $tree );
+    return $result;
+}
+
+sub fill_input( $input, $data ) {
+    if ( !ref $data ) {
+        if ( $data =~ /^=(?!=)/ ) {
+            $data = eval_expr( $input, $data );
+        }
+        return $data;
+    }
+    elsif ( ref $data eq 'ARRAY' ) {
+        return [
+            map { fill_input( $input, $_ ) }
+            $data->@*
+        ];
+    }
+    elsif ( ref $data eq 'HASH' ) {
+        return {
+            map { $_ => fill_input( $input, $data->{$_} ) }
+            keys $data->%*
+        };
+    }
+    die "Unknown ref type for data: " . ref $data;
 }
 
 sub schema( $class ) {
