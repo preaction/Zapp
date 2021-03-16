@@ -179,7 +179,6 @@ sub get_plan( $self, $plan_id ) {
         ];
         for my $task ( @$tasks ) {
             $task->{input} = decode_json( $task->{input} );
-            $task->{output} = decode_json( $task->{output} // '[]' );
         }
 
         my $inputs = $plan->{inputs} = [
@@ -291,11 +290,6 @@ sub enqueue_tasks( $self, $input, @tasks ) {
             push @jobs, {
                 task_id => $task_id,
                 job_id => $job_id,
-                # All jobs with no parents must have the initial context. Other jobs
-                # will get their context filled in by their parent.
-                context => encode_json(
-                    !$job_opts{parents} ? $input : {},
-                ),
             };
         }
         last if !$loops--;
@@ -306,6 +300,18 @@ sub enqueue_tasks( $self, $input, @tasks ) {
     }
 
     return \@jobs;
+}
+
+sub list_tasks( $self, $run_id, $opt={} ) {
+    my @tasks = $self->yancy->list(
+        zapp_run_tasks => { run_id => $run_id }, $opt,
+    );
+    for my $task ( @tasks ) {
+        for my $field ( qw( input output ) ) {
+            $task->{ $field } &&= decode_json( $task->{ $field } );
+        }
+    }
+    return @tasks;
 }
 
 1;
@@ -327,7 +333,6 @@ CREATE TABLE zapp_plan_tasks (
     description TEXT,
     class VARCHAR(255) NOT NULL,
     input JSON,
-    output JSON,
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -361,7 +366,6 @@ CREATE TABLE zapp_runs (
     started DATETIME NULL,
     finished DATETIME NULL,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
-    output JSON,
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -374,7 +378,6 @@ CREATE TABLE zapp_run_tasks (
     class VARCHAR(255) NOT NULL,
     input JSON,
     output JSON,
-    context JSON,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     job_id BIGINT,
     CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
@@ -414,8 +417,7 @@ CREATE TABLE zapp_plan_tasks (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     class VARCHAR(255) NOT NULL,
-    input JSON,
-    output JSON
+    input JSON
 );
 
 CREATE TABLE zapp_plan_task_parents (
@@ -444,8 +446,7 @@ CREATE TABLE zapp_runs (
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started DATETIME NULL,
     finished DATETIME NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'inactive',
-    output JSON
+    state VARCHAR(20) NOT NULL DEFAULT 'inactive'
 );
 
 CREATE TABLE zapp_run_tasks (
@@ -456,7 +457,6 @@ CREATE TABLE zapp_run_tasks (
     description TEXT,
     class VARCHAR(255) NOT NULL,
     input JSON,
-    context JSON,
     output JSON,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     job_id BIGINT

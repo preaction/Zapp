@@ -133,7 +133,6 @@ subtest 'create a plan' => sub {
         {
             $got_tasks[0]->%*,
             input => decode_json( $got_tasks[0]{input} ),
-            output => decode_json( $got_tasks[0]{output} ),
         },
         {
             plan_id => $got_plan->{plan_id},
@@ -151,14 +150,12 @@ subtest 'create a plan' => sub {
                     token => '',
                 },
             },
-            output => [],
         },
         'task 1 is correct';
     is_deeply
         {
             $got_tasks[1]->%*,
             input => decode_json( $got_tasks[1]{input} ),
-            output => decode_json( $got_tasks[1]{output} ),
         },
         {
             plan_id => $got_plan->{plan_id},
@@ -176,7 +173,6 @@ subtest 'create a plan' => sub {
                     token => '',
                 },
             },
-            output => [],
         },
         'task 2 is correct';
 
@@ -329,7 +325,6 @@ subtest 'edit a plan' => sub {
             {
                 $got_tasks[0]->%*,
                 input => decode_json( $got_tasks[0]{input} ),
-                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -341,14 +336,12 @@ subtest 'edit a plan' => sub {
                     vars => [ { name => '', value => '' } ],
                     script => 'make thebomb',
                 },
-                output => [],
             },
             'task 1 is correct';
         is_deeply
             {
                 $got_tasks[1]->%*,
                 input => decode_json( $got_tasks[1]{input} ),
-                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -360,7 +353,6 @@ subtest 'edit a plan' => sub {
                     vars => [ { name => '', value => '' } ],
                     script => 'make check',
                 },
-                output => [],
             },
             'task 2 is correct';
 

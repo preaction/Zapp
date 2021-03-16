@@ -74,6 +74,7 @@ sub run( $self, $input ) {
         for my $var ( @{ $input->{vars} // [] } ) {
             $ENV{ $var->{name} } = $var->{value};
         }
+        ; $self->app->log->debug( "Environment: \n" . join "\n", map { "$_=$ENV{$_}" } keys %ENV ); 
 
         if ( $input->{script} =~ /^\#!/ ) {
             $file->chmod( 0700 );
@@ -96,6 +97,8 @@ sub run( $self, $input ) {
         });
     }
 
+    # XXX: Read from stdout/stderr at the same time so both can be seen
+    # while process runs
     my $output = '';
     while ( my $line = <$stdout> ) {
         $output .= $line;
@@ -106,6 +109,8 @@ sub run( $self, $input ) {
         $error_output .= $line;
         # XXX: Put output somewhere it can be seen while process runs
     }
+
+    $self->app->log->debug( "STDOUT: $output\n\nSTDERR: $error_output\n" );
 
     waitpid $pid, 0;
     my $exit = $?;

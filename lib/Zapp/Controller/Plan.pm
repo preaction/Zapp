@@ -86,9 +86,8 @@ sub save_plan( $self ) {
     for my $task ( @$tasks ) {
         my $task_id = $task->{task_id};
 
-        $task->{output} //= [];
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        for my $json_field ( qw( input output ) ) {
+        for my $json_field ( qw( input ) ) {
             $task->{ $json_field } = encode_json( $task->{ $json_field } );
         }
 

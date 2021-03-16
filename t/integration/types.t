@@ -16,17 +16,6 @@ use Zapp::Util qw( get_path_from_data get_path_from_schema );
 
 my $t = Test::Zapp->new( 'Zapp' );
 
-# Configured types
-my %added_types = (
-    selectbox_output => Zapp::Type::SelectBox->new(
-        default_options => [
-            map +{ label => $_, value => $_ },
-            qw( Scruffy Katrina Xanthor ),
-        ],
-    ),
-);
-$t->app->zapp->add_type( $_ => $added_types{ $_ } ) for keys %added_types;
-
 # Dir to store files for Zapp::Type::File
 my $temp = tempdir();
 my $uploads_dir = $temp->child( 'public' )->make_path;
@@ -319,12 +308,10 @@ subtest 'plan input' => sub {
     };
 };
 
-subtest 'task input/output' => sub {
-    # Create a plan with two Script tasks for each type.
-    # One handles an input of that type. One provides an output
-    # of that type.
+subtest 'task input' => sub {
+    # XXX: Test tasks that output certain types
     my $plan = $t->app->create_plan({
-        name => 'Task I/O Plan',
+        name => 'Task Input Plan',
         tasks => [
             {
                 name => 'string: input',
@@ -337,17 +324,6 @@ subtest 'task input/output' => sub {
                 }),
             },
             {
-                name => 'string: output',
-                class => 'Zapp::Task::Script',
-                input => encode_json({
-                    script => 'echo -n Output string',
-                }),
-                output => encode_json([
-                    { name => 'string_output', type => 'string', expr => 'output' },
-                ]),
-            },
-
-            {
                 name => 'integer: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
@@ -357,17 +333,6 @@ subtest 'task input/output' => sub {
                     script => 'echo -n $int',
                 }),
             },
-            {
-                name => 'integer: output',
-                class => 'Zapp::Task::Script',
-                input => encode_json({
-                    script => 'echo -n 6543',
-                }),
-                output => encode_json([
-                    { name => 'integer_output', type => 'integer', expr => 'output' },
-                ]),
-            },
-
             {
                 name => 'number: input',
                 class => 'Zapp::Task::Script',
@@ -379,17 +344,6 @@ subtest 'task input/output' => sub {
                 }),
             },
             {
-                name => 'number: output',
-                class => 'Zapp::Task::Script',
-                input => encode_json({
-                    script => 'echo -n 9.876',
-                }),
-                output => encode_json([
-                    { name => 'number_output', type => 'number', expr => 'output' },
-                ]),
-            },
-
-            {
                 name => 'boolean: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
@@ -399,17 +353,6 @@ subtest 'task input/output' => sub {
                     script => 'echo -n $bool',
                 }),
             },
-            {
-                name => 'boolean: output',
-                class => 'Zapp::Task::Script',
-                input => encode_json({
-                    script => 'echo -n 1',
-                }),
-                output => encode_json([
-                    { name => 'boolean_output', type => 'boolean', expr => 'output' },
-                ]),
-            },
-
             {
                 name => 'file: input',
                 class => 'Zapp::Task::Script',
@@ -421,17 +364,6 @@ subtest 'task input/output' => sub {
                 }),
             },
             {
-                name => 'file: output',
-                class => 'Zapp::Task::Script',
-                input => encode_json({
-                    script => 'echo File output > /tmp/zapp; echo -n /tmp/zapp',
-                }),
-                output => encode_json([
-                    { name => 'file_output', type => 'file', expr => 'output' },
-                ]),
-            },
-
-            {
                 name => 'selectbox: input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
@@ -440,16 +372,6 @@ subtest 'task input/output' => sub {
                     ],
                     script => 'echo -n $val',
                 }),
-            },
-            {
-                name => 'selectbox: output',
-                class => 'Zapp::Task::Script',
-                input => encode_json({
-                    script => 'echo -n Katrina',
-                }),
-                output => encode_json([
-                    { name => 'selectbox_output', type => 'selectbox_output', expr => 'output' },
-                ]),
             },
         ],
     });
@@ -494,67 +416,36 @@ subtest 'task input/output' => sub {
     my $run = $t->app->enqueue( $plan->{plan_id}, $input );
     $t->run_queue;
 
-    my $finished_run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
-    my $context = decode_json( $finished_run->{output} );
-
     subtest 'string: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[0]{job_id} );
         my $result = $job->info->{result};
         is $result->{output}, $input->{string}{value}, 'string input correct';
     };
-    subtest 'string: output' => sub {
-        is $context->{string_output}{value}, 'Output string', 'string output correct';
-    };
-
     subtest 'integer: input' => sub {
-        my $job = $t->app->minion->job( $run->{tasks}[2]{job_id} );
+        my $job = $t->app->minion->job( $run->{tasks}[1]{job_id} );
         my $result = $job->info->{result};
         is $result->{output}, $input->{integer}{value}, 'integer input correct';
     };
-    subtest 'integer: output' => sub {
-        is $context->{integer_output}{value}, '6543', 'integer output correct';
-    };
-
     subtest 'number: input' => sub {
-        my $job = $t->app->minion->job( $run->{tasks}[4]{job_id} );
+        my $job = $t->app->minion->job( $run->{tasks}[2]{job_id} );
         my $result = $job->info->{result};
         is $result->{output}, $input->{number}{value}, 'number input correct';
     };
-    subtest 'number: output' => sub {
-        is $context->{number_output}{value}, '9.876', 'number output correct';
-    };
-
     subtest 'boolean: input' => sub {
-        my $job = $t->app->minion->job( $run->{tasks}[6]{job_id} );
+        my $job = $t->app->minion->job( $run->{tasks}[3]{job_id} );
         my $result = $job->info->{result};
         is $result->{output}, $input->{boolean}{value}, 'boolean input correct';
     };
-    subtest 'boolean: output' => sub {
-        is $context->{boolean_output}{value}, '1', 'boolean output correct';
-    };
-
     subtest 'file: input' => sub {
-        my $job = $t->app->minion->job( $run->{tasks}[8]{job_id} );
+        my $job = $t->app->minion->job( $run->{tasks}[4]{job_id} );
         my $result = $job->info->{result};
         my $path = $t->app->home->child( 'public', $input->{file}{value} );
         is $result->{output}, $path->slurp, 'file input correct';
     };
-    subtest 'file: output' => sub {
-        my $path = $context->{file_output}{value};
-        is $path, 'sp/Vj/PbsjGT3QuqhRN2B1qtTDV1w/zapp',
-            'file output correct';
-        my $file = $t->app->home->child( 'public', $path );
-        ok -e $file, 'path exists';
-        is $file->slurp, "File output\n", 'file content is correct';
-    };
-
     subtest 'selectbox: input' => sub {
-        my $job = $t->app->minion->job( $run->{tasks}[10]{job_id} );
+        my $job = $t->app->minion->job( $run->{tasks}[5]{job_id} );
         my $result = $job->info->{result};
         is $result->{output}, $input->{selectbox}{value}, 'selectbox input correct';
-    };
-    subtest 'selectbox: output' => sub {
-        is $context->{selectbox_output}{value}, 'Katrina', 'selectbox output correct';
     };
 };
 

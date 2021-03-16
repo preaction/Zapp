@@ -52,6 +52,29 @@ has zapp_run => sub( $self ) {
     return $self->app->yancy->get( zapp_runs => $task->{run_id} );
 };
 
+# Cached lookups of output from run input and output from other tasks in
+# this run. Run input is added here. Task output is filled-in by context()
+# XXX: Make a Zapp::Run class to put this code, accessible from
+# $self->app->zapp->run()
+has _context => sub( $self ) {
+    my $run_input = decode_json( $self->zapp_run->{ input } );
+    my %context;
+    for my $name ( keys %$run_input ) {
+        my $input = $run_input->{ $name };
+        my $type = $self->app->zapp->types->{ $input->{type} }
+            or die qq{Could not find type "$input->{type}"};
+        $context{ $name } = $type->task_input( $input->{config}, $input->{value} );
+    }
+    return \%context;
+};
+
+sub new( $class, @args ) {
+    my $self = $class->SUPER::new( @args );
+    # Process the initial arguments passed-in
+    $self->args( $self->args );
+    return $self;
+}
+
 sub set( $self, %values ) {
     ; say sprintf 'Setting task %s: %s', $self->id, $self->app->dumper( \%values );
     $self->app->yancy->backend->set(
@@ -89,36 +112,30 @@ sub set( $self, %values ) {
     }
 }
 
-sub context( $self ) {
-    my $run_job = $self->zapp_task;
-    my $context = decode_json( $self->zapp_task->{context} );
-    ; $self->app->log->debug( "Got context: " . $self->app->dumper( $context ) );
-    for my $name ( keys %$context ) {
-        my $input = $context->{ $name };
-        my $type = $self->app->zapp->types->{ $input->{type} }
-            or die qq{Could not find type "$input->{type}"};
-        # XXX: Remove run/task from task_input
-        $context->{ $name } = {
-            type => $input->{type},
-            config => $input->{config},
-            value => $type->task_input( $input->{config}, $input->{value} ),
-        };
+sub context( $self, $var ) {
+    my $context = $self->_context;
+    my ( $name ) = $var =~ m{^([^\[.]+)};
+    if ( !$context->{ $name } ) {
+        my ( $task ) = $self->app->yancy->list(
+            zapp_run_tasks => {
+                $self->zapp_run->%{'run_id'},
+                name => $name,
+            },
+        );
+        if ( $task && $task->{state} eq 'finished' ) {
+            $context->{ $name } = decode_json( $task->{output} );
+        }
     }
-    return $context;
+    return get_path_from_data( $var, $context );
 }
 
 sub args( $self, $new_args=undef ) {
-    my $args = $new_args || $self->SUPER::args;
-
-    my $context = $self->context;
-    my %values;
-    for my $key ( keys %$context ) {
-        $values{ $key } = $context->{ $key }{value};
+    if ( $new_args ) {
+        # Process before storing
+        my $args = $self->process_input( $new_args );
+        return $self->SUPER::args( $args );
     }
-
-    $args = fill_input( \%values, $args );
-    $self->SUPER::args( $args );
-    return $args;
+    return $self->SUPER::args;
 }
 
 sub execute( $self, @args ) {
@@ -131,58 +148,13 @@ sub finish( $self, $output=undef ) {
     my $run_job = $self->zapp_task;
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
-    # Save assignments to child contexts
-    # XXX: Make zapp_run_tasks a copy of zapp_plan_tasks
+    # XXX: Run output through task_output
+
     ; $self->app->log->debug( 'Output: ' . $self->app->dumper( $output ) );
-    my $task = $self->app->yancy->get( zapp_run_tasks => $task_id );
-    my $output_saves = decode_json( $task->{output} // '[]' );
-    my $context = decode_json( $self->zapp_task->{context} );
-    for my $save ( @$output_saves ) {
-        ; $self->app->log->debug( "Saving: " . $self->app->dumper( $save ) );
-        my $schema = get_path_from_schema( $save->{expr}, $self->schema->{output} );
-        my $type_name = $save->{type} || $schema->{type};
-        my $type = $self->app->zapp->types->{ $type_name }
-            or die "Could not find type name $type_name";
-        my $value = get_path_from_data( $save->{expr}, $output );
-        ; $self->app->log->debug(
-            "Building context value: " . $self->app->dumper( {
-                name => $save->{name},
-                value => $value,
-                type => $type_name,
-                config => $context->{config},
-            } )
-        );
-
-        $context->{ $save->{name} } = {
-            value => $type->task_output( $context->{config}, $value ),
-            type => $type_name,
-            # XXX: Task output does not have configuration, but do we
-            # want to allow it? It's _complicated_.
-            config => $context->{config},
-        };
-        ; $self->app->log->debug( "Saved context: " . $self->app->dumper( $context->{ $save->{name} } ) );
-    }
-
-    if ( my @job_ids = @{ $self->info->{children} } ) {
-        $self->app->log->debug( "Saving context to children: " . $self->app->dumper( $context ) );
-        for my $job_id ( @{ $self->info->{children} } ) {
-            # XXX: Allow alternate unique keys to be used to `get` Yancy items
-            my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $job_id } );
-            $self->app->yancy->backend->set(
-                zapp_run_tasks => $task->{task_id} => {
-                    context => encode_json( $context ),
-                },
-            );
-        }
-    }
-    else {
-        $self->app->log->debug( 'Saving run output' );
-        $self->app->yancy->backend->set(
-            zapp_runs => $run_id => {
-                output => encode_json( $context ),
-            },
-        );
-    }
+    $self->app->yancy->backend->set(
+        zapp_run_tasks => $task_id,
+        { output => encode_json( $output ) },
+    );
 
     my $ok = $self->SUPER::finish( $output );
     # Set state after so run `finished` timestamp can be set
@@ -223,20 +195,23 @@ our %FUNCTIONS = (
     RIGHT => sub( $str, $len ) { substr $str, -$len },
 );
 
-my ( @term, @args, @binop, @call );
+my ( @term, @args, @binop, @call, $depth, $expected, $failed_at );
 our $GRAMMAR = qr{
     (?(DEFINE)
         (?<EXPR>
             # Expressions can recurse, so we need to use a stack. When
             # we recurse, we must take the result off the stack and save
             # it until we can put it back on the stack (somewhere)
+            (?{ $depth++ })(?>
             (?:
                 # Terminator first, to escape infinite loops
                 (?> (?&TERM) ) (?! (?&OP) | \( )
                 (?{ push @Zapp::Task::result, pop @term })
+                (?{ $expected = 'Expected operator'; $failed_at = pos() })
             |
                 (?> (?&CALL) ) (?! (?&OP) )
                 (?{ push @Zapp::Task::result, [ call => @{ pop @call } ] })
+                (?{ $expected = 'Expected operator'; $failed_at = pos() })
             |
                 (?{ push @binop, [] })
                 (?>
@@ -247,6 +222,7 @@ our $GRAMMAR = qr{
                     (?{ push @{ $binop[-1] }, [ @{ pop @term } ] })
                 )
                 (?<op> (?&OP) )
+                (?{ $expected = 'Expected variable, number, string, or function call'; $failed_at = pos() })
                 (?>
                     (?> (?&CALL) )
                     (?{ push @{ $binop[-1] }, [ call => @{ pop @call } ] })
@@ -256,22 +232,26 @@ our $GRAMMAR = qr{
                 )
                 (?{ push @Zapp::Task::result, [ binop => $+{op}, @{ pop @binop } ] })
             )
+            )(?{ $depth-- })
         )
-        (?<OP> @{[ join '|', map quotemeta, keys %BINOPS ]} )
-        (?<CALL>
+        (?<OP>(?> @{[ join '|', map quotemeta, keys %BINOPS ]} ))
+        (?<CALL>(?>
             (?<name> (?&VAR) )
             \(
-                (?{ push @args, [] })
-                (?> (?&EXPR) )
-                (?{ push @{ $args[-1] }, pop @Zapp::Task::result })
-                (?:
-                    , (?> (?&EXPR) )
+                (?>
+                    (?{ push @args, [] })
+                    (?> (?&EXPR) )
                     (?{ push @{ $args[-1] }, pop @Zapp::Task::result })
-                )*
+                    (?:
+                        , (?> (?&EXPR) )
+                        (?{ push @{ $args[-1] }, pop @Zapp::Task::result })
+                    )*
+                )
+                (?{ $expected = 'Could not find end parenthesis'; $failed_at = pos() })
             \)
             (?{ push @call, [ $+{name}, @{ pop @args } ] })
-        )
-        (?<TERM>
+        ))
+        (?<TERM>(?>
             (?:
                 (?<string> (?&STRING) )
                 (?{ push @term, [ %+{'string'} ] })
@@ -282,9 +262,16 @@ our $GRAMMAR = qr{
                 (?<var> (?&VAR) )
                 (?{ push @term, [ %+{'var'} ] })
             )
-        )
+        ))
         (?<VAR> [a-zA-Z][a-zA-Z0-9_.]* )
-        (?<STRING> " [^"\\]*+  (?: \\" [^"\\]*+ )*+ " )
+        (?<STRING>
+            "
+            (?>
+                [^"\\]*+  (?: \\" [^"\\]*+ )*+
+            )
+            (?{ $expected = 'Could not find closing quote for string'; $failed_at = pos() })
+            "
+        )
         (?<NUMBER> -? \d+ %? | -? \d* \. \d+ %? )
     )
 }xms;
@@ -295,18 +282,25 @@ our $GRAMMAR = qr{
 #       about Excel. Though, that might just refer to the
 #       auto-formatting thing, which we will not be doing.
 
+# Does not expect `=` prefix
 sub parse_expr( $expr ) {
     local @Zapp::Task::result = ();
-    $expr =~ /${GRAMMAR}=(?&EXPR)/;
-    # XXX: Parse error handling. DCONWAY has numerous
-    # (?{ $expected = '...'; $failed_at = pos() }) in his
-    # Keyword::Declare grammar. If parsing stops, the last value in
-    # those vars is used to show an error message.
-    die "Syntax error" unless @Zapp::Task::result;
+    $depth = 0;
+    $expected = '';
+    $failed_at = 0;
+    unless ( $expr =~ /${GRAMMAR}^(?&EXPR)$/ ) {
+        # XXX: Parse error handling. DCONWAY has numerous
+        # (?{ $expected = '...'; $failed_at = pos() }) in his
+        # Keyword::Declare grammar. If parsing stops, the last value in
+        # those vars is used to show an error message.
+        $failed_at = 'end of input' if $failed_at >= length $expr;
+        die "Syntax error: $expected at $failed_at.\n";
+    }
     return $Zapp::Task::result[0];
 }
 
-sub eval_expr( $context, $expr ) {
+# Does not expect `=` prefix
+sub eval_expr( $self, $expr ) {
     my $tree = parse_expr( $expr );
     my $handle = sub( $tree ) {
         if ( $tree->[0] eq 'string' ) {
@@ -319,7 +313,7 @@ sub eval_expr( $context, $expr ) {
             return $tree->[1];
         }
         if ( $tree->[0] eq 'var' ) {
-            return get_path_from_data( $tree->[1], $context );
+            return $self->context( $tree->[1] );
         }
         if ( $tree->[0] eq 'call' ) {
             my $name = $tree->[1];
@@ -338,26 +332,51 @@ sub eval_expr( $context, $expr ) {
     return $result;
 }
 
-sub fill_input( $input, $data ) {
-    if ( !ref $data ) {
-        if ( $data =~ /^=(?!=)/ ) {
-            $data = eval_expr( $input, $data );
+# XXX: Process input and output are the same subroutines with two small
+# changes: 1. task_(input|output) 2. input calls eval_expr
+
+sub process_input( $self, $input ) {
+    if ( !ref $input ) {
+        if ( $input =~ /^=(?!=)/ ) {
+            $input = $self->eval_expr( substr $input, 1 );
         }
-        return $data;
+        # XXX: Run through task_input
+        return $input;
     }
-    elsif ( ref $data eq 'ARRAY' ) {
+    elsif ( ref $input eq 'ARRAY' ) {
         return [
-            map { fill_input( $input, $_ ) }
-            $data->@*
+            map { $self->process_input( $_ ) }
+            $input->@*
         ];
     }
-    elsif ( ref $data eq 'HASH' ) {
+    elsif ( ref $input eq 'HASH' ) {
         return {
-            map { $_ => fill_input( $input, $data->{$_} ) }
-            keys $data->%*
+            map { $_ => $self->process_input( $input->{$_} ) }
+            keys $input->%*
         };
     }
-    die "Unknown ref type for data: " . ref $data;
+    die "Unknown ref type for data: " . ref $input;
+}
+
+sub process_output( $self, $output, $path='' ) {
+    if ( !ref $output ) {
+        # XXX: Find type in schema and run through task_output
+        my $schema = get_path_from_schema( $path, $self->schema->{output} );
+        return $output;
+    }
+    elsif ( ref $output eq 'ARRAY' ) {
+        return [
+            map { $self->process_output( $output->[ $_ ], $path . "[$_]" ) }
+            0..$output->$#*
+        ];
+    }
+    elsif ( ref $output eq 'HASH' ) {
+        return {
+            map { $_ => $self->process_output( $output->{$_}, $path . ".$_" ) }
+            keys $output->%*
+        };
+    }
+    die "Unknown ref type for data: " . ref $output;
 }
 
 sub schema( $class ) {

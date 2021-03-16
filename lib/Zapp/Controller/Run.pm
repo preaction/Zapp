@@ -8,42 +8,39 @@ use Zapp::Util qw( build_data_from_params );
 
 sub _get_run_tasks( $self, $run_id ) {
     my @run_tasks;
-    for my $task ( $self->yancy->list( zapp_run_tasks => { run_id => $run_id } ) ) {
-        my $minion_job = $self->minion->job( $task->{job_id} );
+    my @tasks = $self->yancy->list( zapp_run_tasks => { run_id => $run_id } );
 
+    my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
+    my $input = decode_json( $run->{input} );
+    # XXX: Need to be run through type method
+    my %context = (
+        (
+            map { $_->{name} => decode_json( $_->{output} ) }
+            grep { $_->{state} eq 'finished' } @tasks
+        ),
+        (
+            map { $_ => $input->{ $_ }{ value } } keys %$input
+        ),
+    );
+
+    for my $task ( @tasks ) {
         $task->{input} = decode_json( $task->{input} );
         if ( $task->{output} ) {
             $task->{output} = decode_json( $task->{output} );
         }
 
-        # The task run information should be all the Zapp task
-        # information and all the Minion job information except for
-        # args and result (renamed input and output respectively)
-        my $run_task = {
-            ( $minion_job ? $minion_job->info->%* : () ),
-            %$task,
-        };
-
-        delete $run_task->{args};
-        if ( $run_task->{context} ) {
-            $run_task->{context} = decode_json( $run_task->{context} );
-            if ( keys %{ $run_task->{context} } ) {
-                my %values;
-                for my $name ( keys %{ $run_task->{context} } ) {
-                    my $input = $run_task->{context}{ $name };
-                    my $type = $self->app->zapp->types->{ $input->{type} }
-                        or die qq{Could not find type "$input->{type}"};
-                    $values{ $name } = $type->task_input( $input->{config}, $input->{value} );
-                }
-                $run_task->{input} = Zapp::Task::fill_input( \%values, $run_task->{input} );
-            }
+        if ( $task->{state} ne 'inactive' ) {
+            my $job = $task->{class}->new(
+                # Pre-fill caches to avoid database lookups
+                zapp_run => $run,
+                zapp_task => $task,
+                _context => \%context,
+            );
+            $task->{input} = $job->process_input( $task->{input} );
         }
-
-        $run_task->{output} = delete $run_task->{result};
-        push @run_tasks, $run_task;
     }
 
-    return \@run_tasks,
+    return \@tasks,
 }
 
 sub _get_run( $self, $run_id ) {

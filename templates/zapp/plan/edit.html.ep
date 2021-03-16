@@ -60,49 +60,6 @@
 
 </style>
 
-%# Form for saving output
-% my $output_tmpl = begin
-    % my ( $i, $output ) = @_;
-    <div class="form-row output-form">
-        <div class="col">
-            <label for="output[<%= $i %>].name">Name</label>
-            <input type="text" name="output[<%= $i %>].name" value="<%= $output->{name} %>" class="form-control">
-        </div>
-        <div class="col-auto align-self-end">
-            <span class="form-control-plaintext">=</span>
-        </div>
-        <div class="col">
-            <label for="output[<%= $i %>].expr">Expression</label>
-            <input type="text" name="output[<%= $i %>].expr" value="<%= $output->{expr} %>" class="form-control">
-        </div>
-        <div class="col-auto align-self-end">
-            <span class="form-control-plaintext">as</span>
-        </div>
-        <div class="col-auto align-self-end">
-            <label for="output[<%= $i %>].type">Type</label>
-            <select name="output[<%= $i %>].type" class="form-control">
-                <option value="">default type</option>
-                % for my $type_name ( sort keys $c->zapp->types->%* ) {
-                    <%= tag option =>
-                        (
-                            value => $type_name,
-                            ( selected => 'selected' )x!!( $output->{type} && $output->{type} eq $type_name ),
-                        ),
-                        $type_name
-                    %>
-                % }
-            </select>
-        </div>
-        <div class="col-auto align-self-end">
-            <button type="button" class="output-remove btn btn-outline-danger"
-                aria-label="Delete output"
-            >
-                <i class="fa fa-times-circle"></i>
-            </button>
-        </div>
-    </div>
-% end
-
 %# The form for the main task fields
 % my $task_tmpl = begin
     % my $task = shift;
@@ -143,36 +100,9 @@
             </div>
         </div>
 
-        <div class="d-flex my-2 task-tabs">
-            <ul class="col-auto flex-column nav nav-pills task-tabs-nav" role="tablist">
-                <li class="nav-item">
-                    <a class="input-tab nav-link active" href="#">Input</a>
-                </li>
-                <li class="nav-item">
-                    <a class="output-tab nav-link d-flex justify-content-between align-items-center" href="#">
-                        <span>Output</span>
-                        <span data-output-count class="ml-2 border border-dark badge badge-light"><%= scalar @{$task->{output}} %></span>
-                    </a>
-                </li>
-            </ul>
-
-            <div class="col tab-content task-tabs-content">
-                <section class="tab-pane show active all-input">
-                    <div data-input-form></div>
-                </section>
-
-                <section class="tab-pane all-output">
-                    <ul class="output list-unstyled">
-                    % for my $i ( 0 .. $#{$task->{output}} ) {
-                        <li><%= $output_tmpl->( $i, $task->{output}[ $i ] ) %></li>
-                    % }
-                    </ul>
-                    <button class="output-add btn btn-secondary" type="button">
-                        <i class="fa fa-plus"></i> Add Output
-                    </button>
-                </section>
-            </div>
-        </div>
+        <section class="all-input">
+            <div data-input-form></div>
+        </section>
 
     </div>
 % end
@@ -237,9 +167,6 @@
 
 <template id="task-form">
     %= $task_tmpl->( {} )
-</template>
-<template id="output-form">
-    %= $output_tmpl->( 0, {} )
 </template>
 <template id="input-form">
     %= $input_tmpl->( 0, {} )
@@ -492,68 +419,6 @@ function moveTaskDown( event ) {
     nextTask.insertAdjacentElement( 'afterend', task );
     reindexTasks();
     task.scrollIntoView({block: "start", inline: "nearest"});
-}
-
-function addOutput( event ) {
-    // Clone the blank row from the template
-    var button = event.target,
-        list = button.previousElementSibling,
-        task = button.closest( '.task-form' ),
-        newOutput = document.querySelector( 'template#output-form' ).content.cloneNode(true),
-        newIndex = list.querySelectorAll('li').length,
-        // Find an input so we can see which task we're in
-        nameAttr = task.querySelector( 'input' ).attributes.getNamedItem( 'name' ).value,
-        taskIndex = nameAttr.substring( nameAttr.indexOf('[') + 1, nameAttr.indexOf(']') );
-
-    // Reset expr, op, value
-    newOutput.querySelectorAll( 'input,select' ).forEach( function (el) {
-        if ( el.tagName == 'SELECT' ) {
-            el.selectedIndex = 0;
-        }
-        else {
-            el.value = '';
-        }
-        el.name = el.name.replace( /output\[\d+\]/, 'task[' + taskIndex + '].output[' + newIndex + ']' );
-        el.id = el.name;
-    } );
-    // XXX: Labels
-
-    // Append
-    var newRow = document.createElement( 'li' );
-    newRow.appendChild( newOutput );
-    list.appendChild( newRow );
-
-    // Increment output count
-    var outputCount = task.querySelector( '[data-output-count]' );
-    var count = parseInt( outputCount.innerHTML );
-    count++;
-    outputCount.innerHTML = count;
-
-    // Focus output name field
-    newRow.querySelector( '[name$="name"]' ).focus();
-}
-
-function removeOutput( event ) {
-    var button = event.target,
-        task = button.closest( '.task-form' ),
-        row = button.closest( '.output-form' ).parentNode,
-        list = row.parentElement;
-
-    row.parentNode.removeChild( row );
-    // Reset indexes in remaining output rows
-    list.querySelectorAll( 'li' ).forEach( function (row, i) {
-        row.querySelectorAll( 'input,select' ).forEach( function (el) {
-            el.name = el.name.replace( /output\[\d+\]/, 'output[' + i + ']' );
-            el.id = el.name;
-        });
-        // XXX: Labels
-    } );
-
-    // Decrement output count
-    var outputCount = task.querySelector( '[data-output-count]' );
-    var count = parseInt( outputCount.innerHTML );
-    count--;
-    outputCount.innerHTML = count;
 }
 
 function addInput( event ) {
@@ -823,10 +688,7 @@ document.addEventListener('DOMContentLoaded', function ( event ) {
     delegateEvent( 'click', 'button.task-remove', removeTask );
     delegateEvent( 'click', 'button.task-move-up', moveTaskUp );
     delegateEvent( 'click', 'button.task-move-down', moveTaskDown );
-    delegateEvent( 'click', 'button.output-add', addOutput );
-    delegateEvent( 'click', 'button.output-remove', removeOutput );
     delegateEvent( 'change', '*', checkZappExpressions );
-    delegateEvent( 'click', '.task-tabs > .task-tabs-nav .nav-link', changeTaskTab );
     delegateEvent( 'change', 'select.add-input', addInput );
     delegateEvent( 'click', 'button.input-move-up', moveInputUp );
     delegateEvent( 'click', 'button.input-move-down', moveInputDown );

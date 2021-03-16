@@ -1,23 +1,16 @@
 package Zapp::Task::Test;
 
 use Mojo::Base 'Zapp::Task', -signatures;
-use Zapp::Util qw( get_path_from_data );
 
 sub run( $self, $input ) {
-    my $context = $self->context;
-    my %values;
-    for my $key ( keys %$context ) {
-        $values{ $key } = $context->{ $key }{value};
-    }
-
     my $fail = 0;
     ; $self->app->log->info( 'Running tests' );
     my @tests = $input->{tests}->@*;
     for my $test ( @tests ) {
         # Stringify whatever data we get because the value to test
         # against can only ever be a string.
-        # XXX: Support JSON comparisons?
-        my $expr_value = $test->{ expr_value } = "".get_path_from_data( $test->{expr}, \%values );
+        # XXX: Support deep comparisons
+        my $expr_value = $test->{ expr_value } = $self->eval_expr( $test->{expr} );
         # XXX: Add good, robust logging to help debug job problems
         #; $self->app->log->debug( sprintf 'Test expr %s has value %s (%s %s)', $test->@{qw( expr expr_value op value )} );
         my $pass;

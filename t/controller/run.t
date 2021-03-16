@@ -116,40 +116,32 @@ subtest 'run a plan' => sub {
         is_deeply
             {
                 $tasks[0]->%*,
-                context => decode_json( $tasks[0]{context} ),
                 input => decode_json( $tasks[0]{input} ),
             },
             {
                 $tasks[0]->%{qw( job_id task_id )},
-                $plan->{tasks}[0]->%{qw( name description class output )},
+                $plan->{tasks}[0]->%{qw( name description class )},
                 input => decode_json( $plan->{tasks}[0]{input} ),
-                context => {
-                    destination => {
-                        type => 'string',
-                        value => 'Galaxy of Terror',
-                        config => 'Chapek 9',
-                    },
-                },
                 run_id => $run_id,
                 plan_task_id => $plan->{tasks}[0]{task_id},
                 state => 'inactive',
+                output => undef,
             },
             'first job is correct'
                 or diag explain $tasks[0];
         is_deeply
             {
                 $tasks[1]->%*,
-                context => decode_json( $tasks[1]{context} ),
                 input => decode_json( $tasks[1]{input} ),
             },
             {
                 $tasks[1]->%{qw( job_id task_id )},
-                $plan->{tasks}[1]->%{qw( name description class output )},
+                $plan->{tasks}[1]->%{qw( name description class )},
                 input => decode_json( $plan->{tasks}[1]{input} ),
-                context => {},
                 run_id => $run_id,
                 plan_task_id => $plan->{tasks}[1]{task_id},
                 state => 'inactive',
+                output => undef,
             },
             'second job is correct'
                 or diag explain $tasks[1];
@@ -220,7 +212,7 @@ subtest 'view run status' => sub {
             ->text_is( '[data-run-finished]', 'N/A', 'run finished is correct' )
             ->text_is( "[data-task=$run->{tasks}[0]{task_id}] [data-task-state]", 'inactive', 'first task state is correct' )
             ->or( sub { diag $t->tx->res->dom( "[data-task=$run->{tasks}[0]{task_id}]" ) } )
-            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] dd", qr/Zanthor/, 'first task input are interpolated' )
+            ->text_like( "[data-task=$run->{tasks}[0]{task_id}] dd", qr/^=Character/, 'first task input are not yet interpolated' )
             ->text_is( "[data-task=$run->{tasks}[1]{task_id}] [data-task-state]", 'inactive', 'second task state is correct' )
             ->or( sub { diag $t->tx->res->dom( "[data-task=$run->{tasks}[1]{task_id}]" ) } )
             ->text_like( "[data-task=$run->{tasks}[1]{task_id}] dd", qr/^=Character/, 'second task input are not yet interpolated' )
@@ -230,7 +222,7 @@ subtest 'view run status' => sub {
         $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
             ->status_is( 200 )
             ->element_exists_not( 'body', 'not inside layout' )
-            ->text_like( "dd", qr/Zanthor/, 'first task input are interpolated' )
+            ->text_like( "dd", qr/^=Character/, 'first task input are not yet interpolated' )
             ;
 
         $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )

@@ -36,8 +36,6 @@ subtest 'create a new plan' => sub {
             'task[0].input.vars[2].name' => 'weapon',
             'task[0].input.vars[2].value' => '{{weapon}}',
             'task[0].input.script' => 'echo $who in the $where with the $weapon',
-            'task[0].output[0].name' => 'last_exit',
-            'task[0].output[0].expr' => 'exit',
         },
     )
         ->status_is( 302 )
@@ -94,8 +92,6 @@ subtest 'edit the plan' => sub {
             'task[0].input.vars[2].name' => 'weapon',
             'task[0].input.vars[2].value' => '{{weapon}}',
             'task[0].input.script' => 'echo $who in the $where with the $weapon',
-            'task[0].output[0].name' => 'last_exit',
-            'task[0].output[0].expr' => 'exit',
             'task[1].class' => 'Zapp::Task::Script',
             'task[1].name' => 'Coronate Bont',
             'task[1].input.script' => 'echo I, Bont, who ate Fry the Solid...',

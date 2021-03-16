@@ -115,16 +115,10 @@ subtest 'create new plan' => sub {
                 'task[0].name' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
                 'task[0].input.script' => 'echo make order',
-                'task[0].output[0].name' => 'last_exit',
-                'task[0].output[0].expr' => 'exit',
-                'task[0].output[0].type' => 'integer',
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify',
                 'task[1].description' => 'Verify freezer',
                 'task[1].input.script' => 'echo make test',
-                'task[1].output[0].name' => 'last_exit',
-                'task[1].output[0].expr' => 'exit',
-                'task[1].output[0].type' => 'integer',
             },
         );
         $t->status_is( 302 )->or( sub( $t ) { diag $t->tx->res->dom->find( '#error,#context,#trace,#log' )->each } );
@@ -149,7 +143,6 @@ subtest 'create new plan' => sub {
             {
                 $got_tasks[0]->%*,
                 input => decode_json( $got_tasks[0]{input} ),
-                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $got_plan->{plan_id},
@@ -160,16 +153,12 @@ subtest 'create new plan' => sub {
                 input => {
                     script => 'echo make order',
                 },
-                output => [
-                    { name => 'last_exit', expr => 'exit', type => 'integer' },
-                ],
             },
             'task 1 is correct';
         is_deeply
             {
                 $got_tasks[1]->%*,
                 input => decode_json( $got_tasks[1]{input} ),
-                output => decode_json( $got_tasks[1]{output} ),
             },
             {
                 plan_id => $got_plan->{plan_id},
@@ -180,9 +169,6 @@ subtest 'create new plan' => sub {
                 input => {
                     script => 'echo make test',
                 },
-                output => [
-                    { name => 'last_exit', expr => 'exit', type => 'integer' },
-                ],
             },
             'task 2 is correct';
 
@@ -229,9 +215,6 @@ subtest 'edit existing plan' => sub {
                 input => encode_json({
                     script => "liftoff;\ndrop the_bomb\n",
                 }),
-                output => encode_json([
-                    { name => 'last_exit', expr => 'exit', type => 'integer' },
-                ]),
             },
             {
                 name => 'Activate the Bomb',
@@ -240,9 +223,6 @@ subtest 'edit existing plan' => sub {
                 input => encode_json({
                     script => "make explosion",
                 }),
-                output => encode_json([
-                    { name => 'last_exit', expr => 'exit', type => 'integer' },
-                ]),
             },
         ],
         inputs => [
@@ -464,45 +444,6 @@ subtest 'edit existing plan' => sub {
                 'first plan task description textarea value correct',
             );
 
-            subtest 'output' => sub {
-                subtest 'task 1' => sub {
-                    $t->element_exists(
-                        'input[name="task[0].output[0].name"]',
-                        'task 1 output 1 name input exists',
-                    );
-                    $t->attr_is(
-                        'input[name="task[0].output[0].name"]',
-                        value => 'last_exit',
-                        'task 1 output 1 name value is correct',
-                    );
-                    $t->element_exists(
-                        'input[name="task[0].output[0].expr"]',
-                        'task 1 output 1 expr input exists',
-                    );
-                    $t->attr_is(
-                        'input[name="task[0].output[0].expr"]',
-                        value => 'exit',
-                        'task 1 output 1 expr value is correct',
-                    );
-                    $t->element_exists(
-                        '[name="task[0].output[0].type"]',
-                        'task 1 output 1 type input exists',
-                    );
-                    $t->attr_is(
-                        '[name="task[0].output[0].type"] [selected]',
-                        value => 'integer',
-                        'task 1 output 1 type value is correct',
-                    );
-                    $t->element_exists(
-                        '#all-tasks > :nth-child(1) .output :nth-child(1) button.output-remove',
-                        'task 1 output 1 remove button exists',
-                    );
-                };
-                $t->element_exists(
-                    '#all-tasks > :nth-child(1) button.output-add',
-                    'task 1 add output button exists',
-                );
-            };
         };
 
         subtest 'task 1 form' => sub {
@@ -556,49 +497,9 @@ subtest 'edit existing plan' => sub {
                 'second plan task script arg value correct',
             );
 
-            subtest 'output' => sub {
-                subtest 'task 2' => sub {
-                    $t->element_exists(
-                        'input[name="task[1].output[0].name"]',
-                        'task 2 output 1 name input exists',
-                    );
-                    $t->attr_is(
-                        'input[name="task[1].output[0].name"]',
-                        value => 'last_exit',
-                        'task 2 output 1 name value is correct',
-                    );
-                    $t->element_exists(
-                        'input[name="task[1].output[0].expr"]',
-                        'task 2 output 1 expr input exists',
-                    );
-                    $t->attr_is(
-                        'input[name="task[1].output[0].expr"]',
-                        value => 'exit',
-                        'task 2 output 1 expr value is correct',
-                    );
-                    $t->element_exists(
-                        '[name="task[1].output[0].type"]',
-                        'task 2 output 1 type input exists',
-                    );
-                    $t->attr_is(
-                        '[name="task[1].output[0].type"] [selected]',
-                        value => 'integer',
-                        'task 2 output 1 type value is correct',
-                    );
-                    $t->element_exists(
-                        '#all-tasks > :nth-child(2) .output :nth-child(1) button.output-remove',
-                        'task 2 output 1 remove button exists',
-                    );
-                };
-                $t->element_exists(
-                    '#all-tasks > :nth-child(2) button.output-add',
-                    'task 2 add output button exists',
-                );
-            };
         };
 
     };
-    ; return;
 
     subtest 'save plan' => sub {
         $t->post_ok( "/plan/$plan_id",
@@ -618,20 +519,11 @@ subtest 'edit existing plan' => sub {
                 'task[0].name' => 'Build',
                 'task[0].description' => 'Build a bomb',
                 'task[0].input.script' => 'make thebomb',
-                'task[0].output[0].name' => 'last_exit',
-                'task[0].output[0].expr' => 'exit',
-                'task[0].output[0].type' => 'integer',
-                'task[0].output[1].name' => 'output',
-                'task[0].output[1].expr' => 'stdout',
-                'task[0].output[1].type' => 'string',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
                 'task[1].name' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
                 'task[1].input.script' => 'make check',
-                'task[1].output[0].name' => 'last_exit',
-                'task[1].output[0].expr' => 'exit',
-                'task[1].output[0].type' => 'integer',
             },
         );
         $t->status_is( 302 );
@@ -655,7 +547,6 @@ subtest 'edit existing plan' => sub {
             {
                 $got_tasks[0]->%*,
                 input => decode_json( $got_tasks[0]{input} ),
-                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -666,17 +557,12 @@ subtest 'edit existing plan' => sub {
                 input => {
                     script => 'make thebomb',
                 },
-                output => [
-                    { name => 'last_exit', expr => 'exit', type => 'integer' },
-                    { name => 'output', expr => 'stdout', type => 'string' },
-                ],
             },
             'task 1 is correct';
         is_deeply
             {
                 $got_tasks[1]->%*,
                 input => decode_json( $got_tasks[1]{input} ),
-                output => decode_json( $got_tasks[1]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -687,9 +573,6 @@ subtest 'edit existing plan' => sub {
                 input => {
                     script => 'make check',
                 },
-                output => [
-                    { name => 'last_exit', expr => 'exit', type => 'integer' },
-                ],
             },
             'task 2 is correct';
 
@@ -778,7 +661,6 @@ subtest 'edit existing plan' => sub {
             {
                 $got_tasks[0]->%*,
                 input => decode_json( $got_tasks[0]{input} ),
-                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -789,7 +671,6 @@ subtest 'edit existing plan' => sub {
                 input => {
                     script => 'make thebomb',
                 },
-                output => [],
             },
             'task 1 is correct';
 
@@ -797,7 +678,6 @@ subtest 'edit existing plan' => sub {
             {
                 $got_tasks[2]->%*,
                 input => decode_json( $got_tasks[2]{input} ),
-                output => decode_json( $got_tasks[2]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -808,7 +688,6 @@ subtest 'edit existing plan' => sub {
                 input => {
                     script => 'make flight',
                 },
-                output => [],
             },
             'new task is correct';
 
@@ -816,7 +695,6 @@ subtest 'edit existing plan' => sub {
             {
                 $got_tasks[1]->%*,
                 input => decode_json( $got_tasks[1]{input} ),
-                output => decode_json( $got_tasks[1]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -827,7 +705,6 @@ subtest 'edit existing plan' => sub {
                 input => {
                     script => 'make check',
                 },
-                output => [],
             },
             'task 2 is correct';
 
@@ -922,7 +799,6 @@ subtest 'edit existing plan' => sub {
             {
                 $got_tasks[0]->%*,
                 input => decode_json( $got_tasks[0]{input} ),
-                output => decode_json( $got_tasks[0]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -933,7 +809,6 @@ subtest 'edit existing plan' => sub {
                 input => {
                     script => 'make thebomb',
                 },
-                output => [],
             },
             'task 1 is correct';
 
@@ -941,7 +816,6 @@ subtest 'edit existing plan' => sub {
             {
                 $got_tasks[1]->%*,
                 input => decode_json( $got_tasks[1]{input} ),
-                output => decode_json( $got_tasks[1]{output} ),
             },
             {
                 plan_id => $plan_id,
@@ -952,7 +826,6 @@ subtest 'edit existing plan' => sub {
                 input => {
                     script => 'make check',
                 },
-                output => [],
             },
             'task 2 is correct';
 
