@@ -39,6 +39,50 @@ subtest 'parse' => sub {
         ],
         'function call with function call as argument parsed correctly';
 
+    $tree = $f->parse( q{[Foo,"bar",2]} );
+    is_deeply $tree,
+        [
+            array =>
+            [ var => 'Foo' ],
+            [ string => q{"bar"} ],
+            [ number => 2 ],
+        ],
+        'array literal parsed correctly'
+            or diag explain $tree;
+
+    $tree = $f->parse( q{[[Foo],["bar"],2]} );
+    is_deeply $tree,
+        [
+            array =>
+            [ array => [ var => 'Foo' ] ],
+            [ array => [ string => q{"bar"} ] ],
+            [ number => 2 ],
+        ],
+        'nested array literal parsed correctly'
+            or diag explain $tree;
+
+    $tree = $f->parse( q[{"foo":Foo,"bar":"bar","2":2}] );
+    is_deeply $tree,
+        [
+            hash =>
+            [ q{"foo"}, [ var => 'Foo' ] ],
+            [ q{"bar"}, [ string => q{"bar"} ] ],
+            [ q{"2"}, [ number => 2 ] ],
+        ],
+        'hash literal parsed correctly'
+            or diag explain $tree;
+
+    $tree = $f->parse( q[{"foo":[Foo],"bar":{"bar":"bar"},"2":2}] );
+    is_deeply $tree,
+        [
+            hash =>
+            [ q{"foo"}, [ array => [ var => 'Foo' ] ] ],
+            [ q{"bar"}, [ hash => [ q{"bar"} => [ string => q{"bar"} ] ] ] ],
+            [ q{"2"}, [ number => 2 ] ],
+        ],
+        'nested hash literal parsed correctly'
+            or diag explain $tree;
+
     subtest 'unclosed string literal' => sub {
         my $tree;
         eval { $tree = $f->parse( q{UPPER(Foo&"Bar)} ) };

@@ -43,7 +43,7 @@ our %FUNCTIONS = (
     RIGHT => sub( $str, $len ) { substr $str, -$len },
 );
 
-my ( @result, @term, @args, @binop, @call, $depth, $expected, $failed_at );
+my ( @result, @term, @args, @binop, @call, @array, @hash, $depth, $expected, $failed_at );
 our $GRAMMAR = qr{
     (?(DEFINE)
         (?<EXPR>
@@ -60,6 +60,12 @@ our $GRAMMAR = qr{
                 (?> (?&CALL) ) (?! (?&OP) )
                 (?{ push @result, [ call => @{ pop @call } ] })
                 (?{ $expected = 'Expected operator'; $failed_at = pos() })
+            |
+                (?> (?&ARRAY) ) (?! (?&OP) )
+                (?{ push @result, [ array => @{ pop @array } ] })
+            |
+                (?> (?&HASH) ) (?! (?&OP) )
+                (?{ push @result, [ hash => @{ pop @hash } ] })
             |
                 (?{ push @binop, [] })
                 (?>
@@ -98,6 +104,25 @@ our $GRAMMAR = qr{
                 (?{ $expected = 'Could not find end parenthesis'; $failed_at = pos() })
             \)
             (?{ push @call, [ $+{name}, @{ pop @args } ] })
+        ))
+        (?<ARRAY>(?>
+            \[
+                (?{ push @array, [] })
+                (?:
+                    (?> (?&EXPR) ) ,?
+                    (?{ push @{ $array[-1] }, pop @result })
+                )*
+            \]
+        ))
+        (?<HASH>(?>
+            \{
+                (?{ push @hash, [] })
+                (?:
+                    (?> (?<key> (?&STRING) ) ) :
+                    (?> (?&EXPR) ) ,?
+                    (?{ push @{ $hash[-1] }, [ $+{'key'}, pop @result ] })
+                )*
+            \}
         ))
         (?<TERM>(?>
             (?:
