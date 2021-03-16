@@ -1,4 +1,41 @@
 package Zapp::Task;
+
+=head1 SYNOPSIS
+
+    package My::Task::Greet;
+    use Mojo::Base 'Zapp::Task', -signatures;
+
+    # Perform the task
+    sub run( $self, $input ) {
+        return $self->fail( 'No-one to greet' ) if !$input->{who};
+        return $self->finish({
+            greeting => "Hello, $input->{who}!",
+        });
+    }
+
+    __DATA__
+    @@ input.html.ep
+    %# Display the form to configure this task
+    %= text_field 'who', value => $input->{who}
+
+    @@ output.html.ep
+    %# Show the result of this task
+    %# XXX: Switch to $task->{error} if it's an actual error
+    % if ( !ref $task->{output} ) {
+        <p>I couldn't send a greeting: <%= $task->{output} %></p>
+    % }
+    % else {
+        <p>I sent a greeting of <q><%= $task->{output}{greeting} %></q></p>
+    % }
+
+=head1 DESCRIPTION
+
+=head1 SEE ALSO
+
+L<Zapp::Task::Action>, L<Zapp>
+
+=cut
+
 use Mojo::Base 'Minion::Job', -signatures;
 use List::Util qw( uniq );
 use Time::Piece;
