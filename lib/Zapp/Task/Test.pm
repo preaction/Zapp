@@ -1,6 +1,7 @@
 package Zapp::Task::Test;
 
 use Mojo::Base 'Zapp::Task', -signatures;
+use Yancy::Util qw( currym );
 
 sub run( $self, $input ) {
     my $fail = 0;
@@ -10,7 +11,7 @@ sub run( $self, $input ) {
         # Stringify whatever data we get because the value to test
         # against can only ever be a string.
         # XXX: Support deep comparisons
-        my $expr_value = $test->{ expr_value } = $self->eval_expr( $test->{expr} );
+        my $expr_value = $test->{ expr_value } = $self->app->formula->eval( $test->{expr}, currym( $self, 'context' ) );
         # XXX: Add good, robust logging to help debug job problems
         #; $self->app->log->debug( sprintf 'Test expr %s has value %s (%s %s)', $test->@{qw( expr expr_value op value )} );
         my $pass;

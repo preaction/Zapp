@@ -31,6 +31,7 @@ sub _get_run_tasks( $self, $run_id ) {
 
         if ( $task->{state} ne 'inactive' ) {
             my $job = $task->{class}->new(
+                minion => $self->minion,
                 # Pre-fill caches to avoid database lookups
                 zapp_run => $run,
                 zapp_task => $task,

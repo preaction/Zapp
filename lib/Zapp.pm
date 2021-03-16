@@ -18,6 +18,9 @@ use Scalar::Util qw( blessed );
 use Yancy::Util qw( load_backend );
 use Mojo::JSON qw( encode_json decode_json );
 use Mojo::Loader qw( find_modules load_class );
+use Zapp::Formula;
+
+has formula => sub { Zapp::Formula->new };
 
 sub startup( $self ) {
 
