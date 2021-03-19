@@ -50,6 +50,7 @@ sub run_queue {
     # Run all tasks on the queue
     my $worker = $self->app->minion->worker->register;
     while ( my $job = $worker->dequeue(0) ) {
+        ; diag "Doing job: " . explain $job;
         my $e = $job->execute;
         $self->test( 'ok', !$e, 'job executed successfully' );
         $self->or( sub { diag "Job error: ", explain $e } );
@@ -64,6 +65,7 @@ sub run_task {
         $name = $context;
         $context = {};
     }
+    # XXX: We no longer need to create a plan to create a run
     my $plan = $self->{zapp}{plan} = $self->app->create_plan({
         name => $name // $task_class,
         tasks => [
@@ -109,6 +111,27 @@ sub task_output_like {
 sub task_info_is {
     my ( $self, $info_key, $info_value, $name ) = @_;
     $self->test( 'is', $self->{zapp}{job}->info->{$info_key}, $info_value, $name );
+}
+
+sub Test::Yancy::clear_backend {
+    my ( $self ) = @_;
+    my %tables = (
+        zapp_plans => 'plan_id',
+        zapp_plan_inputs => [ 'plan_id', 'name' ],
+        zapp_plan_tasks => 'task_id',
+        zapp_plan_task_parents => 'task_id',
+        zapp_runs => 'run_id',
+    );
+    for my $table ( keys %tables ) {
+        my $id_field = $tables{ $table };
+        for my $item ( $self->app->yancy->list( $table ) ) {
+            my $id = ref $id_field eq 'ARRAY'
+                ? { map { $_ => $item->{ $_ } } @$id_field }
+                : $item->{ $id_field }
+                ;
+            $self->app->yancy->backend->delete( $table => $id );
+        }
+    }
 }
 
 1;

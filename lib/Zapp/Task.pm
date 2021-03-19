@@ -145,7 +145,9 @@ sub execute( $self, @args ) {
 }
 
 sub finish( $self, $output=undef ) {
-    return $self->SUPER::finish if !defined $output; # XXX: Minion calls this again after we do inside the task?
+    # Minion calls this again while reaping the child process, so bail
+    # out if we're in the parent process after having started a child.
+    return $self->SUPER::finish if $self->{pid};
     my $run_job = $self->zapp_task;
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 
@@ -163,9 +165,16 @@ sub finish( $self, $output=undef ) {
     return $ok;
 }
 
-sub fail( $self, @args ) {
+sub fail( $self, $output=undef ) {
     $self->set( state => 'failed' );
-    return $self->SUPER::fail( @args );
+    my $run_job = $self->zapp_task;
+    my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
+    # XXX: Run output through task_output
+    $self->app->yancy->backend->set(
+        zapp_run_tasks => $task_id,
+        { output => encode_json( $output ) },
+    );
+    return $self->SUPER::fail( $output );
 }
 
 # XXX: Process input and output are the same subroutines with two small

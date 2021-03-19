@@ -6,13 +6,13 @@ use Time::Piece;
 use Zapp::Task;
 use Zapp::Util qw( build_data_from_params );
 
-sub _get_run_tasks( $self, $run_id ) {
+sub _get_run_tasks( $self, $run_id, $filter={} ) {
     my @run_tasks;
-    my @tasks = $self->yancy->list( zapp_run_tasks => { run_id => $run_id } );
+    my @tasks = $self->yancy->list( zapp_run_tasks => { %$filter, run_id => $run_id } );
 
+    # XXX: Need to be run through type method
     my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
     my $input = decode_json( $run->{input} );
-    # XXX: Need to be run through type method
     my %context = (
         (
             map { $_->{name} => decode_json( $_->{output} ) }
@@ -30,6 +30,8 @@ sub _get_run_tasks( $self, $run_id ) {
         }
 
         if ( $task->{state} ne 'inactive' ) {
+            # Instantiate the job to process the input. Can't use minion
+            # as the minion job may have been deleted by now.
             my $job = $task->{class}->new(
                 minion => $self->minion,
                 # Pre-fill caches to avoid database lookups
@@ -107,7 +109,34 @@ sub get_run( $self ) {
         $run->{finished} = Time::Piece->new( $run->{finished} )->strftime( '%Y-%m-%d %H:%M:%S' );
     }
 
-    $self->render( 'zapp/run/view', run => $run );
+    # Find any actions that are waiting
+    my @actions;
+    for my $task ( grep { $_->{state} eq 'waiting' } $run->{tasks}->@* ) {
+        next unless $task->{class}->isa( 'Zapp::Task::Action' );
+        my $job = $task->{class}->new( minion => $self->minion );
+        push @actions, {
+            task => $task,
+            action_field => $job->action_field( $self, $task->{input} ),
+        };
+    }
+
+    $self->render(
+        'zapp/run/view',
+        run => $run,
+        actions => \@actions,
+    );
+}
+
+sub save_task_action( $self ) {
+    my $run_id = $self->param( 'run_id' );
+    my $task_id = $self->param( 'task_id' );
+    my ( $task ) = $self->_get_run_tasks( $run_id, { task_id => $task_id } )->@*;
+    die "Task $task_id not found\n" if !$task;
+    die "Task is not waiting for an action\n" unless $task->{state} eq 'waiting';
+    my $job = $self->minion->job( $task->{job_id} );
+    my $form_input = build_data_from_params( $self );
+    $job->action( $self, @{ $job->args }, $form_input );
+    return $self->redirect_to( 'zapp.get_run' => { run_id => $run_id } );
 }
 
 sub stop_run( $self ) {

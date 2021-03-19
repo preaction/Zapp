@@ -21,6 +21,7 @@ use Mojo::Loader qw( find_modules load_class );
 use Zapp::Formula;
 
 has formula => sub { Zapp::Formula->new };
+has action_queue => 'zapp_action';
 
 sub startup( $self ) {
 
@@ -45,7 +46,7 @@ sub startup( $self ) {
     $self->plugin( Minion => $self->config->{ minion }->%* );
 
     # XXX: Allow additional task namespaces
-    for my $class ( find_modules 'Zapp::Task' ) {
+    for my $class ( find_modules 'Zapp::Task', { recursive => 1 } ) {
         next if $class eq 'Zapp::Task';
         if ( my $e = load_class( $class ) ) {
             $self->log->error( sprintf "Could not load task class %s: %s", $class, $e );
@@ -119,6 +120,8 @@ sub startup( $self ) {
         ->to( 'run#get_run' )->name( 'zapp.get_run' );
     $self->routes->get( '/run/:run_id/task/:task_id' )
         ->to( 'run#get_run_task' )->name( 'zapp.get_run_task' );
+    $self->routes->post( '/run/:run_id/task/:task_id/action' )
+        ->to( 'run#save_task_action' )->name( 'zapp.save_task_action' );
     # $self->routes->get( '/run/:run_id/edit' )
     # ->to( 'run#edit_run' )->name( 'zapp.edit_run' );
     # $self->routes->post( '/run/:run_id/edit' )

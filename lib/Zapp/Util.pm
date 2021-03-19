@@ -7,10 +7,11 @@ our @EXPORT_OK = qw(
     get_path_from_data prefix_field rename_field parse_zapp_attrs
 );
 
-sub build_data_from_params( $c, $prefix ) {
+sub build_data_from_params( $c, $prefix='' ) {
     my $data = '';
     # XXX: Move to Yancy (Util? Controller?)
-    my @params = grep /^$prefix(?:\[\d+\]|\.\w+)/, $c->req->params->names->@*;
+    my $dot = $prefix ? '.' : '';
+    my @params = grep /^$prefix(?:\[\d+\]|\Q$dot\E\w+)/, $c->req->params->names->@*;
     for my $param ( @params ) {
         ; $c->log->debug( "Param: $param" );
         my $value = $c->param( $param );

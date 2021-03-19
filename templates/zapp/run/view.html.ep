@@ -24,6 +24,20 @@
     <h1>Run Plan: <%= $run->{plan}{name} %></h1>
 </header>
 
+% if ( my @actions = @{ stash( 'actions' ) // [] } ) {
+    <h2>Action Required</h2>
+    % for my $action ( @actions ) {
+        <div class="card mb-2 p-2">
+            % if ( my $label = $action->{task}{label} // $action->{task}{name} ) {
+                <h3 class="card-header"><%= $label %></h3>
+            % }
+            %= form_for 'zapp.save_task_action', $action->{task}, begin
+                %== $action->{ action_field }
+            % end
+        </div>
+    % }
+% }
+
 <div class="d-flex justify-content-between mb-2">
     <ul class="task-tabs nav nav-pills" role="tablist">
         <li class="nav-item" role="presentation">
