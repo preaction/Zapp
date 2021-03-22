@@ -72,9 +72,9 @@
     % }
 % }
 
-<div class="list-group list-group-horizontal text-center">
+<div class="list-group list-group-horizontal text-center flex-wrap">
     <%= tag a => href => '#tab-info', id => 'tab-info-label',
-        class => 'list-group-item list-group-item-action col ' . ( $run->{state} eq 'inactive' ? 'active list-group-item-primary' : 'list-group-item-success' ),
+        class => 'list-group-item list-group-item-action col flex-grow-0 ' . ( $run->{state} eq 'inactive' ? 'active list-group-item-primary' : 'list-group-item-success' ),
         'data-toggle' => 'tab', role => 'tab', 'aria-controls' => 'tab-info',
         ( 'aria-selected' => 'true' )x!!( $run->{state} eq 'inactive' ),
         begin %>
@@ -84,7 +84,7 @@
         % my $task = $run->{tasks}[$i];
         <%= tag a => href => '#tab-task-' . $task->{task_id}, id => 'tab-task-' . $task->{task_id} . '-label',
             class => join( ' ',
-                'list-group-item', 'list-group-item-action',
+                'list-group-item', 'list-group-item-action', 'text-nowrap', 'flex-grow-1', 'flex-shrink', 'w-auto',
                 (
                     # Show the active task for active runs
                     $run->{state} eq 'active' && $task->{state} eq 'active' ? ('active')
