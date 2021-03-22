@@ -74,7 +74,7 @@ sub run( $self, $input ) {
         for my $var ( @{ $input->{vars} // [] } ) {
             $ENV{ $var->{name} } = $var->{value};
         }
-        ; $self->app->log->debug( "Environment: \n" . join "\n", map { "$_=$ENV{$_}" } keys %ENV ); 
+        #; $self->app->log->debug( "Environment: \n" . join "\n", map { "$_=$ENV{$_}" } keys %ENV ); 
 
         if ( $input->{script} =~ /^\#!/ ) {
             $file->chmod( 0700 );
@@ -183,22 +183,10 @@ __DATA__
 </div>
 
 @@ output.html.ep
-<h3>Script</h3>
-% if ( my @vars = @{ $task->{input}{vars} // [] } ) {
-    <h4>Environment Variables</h4>
-    <dl>
-        % for my $var ( @{ $task->{input}{vars} } ) {
-            <dt><%= $var->{name} %></dt>
-            <dd><%= $var->{value} %></dd>
-        % }
-    </dl>
-% }
-<pre data-input class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
 % if ( $task->{output} && !ref $task->{output} ) {
     <h3>Error</h3>
     <div data-error class="alert alert-danger"><%= $task->{output} %></div>
 % } elsif ( $task->{output} ) {
-    <h3>Output</h3>
     % if ( $task->{output}{output} ) {
         <pre data-output class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
     % }
@@ -208,3 +196,17 @@ __DATA__
     % }
 % }
 
+%= include 'zapp/more_info', id => "task-$task->{task_id}", content => begin
+    <h3>Script</h3>
+    % my @vars = grep { $_->{name} } @{ $task->{input}{vars} // [] };
+    % if ( @vars > 0 ) {
+        <h4>Environment Variables</h4>
+        <dl>
+            % for my $var ( @vars ) {
+                <dt><%= $var->{name} %></dt>
+                <dd><%= $var->{value} %></dd>
+            % }
+        </dl>
+    % }
+    <pre data-input class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{script} %></code></pre>
+% end

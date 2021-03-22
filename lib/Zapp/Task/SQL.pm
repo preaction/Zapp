@@ -85,9 +85,6 @@ __DATA__
 </div>
 
 @@ output.html.ep
-<h4>SQL</h4>
-<pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{sql} %></code></pre>
-<h4>Output</h4>
 % if ( my @rows = @{ $task->{output}{rows} // [] } ) {
 <table class="table table-striped table-hover">
     % my @cols = sort keys %{ $rows[0] };
@@ -110,3 +107,7 @@ __DATA__
 </table>
 % }
 
+%= include 'zapp/more_info', id => "task-$task->{task_id}", content => begin
+    <h4>SQL</h4>
+    <pre class="m-1 border p-1 rounded bg-light"><code><%= $task->{input}{sql} %></code></pre>
+% end

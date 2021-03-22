@@ -221,8 +221,6 @@ __DATA__
 </div>
 
 @@ output.html.ep
-<h4>Request</h4>
-<pre data-input class="bg-light border border-secondary p-1"><%= $task->{input}{method} %> <%= $task->{input}{url} %></pre>
 % if ( $task->{output} && !ref $task->{output} ) {
     <h4>Error</h4>
     <div data-error class="alert alert-danger"><%= $task->{output} %></div>
@@ -244,3 +242,7 @@ __DATA__
         <pre class="bg-light border border-secondary p-1"><%= $body %></pre>
     % }
 % }
+%= include 'zapp/more_info', content => begin
+    <h4>Request</h4>
+    <pre data-input class="bg-light border border-secondary p-1"><%= $task->{input}{method} %> <%= $task->{input}{url} %></pre>
+% end
