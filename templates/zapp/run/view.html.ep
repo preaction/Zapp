@@ -5,6 +5,8 @@
         active => 'list-group-item-primary',
         finished => 'list-group-item-success',
         failed => 'list-group-item-danger',
+        stopped => 'list-group-item-warning',
+        killed => 'list-group-item-secondary',
     );
 %>
 
@@ -90,8 +92,10 @@
                     $run->{state} eq 'active' && $task->{state} eq 'active' ? ('active')
                     # Show the last task for finished runs
                     : $task->{state} eq 'finished' && $i == $#{ $run->{tasks} } ? ('active')
-                    # Show the failed task for failed runs
+                    # Show the failed/killed/stop task for runs
                     : $run->{state} eq 'failed' && $task->{state} eq 'failed' ? ('active')
+                    : $run->{state} eq 'stopped' && $task->{state} eq 'stopped' && ( $i == 0 || $run->{tasks}[$i-1]{state} ne 'stopped' ) ? ('active')
+                    : $run->{state} eq 'killed' && $task->{state} eq 'killed' && ( $i == 0 || $run->{tasks}[$i-1]{state} ne 'killed' ) ? ('active')
                     # Tasks that have not run cannot be seen yet
                     # XXX: Some tasks have info about what they _will_
                     # do when they are run.
@@ -150,8 +154,10 @@
                     $run->{state} eq 'active' && $task->{state} eq 'active' ? ('show', 'active')
                     # Show the last task for finished runs
                     : $task->{state} eq 'finished' && $i == $#{ $run->{tasks} } ? ('show', 'active')
-                    # Show the failed task for failed runs
-                    : $run->{state} eq 'failed' && $task->{state} eq 'failed' ? ('show', 'active')
+                    # Show the failed/killed/stop task for runs
+                    : $run->{state} eq 'failed' && $task->{state} eq 'failed' ? ('active')
+                    : $run->{state} eq 'stopped' && $task->{state} eq 'stopped' && ( $i == 0 || $run->{tasks}[$i-1]{state} ne 'stopped' ) ? ('active')
+                    : $run->{state} eq 'killed' && $task->{state} eq 'killed' && ( $i == 0 || $run->{tasks}[$i-1]{state} ne 'killed' ) ? ('active')
                     : ()
                 ),
             ),

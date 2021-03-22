@@ -1,4 +1,4 @@
-
+% layout 'zapp';
 <h2><%= $heading %></h2>
 <p>Add a note about why this is happening:</p>
 %= form_for $next, class => 'form', => begin
