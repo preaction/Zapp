@@ -32,32 +32,32 @@ $t->app->ua( $t->ua );
 
 # Add some test endpoints
 my $last_request;
-$t->app->routes->get( '/test/success' )
+$t->app->routes->any( '/test/success' )
   ->to( cb => sub( $c ) {
     $last_request = $c->tx->req;
     $c->res->headers->content_type( 'text/plain' );
     $c->render( text => 'Success' );
   } );
-$t->app->routes->get( '/test/unauthorized' )
+$t->app->routes->any( '/test/unauthorized' )
   ->to( cb => sub( $c ) {
     $last_request = $c->tx->req;
     $c->res->headers->content_type( 'text/plain' );
     $c->res->code( 401 );
     $c->render( text => 'You are not authorized' );
   } );
-$t->app->routes->get( '/test/json' )
+$t->app->routes->any( '/test/json' )
   ->to( cb => sub( $c ) {
     $last_request = $c->tx->req;
     $c->res->headers->content_type( 'application/json' );
     $c->render( json => { status => 'Success' } );
   } );
-$t->app->routes->get( '/test/file' )
+$t->app->routes->any( '/test/file' )
   ->to( cb => sub( $c ) {
     $last_request = $c->tx->req;
     $c->res->headers->content_type( 'application/octet-stream' );
     $c->render( data => 'Success' );
   } );
-$t->app->routes->get( '/test/file/attachment' )
+$t->app->routes->any( '/test/file/attachment' )
   ->to( cb => sub( $c ) {
     $last_request = $c->tx->req;
     $c->res->headers->content_type( 'application/octet-stream' );
@@ -87,7 +87,7 @@ subtest 'run' => sub {
     });
 };
 
-subtest 'json' => sub {
+subtest 'json response' => sub {
     $t->run_task(
         'Zapp::Task::Request' => {
             method => 'GET',
@@ -109,7 +109,7 @@ subtest 'json' => sub {
     });
 };
 
-subtest 'file download' => sub {
+subtest 'file response' => sub {
     $t->run_task(
         'Zapp::Task::Request' => {
             method => 'GET',
@@ -152,6 +152,36 @@ subtest 'file download' => sub {
                 },
             },
         });
+    };
+};
+
+subtest 'json request' => sub {
+    subtest 'json string' => sub {
+        $t->run_task(
+            'Zapp::Task::Request' => {
+                method => 'POST',
+                url => $t->ua->server->url->path( '/test/json' ),
+                content_type => 'application/json',
+                body => {
+                    json => '["foo","bar","baz"]',
+                },
+            },
+        );
+        is_deeply $last_request->json, [qw( foo bar baz )], 'request body is correct';
+    };
+
+    subtest 'json data structure' => sub {
+        $t->run_task(
+            'Zapp::Task::Request' => {
+                method => 'POST',
+                url => $t->ua->server->url->path( '/test/json' ),
+                content_type => 'application/json',
+                body => {
+                    json => [qw( foo bar baz )],
+                },
+            },
+        );
+        is_deeply $last_request->json, [qw( foo bar baz )], 'request body is correct';
     };
 };
 

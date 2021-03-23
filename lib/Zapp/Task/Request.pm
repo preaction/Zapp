@@ -1,6 +1,6 @@
 package Zapp::Task::Request;
 use Mojo::Base 'Zapp::Task', -signatures;
-use Mojo::JSON qw( false true );
+use Mojo::JSON qw( false true encode_json );
 
 sub schema( $class ) {
     return {
@@ -91,6 +91,7 @@ sub run( $self, $input ) {
     }
     elsif ( $input->{content_type} eq 'application/json' ) {
         $body = $input->{body}{json};
+        $body = encode_json( $body ) if ref $body;
     }
 
     my $ua = $self->app->ua;
