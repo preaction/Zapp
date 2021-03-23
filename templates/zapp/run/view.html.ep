@@ -42,19 +42,29 @@
                 : 'btn btn-outline-secondary disabled'
                 ;
         %>
-        %= form_for 'zapp.start_run_confirm', begin
-            <div class="btn-group mr-2" role="group">
-                <button class="<%= $start_btn_class %>" <%= $run->{state} ne 'stopped' ? 'disabled' : '' %> aria-label="Start job">
+        <div class="btn-group mr-2" role="group">
+            %= form_for 'zapp.start_run_confirm', begin
+                <button <%= $run->{state} ne 'stopped' ? 'disabled' : '' %>
+                    class="<%= $start_btn_class %>" aria-label="Start job"
+                >
                     <i class="fa fa-play"></i>
                 </button>
-                %= link_to 'zapp.stop_run', class => $stop_btn_class, 'aria-label' => 'Stop job', begin
+            % end
+            %= form_for 'zapp.stop_run' => begin
+                <button <%= $run->{state} =~ /^(?:stopped|killed|failed|finished)$/ ? 'disabled' : '' %>
+                    class="<%= $stop_btn_class %>" aria-label="Stop job"
+                >
                     <i class="fa fa-stop"></i>
-                % end
-            </div>
-        % end
+                </button>
+            % end
+        </div>
         <div class="btn-group" role="group">
-            %= link_to 'zapp.kill_run', class => $kill_btn_class, 'aria-label' => 'Kill job', begin
-                <i class="fa fa-times-circle"></i>
+            %= form_for 'zapp.kill_run' => begin
+                <button <%= $run->{state} =~ /^(?:killed|failed|finished)$/ ? 'disabled' : '' %>
+                    class="<%= $kill_btn_class %>" aria-label="Kill job"
+                >
+                    <i class="fa fa-times-circle"></i>
+                </button>
             % end
         </div>
     </div>
@@ -74,7 +84,7 @@
     % }
 % }
 
-<div class="list-group list-group-horizontal text-center flex-wrap">
+<div class="list-group list-group-horizontal text-center flex-wrap task-tabs">
     <%= tag a => href => '#tab-info', id => 'tab-info-label',
         class => 'list-group-item list-group-item-action col flex-grow-0 ' . ( $run->{state} eq 'inactive' ? 'active list-group-item-primary' : 'list-group-item-success' ),
         'data-toggle' => 'tab', role => 'tab', 'aria-controls' => 'tab-info',

@@ -77,7 +77,6 @@ sub new( $class, @args ) {
 }
 
 sub set( $self, %values ) {
-    ; say sprintf 'Setting task %s: %s', $self->id, $self->app->dumper( \%values );
     $self->app->yancy->backend->set(
         zapp_run_tasks => $self->zapp_task->{task_id},
         \%values,
