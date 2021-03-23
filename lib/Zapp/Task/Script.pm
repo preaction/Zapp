@@ -4,6 +4,7 @@ use Mojo::File qw( tempdir tempfile );
 use IPC::Open3 qw( open3 );
 use Cwd qw( cwd );
 use Symbol qw( gensym );
+use Mojo::Util qw( decode );
 
 sub schema( $class ) {
     return {
@@ -53,6 +54,9 @@ sub schema( $class ) {
     };
 }
 
+# Match ANSI escape sequences that are not formatting/color (m)
+my $ANSI = qr{ \e \[ [HJ] }x;
+
 sub run( $self, $input ) {
     ; $self->app->log->debug( 'Running script: ' . $input->{script} );
     # The script came from the browser's form with \r\n as line ending
@@ -101,12 +105,12 @@ sub run( $self, $input ) {
     # while process runs
     my $output = '';
     while ( my $line = <$stdout> ) {
-        $output .= $line;
+        $output .= $line =~ s/$ANSI//gr;
         # XXX: Put output somewhere it can be seen while process runs
     }
     my $error_output = '';
     while ( my $line = <$stderr> ) {
-        $error_output .= $line;
+        $error_output .= $line =~ s/$ANSI//gr;
         # XXX: Put output somewhere it can be seen while process runs
     }
 
@@ -125,10 +129,10 @@ sub run( $self, $input ) {
     chdir $cwd;
     return $self->$method({
         pid => $pid,
-        output => $output,
+        output => decode( 'UTF-8', $output ) // $output,
         exit => $exit,
         info => $info,
-        error_output => $error_output,
+        error_output => decode( 'UTF-8', $error_output ) // $error_output,
     });
 }
 
@@ -183,16 +187,20 @@ __DATA__
 </div>
 
 @@ output.html.ep
+<%
+    use Mojo::Util qw( xml_escape );
+    use Zapp::Util qw( ansi_colorize );
+%>
 % if ( $task->{output} && !ref $task->{output} ) {
     <h3>Error</h3>
     <div data-error class="alert alert-danger"><%= $task->{output} %></div>
 % } elsif ( $task->{output} ) {
     % if ( $task->{output}{output} ) {
-        <pre data-output class="m-1 border p-1 rounded bg-light"><output><%= $task->{output}{output} %></output></pre>
+        <pre data-output class="m-1 border p-1 rounded bg-light"><output><%== ansi_colorize( xml_escape( $task->{output}{output} ) ) %></output></pre>
     % }
     % if ( $task->{output}{error_output} ) {
         <h4>Error Output</h4>
-        <pre data-output class="m-1 border p-1 rounded table-warning"><output><%= $task->{output}{error_output} %></output></pre>
+        <pre data-output class="m-1 border p-1 rounded table-warning"><output><%== ansi_colorize( xml_escape( $task->{output}{error_output} ) ) %></output></pre>
     % }
 % }
 
