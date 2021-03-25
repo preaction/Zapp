@@ -76,15 +76,9 @@ our $GRAMMAR = qr{
                     (?{ push @{ $binop[-1] }, [ @{ pop @term } ] })
                 )
                 (?<op> (?&OP) )
-                (?{ $expected = 'Expected variable, number, string, or function call'; $failed_at = pos() })
-                (?>
-                    (?> (?&CALL) )
-                    (?{ push @{ $binop[-1] }, [ call => @{ pop @call } ] })
-                |
-                    (?> (?&TERM) )
-                    (?{ push @{ $binop[-1] }, [ @{ pop @term } ] })
-                )
-                (?{ push @result, [ binop => $+{op}, @{ pop @binop } ] })
+                (?{ $expected = 'Expected expression'; $failed_at = pos() })
+                (?> (?&EXPR) )
+                (?{ push @result, [ binop => $+{op}, @{ pop @binop }, pop @result ] })
             )
             )(?{ $depth-- })
         )

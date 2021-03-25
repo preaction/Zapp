@@ -83,6 +83,21 @@ subtest 'parse' => sub {
         'nested hash literal parsed correctly'
             or diag explain $tree;
 
+    $tree = $f->parse( q["foo"&"bar"&"baz"] );
+    is_deeply $tree,
+        [
+            binop => '&',
+            [ string => q{"foo"} ],
+            [
+                binop => '&',
+                [ string => q{"bar"} ],
+                [ string => q{"baz"} ],
+            ],
+        ],
+        'multiple binops parsed correctly'
+            or diag explain $tree;
+
+
     subtest 'unclosed string literal' => sub {
         my $tree;
         eval { $tree = $f->parse( q{UPPER(Foo&"Bar)} ) };
@@ -99,7 +114,7 @@ subtest 'parse' => sub {
         my $tree;
         eval { $tree = $f->parse( q{UPPER(LOWER(Foo)&)} ) };
         ok $@, 'parse dies for syntax error';
-        like $@, qr{Expected variable, number, string, or function call at 17},
+        like $@, qr{Expected expression at 17},
             'error message is correct';
         ok !$tree, 'nothing returned' or diag explain $tree;
     };
@@ -146,6 +161,9 @@ subtest 'eval' => sub {
 
     $result = $f->eval( q{Str&"Bar"}, $context );
     is $result, 'stringBar', 'binary operator';
+
+    $result = $f->eval( q{Str&"Bar"&Hash.Key}, $context );
+    is $result, 'stringBarsuccess', 'series of binary operators';
 
     $result = $f->eval( q{UPPER("foo"&Str)}, $context );
     is $result, 'FOOSTRING', 'function call takes binary operator expr as argument';
