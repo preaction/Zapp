@@ -31,7 +31,7 @@
         background: red;
     }
 </style>
-
+%= content 'after_head'
 
 <body>
     <header class="container">

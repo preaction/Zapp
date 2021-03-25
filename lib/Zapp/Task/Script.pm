@@ -153,10 +153,16 @@ __DATA__
         </div>
         <div class="col">
             <label for="vars[<%= $i %>].value">Value</label>
-            <input type="text" name="vars[<%= $i %>].value" value="<%= $env->{value} %>" class="form-control">
+            <%= include 'zapp/textarea',
+                name => "vars[$i].value",
+                value => $env->{value},
+                args => [
+                    rows => 1,
+                ],
+            %>
         </div>
-        <div class="col-auto align-self-end">
-            <button type="button" class="btn btn-outline-danger align-self-end" data-zapp-array-remove>
+        <div class="col-auto align-self-start">
+            <button type="button" style="margin-top: 2em" class="btn btn-outline-danger align-self-end" data-zapp-array-remove>
                 <i class="fa fa-times-circle"></i>
             </button>
         </div>
@@ -177,13 +183,7 @@ __DATA__
     </div>
 
     <label for="script">Script</label>
-    <div class="grow-wrap">
-        <!-- XXX: support markdown -->
-        <%= text_area "script", $input->{script},
-            oninput => 'this.parentNode.dataset.replicatedValue = this.value',
-            placeholder => 'Script',
-        %>
-    </div>
+    %= include 'zapp/textarea', name => 'script', value => $input->{script}, args => [ placeholder => 'Script' ]
 </div>
 
 @@ output.html.ep

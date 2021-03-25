@@ -9,45 +9,6 @@
 %>
 
 <style>
-/********************************
- * Auto-grow textarea from https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/
- * Markup:
- * <div class="grow-wrap">
- *   <textarea name="text" id="text" onInput="this.parentNode.dataset.replicatedValue = this.value"></textarea>
- * </div>
- */
-.grow-wrap {
-  /* easy way to plop the elements on top of each other and have them both sized based on the tallest one's height */
-  display: grid;
-}
-.grow-wrap::after {
-  /* Note the weird space! Needed to preventy jumpy behavior */
-  content: attr(data-replicated-value) " ";
-
-  /* This is how textarea text behaves */
-  white-space: pre-wrap;
-
-  /* Hidden from view, clicks, and screen readers */
-  visibility: hidden;
-}
-.grow-wrap > textarea {
-  /* You could leave this, but after a user resizes, then it ruins the auto sizing */
-  resize: none;
-
-  /* Firefox shows scrollbar on growth, you can hide like this. */
-  overflow: hidden;
-}
-.grow-wrap > textarea,
-.grow-wrap::after {
-  /* Identical styling required!! */
-  border: 1px solid black;
-  padding: 0.5rem;
-  font: inherit;
-
-  /* Place on top of each other */
-  grid-area: 1 / 1 / 2 / 2;
-}
-
 /**************************************************************************************
  * Zapp form classes for use by task arg forms
  */
@@ -92,12 +53,13 @@
         </div>
         <div class="form-group">
             <label for="description">Task Description</label>
-            <div class="grow-wrap">
-                <%= text_area "description", $task->{description}, class => 'form-control',
-                    oninput => 'this.parentNode.dataset.replicatedValue = this.value',
+            <%= include 'zapp/textarea',
+                name => 'description',
+                value => $task->{description},
+                args => [
                     placeholder => 'Task description',
-                %>
-            </div>
+                ],
+            %>
         </div>
 
         <section class="all-input">
@@ -153,13 +115,13 @@
         <div class="form-row">
             <div class="col">
                 <label for="input[<%= $input_num %>].description">Description</label>
-                <div class="grow-wrap">
-                    <!-- XXX: support markdown -->
-                    <%= text_area "input[$input_num].description", $input->{description},
-                        oninput => 'this.parentNode.dataset.replicatedValue = this.value',
+                <%= include 'zapp/textarea',
+                    name => "input[$input_num].description",
+                    value => $input->{description},
+                    args => [
                         placeholder => 'Input description',
-                    %>
-                </div>
+                    ],
+                %>
             </div>
         </div>
     </div>
@@ -208,12 +170,14 @@
     </div>
     <div class="form-group">
         <label for="description">Plan Description</label>
-        <div class="grow-wrap">
-            <%= text_area "description", $plan->{description}, id => 'description', class => 'form-control',
-                oninput => 'this.parentNode.dataset.replicatedValue = this.value',
+        <%= include 'zapp/textarea',
+            name => 'description',
+            value => $plan->{description},
+            args => [
                 placeholder => 'Plan description',
-            %>
-        </div>
+                id => 'description',
+            ],
+        %>
     </div>
 
     <div class="input-container my-2">
@@ -678,12 +642,6 @@ function reindexArray( arrayEl ) {
 }
 
 document.addEventListener('DOMContentLoaded', function ( event ) {
-    document.querySelectorAll( '.grow-wrap textarea' ).forEach( function (el) {
-        // This causes a slight blink when the DOM is loaded. It would
-        // be nice if we could remove this and have the textarea start
-        // the correct size for the content.
-        el.parentNode.dataset.replicatedValue = el.value;
-    } );
     delegateEvent( 'change', 'select.add-task', addTask );
     delegateEvent( 'click', 'button.task-remove', removeTask );
     delegateEvent( 'click', 'button.task-move-up', moveTaskUp );
