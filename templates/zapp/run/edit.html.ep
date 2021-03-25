@@ -42,3 +42,4 @@
     </div>
 % end
 
+%= include 'zapp/run/task_list', run => $plan
