@@ -80,7 +80,7 @@ subtest 'run a plan' => sub {
             ;
     };
 
-    subtest 'create a new run' => sub {
+    subtest 'create a new run from a plan' => sub {
         $t->post_ok(
             "/plan/$plan_id/run",
             form => {
@@ -193,7 +193,7 @@ subtest 'view run status' => sub {
         ],
     });
     my $plan_id = $plan->{plan_id};
-    my $run = $t->app->enqueue(
+    my $run = $t->app->enqueue_plan(
         $plan_id,
         {
             Character => {
@@ -274,7 +274,7 @@ subtest 'task actions' => sub {
             },
         ],
     });
-    my $run = $t->app->enqueue( $plan->{plan_id}, {} );
+    my $run = $t->app->enqueue_plan( $plan->{plan_id}, {} );
 
     subtest 'before prepare' => sub {
         $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
@@ -333,7 +333,7 @@ subtest 'stop/kill run' => sub {
     my $plan_id = $plan->{plan_id};
 
     subtest 'stop run' => sub {
-        my $run = $t->app->enqueue( $plan_id, {} );
+        my $run = $t->app->enqueue_plan( $plan_id, {} );
 
         # Run view screen shows start/stop buttons
         $t->get_ok( "/run/$run->{run_id}" )->status_is( 200 )
@@ -441,7 +441,7 @@ subtest 'stop/kill run' => sub {
         my @signals;
         local $SIG{TERM} = sub { push @signals, 'TERM' };
 
-        my $run = $t->app->enqueue( $plan_id );
+        my $run = $t->app->enqueue_plan( $plan_id );
 
         # Run view screen shows kill button
         $t->get_ok( "/run/$run->{run_id}" )->status_is( 200 )

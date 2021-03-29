@@ -413,7 +413,7 @@ subtest 'task input' => sub {
             },
         },
     };
-    my $run = $t->app->enqueue( $plan->{plan_id}, $input );
+    my $run = $t->app->enqueue_plan( $plan->{plan_id}, $input );
     $t->run_queue;
 
     subtest 'string: input' => sub {

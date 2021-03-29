@@ -199,13 +199,13 @@ sub get_plan( $self, $plan_id ) {
     return $plan;
 }
 
-=method enqueue
+=method enqueue_plan
 
 Enqueue a plan.
 
 =cut
 
-sub enqueue( $self, $plan_id, $input={}, %opt ) {
+sub enqueue_plan( $self, $plan_id, $input={}, %opt ) {
     $opt{queue} ||= 'zapp';
 
     # Create the run in the database by copying the plan

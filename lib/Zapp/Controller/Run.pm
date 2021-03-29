@@ -59,12 +59,21 @@ sub _get_run( $self, $run_id ) {
 
 sub edit_run( $self ) {
     my $plan = $self->app->get_plan( $self->stash( 'plan_id' ) );
+    # XXX: Allow run_id/task_id instead of plan
+    # XXX: Copy finished tasks before task_id, give them a state of
+    # "copied"
+    # XXX: Prepare information for template as
+    #   - tasks
+    #   - input
     $self->render( 'zapp/run/edit', plan => $plan );
 }
 
 sub save_run( $self ) {
     my $plan_id = $self->stash( 'plan_id' );
     my $plan = $self->app->get_plan( $plan_id );
+    # XXX: Allow run_id/task_id instead of plan
+    # XXX: Copy finished tasks before task_id, give them a state of
+    # "copied"
 
     my $input_fields = build_data_from_params( $self, 'input' );
     my $run_input = {};
@@ -83,7 +92,7 @@ sub save_run( $self ) {
 
     my $run_id = $self->stash( 'run_id' );
     if ( !$run_id ) {
-        my $run = $self->app->enqueue( $plan_id, $run_input );
+        my $run = $self->app->enqueue_plan( $plan_id, $run_input );
         $run_id = $run->{run_id};
     }
     else {

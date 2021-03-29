@@ -76,7 +76,7 @@ sub run_task {
             },
         ],
     });
-    my $run = $self->{zapp}{run} = $self->app->enqueue( $plan->{plan_id}, $context );
+    my $run = $self->{zapp}{run} = $self->app->enqueue_plan( $plan->{plan_id}, $context );
 
     my $worker = $self->app->minion->worker->register;
     my $job = $self->{zapp}{job} = $worker->dequeue;

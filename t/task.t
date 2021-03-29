@@ -76,7 +76,7 @@ subtest 'execute' => sub {
             },
         };
 
-        my $run = $t->app->enqueue( $plan->{plan_id}, $input );
+        my $run = $t->app->enqueue_plan( $plan->{plan_id}, $input );
         my @tasks = @{ $run->{tasks} };
 
         $run = $t->app->yancy->get( zapp_runs => $run->{run_id} );
