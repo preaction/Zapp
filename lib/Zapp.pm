@@ -111,9 +111,9 @@ sub startup( $self ) {
 
     # Create/view runs
     $self->routes->get( '/plan/:plan_id/run', { run_id => undef } )
-        ->to( 'run#edit_run' )->name( 'zapp.new_run' );
+        ->to( 'run#create_run' )->name( 'zapp.create_run' );
     $self->routes->post( '/plan/:plan_id/run', { run_id => undef } )
-        ->to( 'run#save_run' )->name( 'zapp.create_run' );
+        ->to( 'run#save_run' )->name( 'zapp.save_run' );
     $self->routes->get( '/run' )
         ->to( 'run#list_runs' )->name( 'zapp.list_runs' );
     $self->routes->get( '/run/:run_id' )

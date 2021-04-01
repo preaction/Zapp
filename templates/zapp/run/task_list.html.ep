@@ -1,5 +1,7 @@
 <%
     use Mojo::Loader qw( data_section );
+    my $run = stash( 'run' ) ? stash( 'run' ) : {};
+    my $tasks = $run->{tasks} // stash( 'tasks' ) // [];
     my %state_bg = (
         active => 'list-group-item-primary',
         finished => 'list-group-item-success',
@@ -17,8 +19,8 @@
         begin %>
         <i class="fa fa-info-circle" aria-hidden="true"></i>
     <% end %>
-    % for my $i ( 0..$#{ $run->{tasks} } ) {
-        % my $task = $run->{tasks}[$i];
+    % for my $i ( 0..$#$tasks ) {
+        % my $task = $tasks->[$i];
         <%= tag a => href => '#tab-task-' . $task->{task_id}, id => 'tab-task-' . $task->{task_id} . '-label',
             class => join( ' ',
                 'list-group-item', 'list-group-item-action', 'text-nowrap', 'flex-grow-1', 'flex-shrink', 'w-auto',
@@ -26,11 +28,11 @@
                     # Show the active task for active runs
                     $run->{state} eq 'active' && $task->{state} eq 'active' ? ('active')
                     # Show the last task for finished runs
-                    : $task->{state} eq 'finished' && $i == $#{ $run->{tasks} } ? ('active')
+                    : $task->{state} eq 'finished' && $i == $#$tasks ? ('active')
                     # Show the failed/killed/stop task for runs
                     : $run->{state} eq 'failed' && $task->{state} eq 'failed' ? ('active')
-                    : $run->{state} eq 'stopped' && $task->{state} eq 'stopped' && ( $i == 0 || $run->{tasks}[$i-1]{state} ne 'stopped' ) ? ('active')
-                    : $run->{state} eq 'killed' && $task->{state} eq 'killed' && ( $i == 0 || $run->{tasks}[$i-1]{state} ne 'killed' ) ? ('active')
+                    : $run->{state} eq 'stopped' && $task->{state} eq 'stopped' && ( $i == 0 || $tasks->[$i-1]{state} ne 'stopped' ) ? ('active')
+                    : $run->{state} eq 'killed' && $task->{state} eq 'killed' && ( $i == 0 || $tasks->[$i-1]{state} ne 'killed' ) ? ('active')
                     # Tasks that have not run cannot be seen yet
                     # XXX: Some tasks have info about what they _will_
                     # do when they are run.
@@ -62,6 +64,8 @@
             <dd data-run-state><%= $run->{state} %></dd>
         </dl>
 
+        %# XXX: This should not be using a hash. It should be ordered
+        %# like how plan inputs are.
         % if ( my @inputs = keys %{ $run->{input} // {} } ) {
             <h2>Input</h2>
             <dl>

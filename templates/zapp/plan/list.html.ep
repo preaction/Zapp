@@ -41,7 +41,7 @@
         <p class="description"><%= $plan->{description} %></p>
         <div class="buttons d-flex justify-content-between">
             <div>
-                %= link_to 'zapp.new_run', $plan, class => 'btn btn-primary run', begin
+                %= link_to 'zapp.create_run', $plan, class => 'btn btn-primary run', begin
                     <i class="fa fa-arrow-right"></i> Run...
                 % end
                 % if ( my $run = $plan->{last_run} ) {

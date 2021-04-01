@@ -25,7 +25,6 @@ my $file_value = $uploads_dir->child( 'file.txt' )->spurt( 'File content' )->to_
 # Create a plan with input of every type
 my %plan_data = (
     name => 'Test Plan',
-    # XXX: Allow user ordering for inputs
     inputs => [
         {
             name => 'boolean',
@@ -252,6 +251,13 @@ subtest 'plan input' => sub {
 
             'input[1].name' => 'selectbox',
             'input[1].type' => 'selectbox',
+            'input[1].config.options[0].label' => 'Scruffy',
+            'input[1].config.options[0].value' => 'Scruffy',
+            'input[1].config.options[1].label' => 'Katrina',
+            'input[1].config.options[1].value' => 'Katrina',
+            'input[1].config.options[2].label' => 'Xanthor',
+            'input[1].config.options[2].value' => 'Xanthor',
+            'input[1].config.selected_index' => 0,
             'input[1].value' => 'Xanthor',
 
             'input[2].name' => 'file',

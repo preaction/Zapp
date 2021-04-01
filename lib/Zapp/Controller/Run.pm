@@ -57,54 +57,46 @@ sub _get_run( $self, $run_id ) {
     return $run;
 }
 
-sub edit_run( $self ) {
-    my $plan = $self->app->get_plan( $self->stash( 'plan_id' ) );
-    # XXX: Allow run_id/task_id instead of plan
-    # XXX: Copy finished tasks before task_id, give them a state of
-    # "copied"
-    # XXX: Prepare information for template as
-    #   - tasks
-    #   - input
-    $self->render( 'zapp/run/edit', plan => $plan );
+sub create_run( $self ) {
+    my %params;
+    if ( my $plan_id = $self->stash( 'plan_id' ) ) {
+        my $plan = $self->app->get_plan( $plan_id );
+        %params = (
+            name => $plan->{name},
+            description => $plan->{description},
+            inputs => $plan->{inputs},
+            tasks => $plan->{tasks},
+        );
+    }
+    # XXX: Allow run_id/task_id in addition to plan_id
+
+    $self->render( 'zapp/run/create', %params );
 }
 
 sub save_run( $self ) {
-    my $plan_id = $self->stash( 'plan_id' );
-    my $plan = $self->app->get_plan( $plan_id );
-    # XXX: Allow run_id/task_id instead of plan
-    # XXX: Copy finished tasks before task_id, give them a state of
-    # "copied"
-
     my $input_fields = build_data_from_params( $self, 'input' );
     my $run_input = {};
     for my $i ( 0..$#$input_fields ) {
         my $input = $input_fields->[ $i ];
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
-        my $config = $input->{config} // $plan->{inputs}[ $i ]{config};
         $run_input->{ $input->{name} } = {
             type => $input->{type},
-            config => $config,
-            value => $type->process_input( $self, $config, $input->{value} ),
+            config => $input->{config},
+            value => $type->process_input( $self, $input->{config}, $input->{value} ),
         };
     }
     ; $self->log->debug( 'Run input: ' . $self->dumper( $run_input ) );
 
-    my $run_id = $self->stash( 'run_id' );
-    if ( !$run_id ) {
-        my $run = $self->app->enqueue_plan( $plan_id, $run_input );
-        $run_id = $run->{run_id};
+    my $run;
+    if ( my $plan_id = $self->stash( 'plan_id' ) ) {
+        $run = $self->app->enqueue_plan( $plan_id, $run_input );
     }
-    else {
-        my $run = {
-            plan_id => $plan_id,
-            # XXX: Auto-encode/-decode JSON fields in Yancy schema
-            input => encode_json( $run_input ),
-        };
-        $self->yancy->set( zapp_runs => $run_id, $run );
+    elsif ( my $run_id = $self->stash( 'run_id' ) ) {
+        $run = $self->app->enqueue_run( $run_id, $run_input );
     }
 
-    $self->redirect_to( 'zapp.get_run' => { run_id => $run_id } );
+    $self->redirect_to( 'zapp.get_run' => { run_id => $run->{run_id} } );
 }
 
 sub get_run( $self ) {

@@ -5,18 +5,17 @@
 
 
 <header>
-    <h1>Run Plan: <%= $plan->{name} %></h1>
+    <h1><%= stash 'name' %></h1>
     %= link_to 'zapp.list_plans', class => 'btn btn-secondary', begin
         <i class="fa fa-arrow-left"></i> Back to Plans
     % end
 </header>
-<div style="white-space: pre-line" class="mb-3"><%= $plan->{description} %></div>
+<div style="white-space: pre-line" class="mb-3"><%= stash 'description' %></div>
 
 %= form_for 'zapp.create_run', enctype => 'multipart/form-data' => begin
-    % if ( @{ $plan->{inputs} // [] } ) {
-        <h2>Input</h2>
-        % for my $input_num ( 0..$#{ $plan->{inputs} // [] } ) {
-            % my $input = $plan->{inputs}[$input_num];
+    % if ( my @inputs = @{ stash( 'inputs' ) // [] } ) {
+        % for my $input_num ( 0..$#inputs ) {
+            % my $input = $inputs[ $input_num ];
             <div class="form-group" data-input="<%= $input_num %>">
                 <h4 data-input-name><%= $input->{name} =~ s/_/ /gr %></h4>
                 %# These hidden fields will allow us to create runs for
@@ -42,4 +41,4 @@
     </div>
 % end
 
-%= include 'zapp/run/task_list', run => $plan
+%= include 'zapp/run/task_list', tasks => $tasks
