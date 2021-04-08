@@ -63,6 +63,19 @@
             % end
         </div>
     </div>
+    <div class="btn-group" role="group">
+        <button class="btn btn-secondary">Replay</button>
+        <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <span class="sr-only">Toggle Dropdown</span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-right">
+            <h6 class="dropdown-header">Start at...</h6>
+            % for my $i ( 0..$#{ $run->{tasks} } ) {
+                % my $task = $run->{tasks}[$i];
+                <%= tag a => href => '#', class => 'dropdown-item', $task->{name} %>
+            % }
+        </div>
+    </div>
 </div>
 
 % if ( my @actions = @{ stash( 'actions' ) // [] } ) {

@@ -19,7 +19,7 @@ sub _get_run_tasks( $self, $run_id, $filter={} ) {
             grep { $_->{state} eq 'finished' } @tasks
         ),
         (
-            map { $_ => $input->{ $_ }{ value } } keys %$input
+            map { $_->{name} => $_->{value} } @$input
         ),
     );
 
@@ -49,7 +49,6 @@ sub _get_run_tasks( $self, $run_id, $filter={} ) {
 sub _get_run( $self, $run_id ) {
     my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
     if ( my $run_id = $run->{run_id} ) {
-        # XXX: Run input should be array in rank order
         $run->{input} = decode_json( $run->{input} );
         $run->{output} = decode_json( $run->{output} // '{}' );
         $run->{tasks} = $self->_get_run_tasks( $run_id );
@@ -59,7 +58,7 @@ sub _get_run( $self, $run_id ) {
 
 sub create_run( $self ) {
     my %params;
-    if ( my $plan_id = $self->stash( 'plan_id' ) ) {
+    if ( my $plan_id = $self->param( 'plan_id' ) ) {
         my $plan = $self->app->get_plan( $plan_id );
         %params = (
             name => $plan->{name},
@@ -68,32 +67,48 @@ sub create_run( $self ) {
             tasks => $plan->{tasks},
         );
     }
-    # XXX: Allow run_id/task_id in addition to plan_id
+    elsif ( my $run_id = $self->param( 'run_id' ) ) {
+        ; $self->log->debug( "Replaying run $run_id" );
+        my $run = $self->_get_run( $run_id );
+        %params = (
+            name => $run->{name},
+            description => $run->{description},
+            inputs => $run->{input},
+            tasks => $run->{tasks},
+        );
+        # XXX: Allow task_id
+    }
 
     $self->render( 'zapp/run/create', %params );
 }
 
 sub save_run( $self ) {
     my $input_fields = build_data_from_params( $self, 'input' );
-    my $run_input = {};
+    my @run_input;
     for my $i ( 0..$#$input_fields ) {
         my $input = $input_fields->[ $i ];
+        $input->{config} &&= decode_json( $input->{config} );
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
-        $run_input->{ $input->{name} } = {
+        push @run_input, {
+            name => $input->{name},
             type => $input->{type},
             config => $input->{config},
             value => $type->process_input( $self, $input->{config}, $input->{value} ),
         };
     }
-    ; $self->log->debug( 'Run input: ' . $self->dumper( $run_input ) );
+    ; $self->log->debug( 'Run input: ' . $self->dumper( \@run_input ) );
 
     my $run;
-    if ( my $plan_id = $self->stash( 'plan_id' ) ) {
-        $run = $self->app->enqueue_plan( $plan_id, $run_input );
+    if ( my $plan_id = $self->param( 'plan_id' ) ) {
+        $run = $self->app->enqueue_plan( $plan_id, { map { $_->{name} => $_->{value} } @run_input } );
     }
-    elsif ( my $run_id = $self->stash( 'run_id' ) ) {
-        $run = $self->app->enqueue_run( $run_id, $run_input );
+    elsif ( my $run_id = $self->param( 'run_id' ) ) {
+        my %opt;
+        if ( my $task_id = $self->param( 'task_id' ) ) {
+            $opt{ task_id } = $task_id;
+        }
+        $run = $self->app->enqueue_run( $run_id, \@run_input, %opt );
     }
 
     $self->redirect_to( 'zapp.get_run' => { run_id => $run->{run_id} } );

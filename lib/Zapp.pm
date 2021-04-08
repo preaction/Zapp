@@ -112,7 +112,9 @@ sub startup( $self ) {
     # Create/view runs
     $self->routes->get( '/plan/:plan_id/run', { run_id => undef } )
         ->to( 'run#create_run' )->name( 'zapp.create_run' );
-    $self->routes->post( '/plan/:plan_id/run', { run_id => undef } )
+    $self->routes->get( '/run/:run_id/replay' )
+        ->to( 'run#create_run' )->name( 'zapp.replay_run' );
+    $self->routes->post( '/run' )
         ->to( 'run#save_run' )->name( 'zapp.save_run' );
     $self->routes->get( '/run' )
         ->to( 'run#list_runs' )->name( 'zapp.list_runs' );
@@ -210,11 +212,19 @@ sub enqueue_plan( $self, $plan_id, $input={}, %opt ) {
 
     # Create the run in the database by copying the plan
     my $plan = $self->yancy->get( zapp_plans => $plan_id );
+    my @inputs = $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'rank' } );
     delete $plan->{created};
     my $run = {
         %$plan,
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
-        input => encode_json( $input ),
+        input => encode_json([
+            map +{
+                    $_->%{qw( name type )},
+                    config => decode_json( $_->{config} // 'null' ),
+                    value => $input->{ $_->{name} },
+            },
+            @inputs,
+        ]),
     };
     my $run_id = $run->{run_id} = $self->yancy->create( zapp_runs => $run );
 
@@ -259,6 +269,84 @@ sub enqueue_plan( $self, $plan_id, $input={}, %opt ) {
     return $run;
 }
 
+=method enqueue_run
+
+Re-enqueue a run.
+
+=cut
+
+sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
+    $opt{queue} ||= 'zapp';
+
+    # Create the new run in the database by copying the old run
+    my $old_run = $self->yancy->get( zapp_runs => $old_run_id );
+    # XXX: Delete more from the old run
+    delete $old_run->{ $_ } for qw( run_id created started finished state );
+    my $new_run = {
+        %$old_run,
+        state => 'inactive',
+        # XXX: Auto-encode/-decode JSON fields in Yancy schema
+        input => encode_json( $input ),
+    };
+    my $new_run_id = $new_run->{run_id} = $self->yancy->create( zapp_runs => $new_run );
+
+    # Calculate the old parent/child relationships so we know which
+    # tasks we should copy and which we should run
+    my @tasks = $self->yancy->list( zapp_run_tasks => { run_id => $old_run_id } );
+    my %old_task_parents;
+    for my $old_task_id ( map $_->{task_id}, @tasks ) {
+        my @old_parents = $self->yancy->list( zapp_run_task_parents => { task_id => $old_task_id } );
+        push $old_task_parents{ $old_task_id }->@*, map $_->{parent_task_id}, @old_parents;
+    }
+    if ( my $start_task_id = $opt{task_id} ) {
+        # Delete the parents of the job we should start at, and their
+        # ancestors
+        my @parents_to_delete = @{ $old_task_parents{ $start_task_id } // [] };
+        $old_task_parents{ $start_task_id } = [];
+        while ( my $task_id = shift @parents_to_delete ) {
+            push @parents_to_delete, @{ $old_task_parents{ $task_id } // [] };
+            delete $old_task_parents{ $task_id };
+        }
+    }
+    # %old_task_parents now has a key for every task we should do, and
+    # does not have a key for any task we should copy
+
+    my %task_id_map; # old run task_id -> new run task_id
+    for my $task ( @tasks ) {
+        my $old_task_id = $task->{task_id};
+        # XXX: Delete more from the old run task
+        delete $task->{ $_ } for qw( task_id job_id started finished state );
+        $task->{run_id} = $new_run_id;
+        $task->{state} = exists $old_task_parents{ $old_task_id } ? 'inactive' : 'copied';
+        my $new_task_id = $task->{task_id} = $self->yancy->create( zapp_run_tasks => $task );
+        ; $self->log->debug( "Creating run task: " . $self->dumper( $task ) );
+        $task->{old_task_id} = $old_task_id;
+        $task_id_map{ $old_task_id } = $new_task_id;
+    }
+    $new_run->{tasks} = \@tasks;
+
+    # Calculate the new parent/child relationships
+    for my $task ( @tasks ) {
+        my $old_task_id = delete $task->{old_task_id};
+        ; $self->log->debug( "Mapping parents for task $old_task_id -> $task->{task_id}" );
+        ; $self->log->debug( join ", ", map { "$_ -> $task_id_map{$_}" } $old_task_parents{ $old_task_id }->@* );
+        $task->{parents} = [ map $task_id_map{ $_ }, $old_task_parents{ $old_task_id }->@* ];
+    }
+
+    my $jobs = $self->enqueue_tasks( $input, grep $_->{state} eq 'inactive', @tasks );
+    for my $i ( 0..$#$jobs ) {
+        my $job = $jobs->[$i];
+
+        my ( $task ) = grep { $_->{task_id} eq $job->{task_id} } $new_run->{tasks}->@*;
+        $task->{$_} = $job->{$_} for keys %$job;
+
+        ; $self->log->debug( "Setting job id for task $job->{task_id} -> $job->{job_id}" );
+        $self->yancy->backend->set( zapp_run_tasks => $job->{task_id}, $job );
+    }
+
+    return $new_run;
+}
+
 sub enqueue_tasks( $self, $input, @tasks ) {
     my @jobs;
     # Create Minion jobs for this run
@@ -271,6 +359,7 @@ sub enqueue_tasks( $self, $input, @tasks ) {
         for my $task ( grep !$task_jobs{ $_->{task_id} }, @tasks ) {
             my $task_id = $task->{task_id};
             # Skip if we haven't created all parents
+            ; $self->log->debug( "Task $task_id has parents @{ $task->{parents} // [] }" );
             next if @{ $task->{parents} // [] } && grep { !$task_jobs{ $_ } } $task->{parents}->@*;
 
             # XXX: Expose more Minion job configuration

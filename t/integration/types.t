@@ -244,20 +244,31 @@ subtest 'plan input' => sub {
 
     subtest 'save run' => sub {
         my $plan = $t->app->create_plan({%plan_data});
-        $t->post_ok( '/plan/' . $plan->{plan_id} . '/run', form => {
+        $t->post_ok( '/run', form => {
+            plan_id => $plan->{plan_id},
             'input[0].name' => 'boolean',
             'input[0].type' => 'boolean',
             'input[0].value' => 1,
 
             'input[1].name' => 'selectbox',
             'input[1].type' => 'selectbox',
-            'input[1].config.options[0].label' => 'Scruffy',
-            'input[1].config.options[0].value' => 'Scruffy',
-            'input[1].config.options[1].label' => 'Katrina',
-            'input[1].config.options[1].value' => 'Katrina',
-            'input[1].config.options[2].label' => 'Xanthor',
-            'input[1].config.options[2].value' => 'Xanthor',
-            'input[1].config.selected_index' => 0,
+            'input[1].config' => encode_json({
+                options => [
+                    {
+                        label => 'Scruffy',
+                        value => 'Scruffy',
+                    },
+                    {
+                        label => 'Katrina',
+                        value => 'Katrina',
+                    },
+                    {
+                        label => 'Xanthor',
+                        value => 'Xanthor',
+                    },
+                ],
+                selected_index => 0,
+            }),
             'input[1].value' => 'Xanthor',
 
             'input[2].name' => 'file',
@@ -286,35 +297,37 @@ subtest 'plan input' => sub {
         my $input = decode_json( $run->{input} );
 
         subtest 'input 0 - boolean' => sub {
-            is $input->{boolean}{value}, 1;
+            is $input->[0]{value}, 1;
         };
 
         subtest 'input 1 - selectbox' => sub {
-            is $input->{selectbox}{value}, 'Xanthor';
+            is $input->[1]{value}, 'Xanthor';
         };
 
         subtest 'input 2 - file' => sub {
-            like $input->{file}{value}, qr{Pw/Qd/XOBNWd9H5Zc5lIXvadI_0pk/file\.txt};
-            my $file = $t->app->home->child( 'public', $input->{file}{value} );
+            like $input->[2]{value}, qr{Pw/Qd/XOBNWd9H5Zc5lIXvadI_0pk/file\.txt};
+            my $file = $t->app->home->child( 'public', $input->[2]{value} );
             ok -e $file, 'file exists';
             is $file->slurp, 'Run File', 'file content correct';
         };
 
         subtest 'input 3 - integer' => sub {
-            is $input->{integer}{value}, 89;
+            is $input->[3]{value}, 89;
         };
 
         subtest 'input 4 - number' => sub {
-            is $input->{number}{value}, 3.456;
+            is $input->[4]{value}, 3.456;
         };
 
         subtest 'input 5 - string' => sub {
-            is $input->{string}{value}, 'run string';
+            is $input->[5]{value}, 'run string';
         };
     };
 };
 
 subtest 'task input' => sub {
+    my $file = $uploads_dir->child( 'zapp' )->spurt( 'File content' );
+
     # XXX: Test tasks that output certain types
     my $plan = $t->app->create_plan({
         name => 'Task Input Plan',
@@ -380,44 +393,56 @@ subtest 'task input' => sub {
                 }),
             },
         ],
+        inputs => [
+            {
+                name => 'string',
+                type => 'string',
+                value => 'String input',
+            },
+            {
+                name => 'integer',
+                type => 'integer',
+                value => 1234,
+            },
+            {
+                name => 'number',
+                type => 'number',
+                value => 5.678,
+            },
+            {
+                name => 'boolean',
+                type => 'boolean',
+                value => 1,
+            },
+            {
+                name => 'file',
+                type => 'file',
+                value => $file->to_rel( $uploads_dir )."",
+            },
+            {
+                name => 'selectbox',
+                type => 'selectbox',
+                value => 'Scruffy',
+                config => encode_json({
+                    options => [
+                        { label => 'Scruffy', value => 'Scruffy' },
+                        { label => 'Katrina', value => 'Katrina' },
+                        { label => 'Xanthor', value => 'Xanthor' },
+                    ],
+                    selected_index => 0,
+                }),
+            },
+        ],
     });
-
-    my $file = $uploads_dir->child( 'zapp' )->spurt( 'File content' );
 
     # Run each task in the plan and validate result input/output
     my $input = {
-        string => {
-            type => 'string',
-            value => 'String input',
-        },
-        integer => {
-            type => 'integer',
-            value => 1234,
-        },
-        number => {
-            type => 'number',
-            value => 5.678,
-        },
-        boolean => {
-            type => 'boolean',
-            value => 1,
-        },
-        file => {
-            type => 'file',
-            value => $file->to_rel( $uploads_dir ),
-        },
-        selectbox => {
-            type => 'selectbox',
-            value => 'Scruffy',
-            config => {
-                options => [
-                    { label => 'Scruffy', value => 'Scruffy' },
-                    { label => 'Katrina', value => 'Katrina' },
-                    { label => 'Xanthor', value => 'Xanthor' },
-                ],
-                selected_index => 0,
-            },
-        },
+        string => 'String input',
+        integer => 1234,
+        number => 5.678,
+        boolean => 1,
+        file => $file->to_rel( $uploads_dir ),
+        selectbox => 'Scruffy',
     };
     my $run = $t->app->enqueue_plan( $plan->{plan_id}, $input );
     $t->run_queue;
@@ -425,33 +450,33 @@ subtest 'task input' => sub {
     subtest 'string: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[0]{job_id} );
         my $result = $job->info->{result};
-        is $result->{output}, $input->{string}{value}, 'string input correct';
+        is $result->{output}, $input->{string}, 'string input correct';
     };
     subtest 'integer: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[1]{job_id} );
         my $result = $job->info->{result};
-        is $result->{output}, $input->{integer}{value}, 'integer input correct';
+        is $result->{output}, $input->{integer}, 'integer input correct';
     };
     subtest 'number: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[2]{job_id} );
         my $result = $job->info->{result};
-        is $result->{output}, $input->{number}{value}, 'number input correct';
+        is $result->{output}, $input->{number}, 'number input correct';
     };
     subtest 'boolean: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[3]{job_id} );
         my $result = $job->info->{result};
-        is $result->{output}, $input->{boolean}{value}, 'boolean input correct';
+        is $result->{output}, $input->{boolean}, 'boolean input correct';
     };
     subtest 'file: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[4]{job_id} );
         my $result = $job->info->{result};
-        my $path = $t->app->home->child( 'public', $input->{file}{value} );
+        my $path = $t->app->home->child( 'public', $input->{file} );
         is $result->{output}, $path->slurp, 'file input correct';
     };
     subtest 'selectbox: input' => sub {
         my $job = $t->app->minion->job( $run->{tasks}[5]{job_id} );
         my $result = $job->info->{result};
-        is $result->{output}, $input->{selectbox}{value}, 'selectbox input correct';
+        is $result->{output}, $input->{selectbox}, 'selectbox input correct';
     };
 };
 

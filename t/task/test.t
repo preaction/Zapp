@@ -42,12 +42,13 @@ subtest 'run' => sub {
                     },
                 ],
             },
-            {
-                given => {
-                    type => 'integer',
+            [
+                {
+                    name => 'given',
+                    type => 'string',
                     value => 1,
                 },
-            },
+            ],
             'Test: Success',
         );
         $t->task_info_is( state => 'finished', 'job finished' );
@@ -72,12 +73,13 @@ subtest 'run' => sub {
                     },
                 ],
             },
-            {
-                given => {
-                    type => 'integer',
+            [
+                {
+                    name => 'given',
+                    type => 'string',
                     value => 0,
                 },
-            },
+            ],
             'Test: Failure',
         );
         $t->task_info_is( state => 'failed', 'job failed' );

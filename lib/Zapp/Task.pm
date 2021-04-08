@@ -44,6 +44,7 @@ use Zapp::Util qw( get_path_from_data get_path_from_schema );
 use Yancy::Util qw( currym );
 
 has zapp_task => sub( $self ) {
+    ; $self->app->log->debug( "Looking up zapp task for minion job " . $self->id );
     my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $self->id } );
     return $task;
 };
@@ -60,11 +61,10 @@ has zapp_run => sub( $self ) {
 has _context => sub( $self ) {
     my $run_input = decode_json( $self->zapp_run->{ input } );
     my %context;
-    for my $name ( keys %$run_input ) {
-        my $input = $run_input->{ $name };
+    for my $input ( @$run_input ) {
         my $type = $self->app->zapp->types->{ $input->{type} }
             or die qq{Could not find type "$input->{type}"};
-        $context{ $name } = $type->task_input( $input->{config}, $input->{value} );
+        $context{ $input->{name} } = $type->task_input( $input->{config}, $input->{value} );
     }
     return \%context;
 };

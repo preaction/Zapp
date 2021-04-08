@@ -64,14 +64,11 @@
             <dd data-run-state><%= $run->{state} %></dd>
         </dl>
 
-        %# XXX: This should not be using a hash. It should be ordered
-        %# like how plan inputs are.
-        % if ( my @inputs = keys %{ $run->{input} // {} } ) {
+        % if ( my @inputs = @{ $run->{input} // [] } ) {
             <h2>Input</h2>
             <dl>
-            % for my $input_name ( @inputs ) {
-                <dt><%= $input_name =~ s/_/ /gr %></dt>
-                % my $input = $run->{input}{ $input_name };
+            % for my $input ( @inputs ) {
+                <dt><%= $input->{name} =~ s/_/ /gr %></dt>
                 % my $type = $self->app->zapp->types->{ $input->{type} } or die qq{Could not find type "$input->{type}"};
                 <dd>
                     %= $type->display_value( $c, $input->{config}, $input->{value} )

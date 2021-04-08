@@ -45,8 +45,9 @@ subtest 'create a new plan' => sub {
 };
 
 subtest 'start a run' => sub {
-    $t->post_ok( "/plan/$plan_id/run",
+    $t->post_ok( "/run",
         form => {
+            plan_id => $plan_id,
             'input[0].name' => 'weapon',
             'input[0].type' => 'string',
             'input[0].value' => 'Juice-o-matic 4000',

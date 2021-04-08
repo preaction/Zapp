@@ -63,7 +63,7 @@ sub run_task {
     my ( $self, $task_class, $input, $context, $name ) = @_;
     if ( !ref $context ) {
         $name = $context;
-        $context = {};
+        $context = [];
     }
     # XXX: We no longer need to create a plan to create a run
     my $plan = $self->{zapp}{plan} = $self->app->create_plan({
@@ -75,8 +75,12 @@ sub run_task {
                 input => encode_json( $input ),
             },
         ],
+        inputs => $context,
     });
-    my $run = $self->{zapp}{run} = $self->app->enqueue_plan( $plan->{plan_id}, $context );
+    my $run = $self->{zapp}{run} = $self->app->enqueue_plan(
+        $plan->{plan_id},
+        { map $_->@{qw( name value )}, @$context },
+    );
 
     my $worker = $self->app->minion->worker->register;
     my $job = $self->{zapp}{job} = $worker->dequeue;
@@ -111,6 +115,13 @@ sub task_output_like {
 sub task_info_is {
     my ( $self, $info_key, $info_value, $name ) = @_;
     $self->test( 'is', $self->{zapp}{job}->info->{$info_key}, $info_value, $name );
+}
+
+sub clear_backend {
+    my ( $self ) = @_;
+    $self->Test::Yancy::clear_backend;
+    $self->app->minion->reset({ all => 1 });
+    return $self;
 }
 
 sub Test::Yancy::clear_backend {

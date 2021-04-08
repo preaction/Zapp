@@ -59,21 +59,14 @@ subtest 'execute' => sub {
                 name => 'destination',
                 type => 'string',
                 description => 'Where to send the crew to their doom',
-                value => encode_json( 'Chapek 9' ),
+                config => encode_json( 'Chapek 9' ),
             },
         ],
     });
 
     subtest 'success' => sub {
         my $input = {
-            destination => {
-                type => 'string',
-                value => 'Nude Beach Planet',
-            },
-            unused_value => {
-                type => 'string',
-                value => 'Should be passed through',
-            },
+            destination => 'Nude Beach Planet',
         };
 
         my $run = $t->app->enqueue_plan( $plan->{plan_id}, $input );
@@ -88,16 +81,14 @@ subtest 'execute' => sub {
             {
                 $run->%{qw( run_id created )},
                 $plan->%{qw( plan_id name description )},
-                input => {
-                    destination => {
+                input => [
+                    {
+                        name => 'destination',
                         type => 'string',
                         value => 'Nude Beach Planet',
+                        config => 'Chapek 9',
                     },
-                    unused_value => {
-                        type => 'string',
-                        value => 'Should be passed through',
-                    },
-                },
+                ],
                 started => undef,
                 finished => undef,
                 state => 'inactive',
@@ -162,16 +153,14 @@ subtest 'execute' => sub {
                 {
                     $run->%{qw( run_id created started )},
                     $plan->%{qw( plan_id name description )},
-                    input => {
-                        destination => {
+                    input => [
+                        {
+                            name => 'destination',
                             type => 'string',
                             value => 'Nude Beach Planet',
+                            config => 'Chapek 9',
                         },
-                        unused_value => {
-                            type => 'string',
-                            value => 'Should be passed through',
-                        },
-                    },
+                    ],
                     finished => undef,
                     state => 'active',
                 },
@@ -235,16 +224,14 @@ subtest 'execute' => sub {
                 {
                     $run->%{qw( run_id created started finished )},
                     $plan->%{qw( plan_id name description )},
-                    input => {
-                        destination => {
+                    input => [
+                        {
+                            name => 'destination',
                             type => 'string',
                             value => 'Nude Beach Planet',
+                            config => 'Chapek 9',
                         },
-                        unused_value => {
-                            type => 'string',
-                            value => 'Should be passed through',
-                        },
-                    },
+                    ],
                     state => 'finished',
                 },
                 'database run is correct';

@@ -35,7 +35,7 @@ my $dump_debug = sub( $t ) {
 };
 
 subtest 'run a plan' => sub {
-    $t->Test::Yancy::clear_backend;
+    $t->clear_backend;
     my $plan = $t->app->create_plan({
         name => 'Deliver a package',
         description => 'To a dangerous place',
@@ -68,8 +68,8 @@ subtest 'run a plan' => sub {
 
     subtest 'create run form' => sub {
         $t->get_ok( "/plan/$plan_id/run" )->status_is( 200 )
-            ->element_exists( "form[action=/plan/$plan_id/run]", 'form exists' )
-            ->attr_is( "form[action=/plan/$plan_id/run]", enctype => 'multipart/form-data', 'form allows uploads' )
+            ->element_exists( "form[action=/run]", 'form exists' )
+            ->attr_is( "form[action=/run]", enctype => 'multipart/form-data', 'form allows uploads' )
             ->text_is( '[data-input=0] [data-input-name]', 'destination', 'input label correct' )
             ->element_exists( '[name="input[0].value"]', 'input field exists' )
             ->attr_is( '[name="input[0].value"]', value => 'Chapek 9', 'input default value is correct' )
@@ -77,16 +77,20 @@ subtest 'run a plan' => sub {
             ->attr_is( '[name="input[0].name"]', value => 'destination', 'input name is correct' )
             ->element_exists( '[name="input[0].type"]', 'input type exists' )
             ->attr_is( '[name="input[0].type"]', value => 'string', 'input type is correct' )
+            ->element_exists( '[name="input[0].config"]', 'input config exists' )
+            ->attr_is( '[name="input[0].config"]', value => '"Chapek 9"', 'input config is correct' )
             ;
     };
 
     subtest 'create a new run from a plan' => sub {
         $t->post_ok(
-            "/plan/$plan_id/run",
+            "/run",
             form => {
+                plan_id => $plan_id,
                 'input[0].name' => 'destination',
                 'input[0].type' => 'string',
                 'input[0].value' => 'Galaxy of Terror',
+                'input[0].config' => encode_json( 'Chapek 9' ),
             } )
             ->status_is( 302 )->or( $dump_debug )
             ->header_like( Location => qr{/run/\d+} )
@@ -97,13 +101,14 @@ subtest 'run a plan' => sub {
         my $run = $t->app->yancy->get( zapp_runs => $run_id );
         is $run->{plan_id}, $plan_id, 'run plan_id is correct';
         is_deeply decode_json( $run->{input} ),
-            {
-                destination => {
+            [
+                {
+                    name => 'destination',
                     type => 'string',
                     value => 'Galaxy of Terror',
                     config => 'Chapek 9',
                 },
-            },
+            ],
             'run input is correct';
 
         # Record all enqueued tasks so we can keep track of which Minion
@@ -158,6 +163,263 @@ subtest 'run a plan' => sub {
 
 };
 
+subtest 'replay a run' => sub {
+    $t->clear_backend;
+    my $plan = $t->app->create_plan({
+        name => 'Meanwhile',
+        description => 'Wanna go around again?',
+        tasks => [
+            {
+                name => 'Climb Vampire State Building',
+                class => 'Zapp::Task::Script',
+                input => encode_json({
+                    script => 'echo Climbing',
+                }),
+            },
+            {
+                name => 'Check watch',
+                class => 'Zapp::Task::Script',
+                input => encode_json({
+                    script => 'echo 7:02pm',
+                }),
+            },
+            {
+                name => 'Jump off',
+                class => 'Zapp::Task::Script',
+                input => encode_json({
+                    script => 'echo Life without Leela is no life at all',
+                }),
+            },
+        ],
+        inputs => [
+            {
+                name => 'Champagne',
+                type => 'string',
+                description => 'The champagne to order for the announcement',
+                config => encode_json( 'Snootie' ),
+            },
+        ],
+    });
+    my $plan_id = $plan->{plan_id};
+
+    # Create a run to replay
+    my $run = $t->app->enqueue_plan( $plan_id, {} );
+
+    subtest 'replay run form' => sub {
+        $t->get_ok( "/run/$run->{run_id}/replay" )->status_is( 200 )
+            ->element_exists( "form[action=/run]", 'form exists' )
+            ->attr_is( "form[action=/run]", enctype => 'multipart/form-data', 'form allows uploads' )
+            ->text_is( '[data-input=0] [data-input-name]', 'Champagne', 'input label correct' )
+            ->or( sub { diag $t->tx->res->dom->at( 'form[action=/run]' ) } )
+            ->element_exists( '[name="input[0].value"]', 'input field exists' )
+            ->attr_is( '[name="input[0].value"]', value => 'Snootie', 'input default value is correct' )
+            ->element_exists( '[name="input[0].name"]', 'input name exists' )
+            ->attr_is( '[name="input[0].name"]', value => 'Champagne', 'input name is correct' )
+            ->element_exists( '[name="input[0].type"]', 'input type exists' )
+            ->attr_is( '[name="input[0].type"]', value => 'string', 'input type is correct' )
+            ;
+    };
+
+    subtest 'create a new run from a run' => sub {
+        $t->post_ok(
+            "/run",
+            form => {
+                run_id => $run->{run_id},
+                'input[0].name' => 'Champagne',
+                'input[0].type' => 'string',
+                'input[0].value' => 'Cheap',
+                'input[0].config' => encode_json( 'Snootie' ),
+            } )
+            ->status_is( 302 )->or( $dump_debug )
+            ->header_like( Location => qr{/run/\d+} )
+            ;
+        my ( $new_run_id ) = $t->tx->res->headers->location =~ m{/run/(\d+)};
+        isnt $new_run_id, $run->{run_id}, 'a new run is created';
+
+        # Recorded in Zapp
+        my $run = $t->app->yancy->get( zapp_runs => $new_run_id );
+        is_deeply decode_json( $run->{input} ),
+            [
+                {
+                    name => 'Champagne',
+                    type => 'string',
+                    value => 'Cheap',
+                    config => 'Snootie',
+                },
+            ],
+            'run input is correct';
+
+        # Record all enqueued tasks so we can keep track of which Minion
+        # tasks were triggered by which Zapp run
+        my @tasks = $t->app->yancy->list(
+            zapp_run_tasks => { run_id => $new_run_id },
+            { order_by => { -asc => 'job_id' } },
+        );
+        is scalar @tasks, 3, 'three run tasks created';
+        is_deeply
+            {
+                $tasks[0]->%*,
+                input => decode_json( $tasks[0]{input} ),
+            },
+            {
+                $tasks[0]->%{qw( job_id task_id )},
+                $plan->{tasks}[0]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[0]{input} ),
+                run_id => $new_run_id,
+                plan_task_id => $plan->{tasks}[0]{task_id},
+                state => 'inactive',
+                output => undef,
+            },
+            'first job is correct'
+                or diag explain $tasks[0];
+        is_deeply
+            {
+                $tasks[1]->%*,
+                input => decode_json( $tasks[1]{input} ),
+            },
+            {
+                $tasks[1]->%{qw( job_id task_id )},
+                $plan->{tasks}[1]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[1]{input} ),
+                run_id => $new_run_id,
+                plan_task_id => $plan->{tasks}[1]{task_id},
+                state => 'inactive',
+                output => undef,
+            },
+            'second job is correct'
+                or diag explain $tasks[1];
+        is_deeply
+            {
+                $tasks[2]->%*,
+                input => decode_json( $tasks[2]{input} ),
+            },
+            {
+                $tasks[2]->%{qw( job_id task_id )},
+                $plan->{tasks}[2]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[2]{input} ),
+                run_id => $new_run_id,
+                plan_task_id => $plan->{tasks}[2]{task_id},
+                state => 'inactive',
+                output => undef,
+            },
+            'third job is correct'
+                or diag explain $tasks[2];
+
+        # Enqueued in Minion
+        my $mjob = $t->app->minion->job( $tasks[0]{job_id} );
+        ok $mjob, 'minion job 1 exists';
+        # XXX: Test job attributes
+
+        $mjob = $t->app->minion->job( $tasks[1]{job_id} );
+        ok $mjob, 'minion job 2 exists';
+        # XXX: Test job attributes
+
+        $mjob = $t->app->minion->job( $tasks[2]{job_id} );
+        ok $mjob, 'minion job 3 exists';
+        # XXX: Test job attributes
+    };
+
+    subtest 'replay only some tasks' => sub {
+        $t->post_ok(
+            "/run",
+            form => {
+                run_id => $run->{run_id},
+                task_id => $run->{tasks}[1]{task_id},
+                'input[0].name' => 'Champagne',
+                'input[0].type' => 'string',
+                'input[0].value' => 'Cheap',
+                'input[0].config' => encode_json( 'Snootie' ),
+            } )
+            ->status_is( 302 )->or( $dump_debug )
+            ->header_like( Location => qr{/run/\d+} )
+            ;
+        my ( $new_run_id ) = $t->tx->res->headers->location =~ m{/run/(\d+)};
+        isnt $new_run_id, $run->{run_id}, 'a new run is created';
+
+        # Recorded in Zapp
+        my $run = $t->app->yancy->get( zapp_runs => $new_run_id );
+        is_deeply decode_json( $run->{input} ),
+            [
+                {
+                    name => 'Champagne',
+                    type => 'string',
+                    value => 'Cheap',
+                    config => 'Snootie',
+                },
+            ],
+            'run input is correct';
+
+        # Record all enqueued tasks so we can keep track of which Minion
+        # tasks were triggered by which Zapp run
+        my @tasks = $t->app->yancy->list(
+            zapp_run_tasks => { run_id => $new_run_id },
+            { order_by => { -asc => 'job_id' } },
+        );
+        is scalar @tasks, 3, 'three run tasks created';
+        is_deeply
+            {
+                $tasks[0]->%*,
+                input => decode_json( $tasks[0]{input} ),
+            },
+            {
+                $tasks[0]->%{qw( task_id )},
+                $plan->{tasks}[0]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[0]{input} ),
+                run_id => $new_run_id,
+                plan_task_id => $plan->{tasks}[0]{task_id},
+                state => 'copied',
+                output => undef,
+                job_id => undef,
+            },
+            'first job is correctly copied from previous run and has no minion job'
+                or diag explain $tasks[0];
+        is_deeply
+            {
+                $tasks[1]->%*,
+                input => decode_json( $tasks[1]{input} ),
+            },
+            {
+                $tasks[1]->%{qw( job_id task_id )},
+                $plan->{tasks}[1]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[1]{input} ),
+                run_id => $new_run_id,
+                plan_task_id => $plan->{tasks}[1]{task_id},
+                state => 'inactive',
+                output => undef,
+            },
+            'second job is correct'
+                or diag explain $tasks[1];
+        is_deeply
+            {
+                $tasks[2]->%*,
+                input => decode_json( $tasks[2]{input} ),
+            },
+            {
+                $tasks[2]->%{qw( job_id task_id )},
+                $plan->{tasks}[2]->%{qw( name description class )},
+                input => decode_json( $plan->{tasks}[2]{input} ),
+                run_id => $new_run_id,
+                plan_task_id => $plan->{tasks}[2]{task_id},
+                state => 'inactive',
+                output => undef,
+            },
+            'third job is correct'
+                or diag explain $tasks[2];
+
+        # Enqueued in Minion
+        my $mjob = $t->app->minion->job( $tasks[0]{job_id} );
+        ok !$mjob, 'minion job 1 does not exist';
+
+        $mjob = $t->app->minion->job( $tasks[1]{job_id} );
+        ok $mjob, 'minion job for task 2 exists';
+        # XXX: Test job attributes
+
+        $mjob = $t->app->minion->job( $tasks[2]{job_id} );
+        ok $mjob, 'minion job for task 3 exists';
+        # XXX: Test job attributes
+    };
+};
+
 subtest 'view run status' => sub {
     my $plan = $t->app->create_plan({
         name => 'Watch the What If Machine',
@@ -196,10 +458,7 @@ subtest 'view run status' => sub {
     my $run = $t->app->enqueue_plan(
         $plan_id,
         {
-            Character => {
-                type => 'string',
-                value => 'Zanthor',
-            },
+            Character => 'Zanthor',
         },
     );
 
@@ -519,7 +778,7 @@ subtest 'stop/kill run' => sub {
 };
 
 subtest 'list runs' => sub {
-    $t->Test::Yancy::clear_backend;
+    $t->clear_backend;
     my @runs = (
         {
             name => 'Cannibalon',

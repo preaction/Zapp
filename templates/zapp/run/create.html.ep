@@ -1,5 +1,6 @@
 <%
     layout 'zapp';
+    use Mojo::JSON qw( encode_json );
     use Zapp::Util qw( prefix_field );
 %>
 
@@ -12,7 +13,7 @@
 </header>
 <div style="white-space: pre-line" class="mb-3"><%= stash 'description' %></div>
 
-%= form_for 'zapp.create_run', enctype => 'multipart/form-data' => begin
+%= form_for 'zapp.save_run', enctype => 'multipart/form-data' => begin
     % if ( my @inputs = @{ stash( 'inputs' ) // [] } ) {
         % for my $input_num ( 0..$#inputs ) {
             % my $input = $inputs[ $input_num ];
@@ -22,6 +23,7 @@
                 %# unsaved, ad-hoc plans
                 %= hidden_field "input[$input_num].type", $input->{type}
                 %= hidden_field "input[$input_num].name", $input->{name}
+                %= hidden_field "input[$input_num].config", encode_json $input->{config}
                 <%
                     my $type_name = $input->{type};
                     my $type = $c->zapp->types->{ $type_name }
