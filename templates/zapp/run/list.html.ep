@@ -36,7 +36,7 @@
         <div>
             <h2><%= $run->{name} %></h2>
             % if ( $run->{description} ) {
-                <p class="description"><%= $run->{description} %></p>
+                <p class="description text-pre-wrap text-break"><%= $run->{description} %></p>
             % }
         </div>
         <div>

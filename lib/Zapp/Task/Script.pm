@@ -212,7 +212,7 @@ __DATA__
         <dl>
             % for my $var ( @vars ) {
                 <dt><%= $var->{name} %></dt>
-                <dd><%= $var->{value} %></dd>
+                <dd class="text-break text-pre-wrap"><%= $var->{value} %></dd>
             % }
         </dl>
     % }

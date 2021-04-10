@@ -11,7 +11,7 @@
         <i class="fa fa-arrow-left"></i> Back to Plans
     % end
 </header>
-<div style="white-space: pre-line" class="mb-3"><%= stash 'description' %></div>
+<div class="mb-3 text-break text-pre-wrap"><%= stash 'description' %></div>
 
 %= form_for 'zapp.save_run', enctype => 'multipart/form-data' => begin
     % if ( my @inputs = @{ stash( 'inputs' ) // [] } ) {
@@ -32,7 +32,7 @@
                     my $input_dom = prefix_field( $input_field, "input[$input_num]" );
                     $input_dom->children->[0]->attr( 'aria-describedby', "input[$input_num].description" );
                 %><%== $input_dom %>
-                <small class="form-text" id="input[<%= $input_num %>].description">
+                <small class="form-text text-break text-pre-wrap" id="input[<%= $input_num %>].description">
                     %= $input->{description}
                 </small>
             </div>
