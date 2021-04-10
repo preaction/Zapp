@@ -6,6 +6,9 @@
 %= javascript '/yancy/popper.js'
 %= javascript '/yancy/bootstrap.js'
 <style>
+    .text-pre-wrap {
+        white-space: pre-wrap;
+    }
     main header {
         display: flex;
         justify-content: space-between;

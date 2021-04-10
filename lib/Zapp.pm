@@ -69,6 +69,7 @@ sub startup( $self ) {
     # Add basic types
     my %base_types = (
         string => 'Zapp::Type::Text',
+        textarea => 'Zapp::Type::Textarea',
         number => 'Zapp::Type::Text',
         integer => 'Zapp::Type::Text',
         boolean => 'Zapp::Type::Text',
