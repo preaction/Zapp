@@ -16,19 +16,30 @@ subtest 'parse' => sub {
     my $tree = $f->parse( q{"string"} );
     is_deeply $tree, [ string => q{"string"} ], 'string parsed correctly';
 
+    $tree = $f->parse( q{ "string" } );
+    is_deeply $tree, [ string => q{"string"} ], 'whitespace around string literals stripped';
+
     $tree = $f->parse( q{foo.bar} );
-    is_deeply $tree, [ var => q{foo.bar} ], 'var parsed correctly';
+    is_deeply $tree, [ var => qw{foo bar} ], 'var parsed correctly';
+
+    $tree = $f->parse( q{ foo . bar } );
+    is_deeply $tree, [ var => qw{foo bar} ], 'whitespace around vars stripped';
 
     $tree = $f->parse( q{UPPER("string")} );
-    is_deeply $tree, [ call => UPPER => [ string => q{"string"} ] ],
-        'function call parsed correctly';
+    is_deeply $tree, [ call => [ var => 'UPPER' ] => [ string => q{"string"} ] ],
+        'function call parsed correctly'
+            or diag explain $tree;
+
+    $tree = $f->parse( q{ UPPER ( "string" ) } );
+    is_deeply $tree, [ call => [ var => 'UPPER' ] => [ string => q{"string"} ] ],
+        'whitespace around function call stripped';
 
     $tree = $f->parse( q{LEFT(LOWER(Foo),2)} );
     is_deeply $tree,
         [
-            call => 'LEFT',
+            call => [ var => 'LEFT' ],
             [
-                call => 'LOWER',
+                call => [ var => 'LOWER' ],
                 [
                     var => 'Foo',
                 ],
@@ -39,6 +50,22 @@ subtest 'parse' => sub {
         ],
         'function call with function call as argument parsed correctly';
 
+    $tree = $f->parse( q{ LEFT ( LOWER ( Foo ) , 2 ) } );
+    is_deeply $tree,
+        [
+            call => [ var => 'LEFT' ],
+            [
+                call => [ var => 'LOWER' ],
+                [
+                    var => 'Foo',
+                ],
+            ],
+            [
+                number => 2,
+            ],
+        ],
+        'whitespace around nested calls stripped';
+
     $tree = $f->parse( q{[Foo,"bar",2]} );
     is_deeply $tree,
         [
@@ -48,6 +75,17 @@ subtest 'parse' => sub {
             [ number => 2 ],
         ],
         'array literal parsed correctly'
+            or diag explain $tree;
+
+    $tree = $f->parse( q{ [ Foo , "bar" , 2 ] } );
+    is_deeply $tree,
+        [
+            array =>
+            [ var => 'Foo' ],
+            [ string => q{"bar"} ],
+            [ number => 2 ],
+        ],
+        'whitespace around array literal stripped'
             or diag explain $tree;
 
     $tree = $f->parse( q{[[Foo],["bar"],2]} );
@@ -83,7 +121,18 @@ subtest 'parse' => sub {
         'nested hash literal parsed correctly'
             or diag explain $tree;
 
-    $tree = $f->parse( q["foo"&"bar"&"baz"] );
+    $tree = $f->parse( q[ { "foo" : [ Foo ] , "bar" : { "bar" : "bar" } , "2" : 2 } ] );
+    is_deeply $tree,
+        [
+            hash =>
+            [ q{"foo"}, [ array => [ var => 'Foo' ] ] ],
+            [ q{"bar"}, [ hash => [ q{"bar"} => [ string => q{"bar"} ] ] ] ],
+            [ q{"2"}, [ number => 2 ] ],
+        ],
+        'whitespace in nested hash literal stripped'
+            or diag explain $tree;
+
+    $tree = $f->parse( q[ "foo" & "bar" & "baz" ] );
     is_deeply $tree,
         [
             binop => '&',
@@ -96,7 +145,6 @@ subtest 'parse' => sub {
         ],
         'multiple binops parsed correctly'
             or diag explain $tree;
-
 
     subtest 'unclosed string literal' => sub {
         my $tree;

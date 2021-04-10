@@ -43,7 +43,7 @@ our %FUNCTIONS = (
     RIGHT => sub( $str, $len ) { substr $str, -$len },
 );
 
-my ( @result, @term, @args, @binop, @call, @array, @hash, $depth, $expected, $failed_at );
+my ( @result, @term, @args, @binop, @call, @array, @hash, @var, $depth, $expected, $failed_at );
 our $GRAMMAR = qr{
     (?(DEFINE)
         (?<EXPR>
@@ -51,13 +51,14 @@ our $GRAMMAR = qr{
             # we recurse, we must take the result off the stack and save
             # it until we can put it back on the stack (somewhere)
             (?{ $depth++ })(?>
+            \s*
             (?:
                 # Terminator first, to escape infinite loops
-                (?> (?&TERM) ) (?! (?&OP) | \( )
+                (?> (?&TERM) ) (?! (?&OP) | \( ) \s*
                 (?{ push @result, pop @term })
                 (?{ $expected = 'Expected operator'; $failed_at = pos() })
             |
-                (?> (?&CALL) ) (?! (?&OP) )
+                (?> (?&CALL) ) (?! (?&OP) ) \s*
                 (?{ push @result, [ call => @{ pop @call } ] })
                 (?{ $expected = 'Expected operator'; $failed_at = pos() })
             |
@@ -75,7 +76,7 @@ our $GRAMMAR = qr{
                     (?> (?&TERM) )
                     (?{ push @{ $binop[-1] }, [ @{ pop @term } ] })
                 )
-                (?<op> (?&OP) )
+                (?<op> (?&OP) ) \s*
                 (?{ $expected = 'Expected expression'; $failed_at = pos() })
                 (?> (?&EXPR) )
                 (?{ push @result, [ binop => $+{op}, @{ pop @binop }, pop @result ] })
@@ -84,39 +85,40 @@ our $GRAMMAR = qr{
         )
         (?<OP>(?> @{[ join '|', map quotemeta, keys %BINOPS ]} ))
         (?<CALL>(?>
-            (?<name> (?&VAR) )
-            \(
+            (?&VAR)
+            (?{ push @call, [ [ var => @var ] ]; @var = () })
+            \s* \( \s*
                 (?>
                     (?{ push @args, [] })
                     (?> (?&EXPR) )
                     (?{ push @{ $args[-1] }, pop @result })
                     (?:
-                        , (?> (?&EXPR) )
+                        \s* , \s* (?> (?&EXPR) )
                         (?{ push @{ $args[-1] }, pop @result })
                     )*
                 )
                 (?{ $expected = 'Could not find end parenthesis'; $failed_at = pos() })
-            \)
-            (?{ push @call, [ $+{name}, @{ pop @args } ] })
+            \s* \) \s*
+            (?{ push $call[-1]->@*, @{ pop @args } })
         ))
         (?<ARRAY>(?>
-            \[
+            \[ \s*
                 (?{ push @array, [] })
                 (?:
-                    (?> (?&EXPR) ) ,?
+                    (?> (?&EXPR) ) \s* ,? \s*
                     (?{ push @{ $array[-1] }, pop @result })
                 )*
-            \]
+            \] \s*
         ))
         (?<HASH>(?>
-            \{
+            \{ \s*
                 (?{ push @hash, [] })
                 (?:
-                    (?> (?<key> (?&STRING) ) ) :
-                    (?> (?&EXPR) ) ,?
+                    (?> (?<key> (?&STRING) ) ) \s* : \s*
+                    (?> (?&EXPR) ) \s* ,? \s*
                     (?{ push @{ $hash[-1] }, [ $+{'key'}, pop @result ] })
                 )*
-            \}
+            \} \s*
         ))
         (?<TERM>(?>
             (?:
@@ -126,11 +128,16 @@ our $GRAMMAR = qr{
                 (?<number> (?&NUMBER) )
                 (?{ push @term, [ %+{'number'} ] })
             |
-                (?<var> (?&VAR) )
-                (?{ push @term, [ %+{'var'} ] })
+                (?&VAR)
+                (?{ push @term, [ var => @var ]; @var = () })
             )
+            \s*
         ))
-        (?<VAR> [a-zA-Z][a-zA-Z0-9_.]* )
+        (?<VAR>
+            (?<word> [a-zA-Z][a-zA-Z0-9_]+ ) \s*
+            (?{ push @var, $+{word} })
+            (?: \. \s* (?&VAR) )*+
+        )
         (?<STRING>
             "
             (?>
@@ -180,12 +187,13 @@ sub eval( $self, $expr, $context={} ) {
             return $tree->[1];
         }
         if ( $tree->[0] eq 'var' ) {
-            return ref $context eq 'CODE' ? $context->( $tree->[1] )
-                : get_path_from_data( $tree->[1], $context )
+            my $var = join '.', $tree->@[1..$#$tree];
+            return ref $context eq 'CODE' ? $context->( $var )
+                : get_path_from_data( $var, $context )
                 ;
         }
         if ( $tree->[0] eq 'call' ) {
-            my $name = $tree->[1];
+            my $name = join '.', $tree->[1]->@[1..$tree->[1]->$#*];
             my @args = map { __SUB__->( $_ ) } @{$tree}[2 .. $#{$tree}];
             return $FUNCTIONS{ $name }->( @args );
         }
