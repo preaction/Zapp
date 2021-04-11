@@ -16,7 +16,7 @@ my ( $plan_id, $run_id );
 subtest 'create a new plan' => sub {
     $t->post_ok( '/plan',
         form => {
-            name => 'Assassinate Fry the Solid',
+            label => 'Assassinate Fry the Solid',
             description => 'He must die so Bont may live!',
             'input[0].name' => 'weapon',
             'input[0].type' => 'string',
@@ -73,7 +73,7 @@ subtest 'edit the plan' => sub {
     # Add a task
     $t->post_ok( '/plan',
         form => {
-            name => 'Assassinate Fry the Solid',
+            label => 'Assassinate Fry the Solid',
             description => 'He must die so Bont may live!',
             'input[0].name' => 'weapon',
             'input[0].type' => 'string',
@@ -94,7 +94,7 @@ subtest 'edit the plan' => sub {
             'task[0].input.vars[2].value' => '{{weapon}}',
             'task[0].input.script' => 'echo $who in the $where with the $weapon',
             'task[1].class' => 'Zapp::Task::Script',
-            'task[1].name' => 'Coronate Bont',
+            'task[1].name' => 'Coronate',
             'task[1].input.script' => 'echo I, Bont, who ate Fry the Solid...',
         },
     )

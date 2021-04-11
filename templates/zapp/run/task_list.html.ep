@@ -28,7 +28,7 @@
                     # Show the active task for active runs
                     $run->{state} eq 'active' && $task->{state} eq 'active' ? ('active')
                     # Show the last task for finished runs
-                    : $task->{state} eq 'finished' && $i == $#$tasks ? ('active')
+                    : $run->{state} eq 'finished' && $i == $#$tasks ? ('active')
                     # Show the failed/killed/stop task for runs
                     : $run->{state} eq 'failed' && $task->{state} eq 'failed' ? ('active')
                     : $run->{state} eq 'stopped' && $task->{state} eq 'stopped' && ( $i == 0 || $tasks->[$i-1]{state} ne 'stopped' ) ? ('active')
@@ -45,7 +45,7 @@
             ( 'aria-selected' => 'true' )x!!( $task->{state} eq 'active' ),
             ( 'aria-disabled' => 'true', tabindex => '-1' )x!!( $task->{state} eq 'inactive' ),
         begin %>
-            %= $task->{name} // ( ( $task->{class} // '' ) =~ s/^Zapp::Task:://r )
+            %= $task->{label} // $task->{name} // ( ( $task->{class} // '' ) =~ s/^Zapp::Task:://r )
         <% end %>
     % }
 </div>
@@ -68,7 +68,7 @@
             <h2>Input</h2>
             <dl>
             % for my $input ( @inputs ) {
-                <dt><%= $input->{name} =~ s/_/ /gr %></dt>
+                <dt><%= $input->{label} // ( $input->{name} =~ s/_/ /gr ) %></dt>
                 % my $type = $self->app->zapp->types->{ $input->{type} } or die qq{Could not find type "$input->{type}"};
                 <dd>
                     %= $type->display_value( $c, $input->{config}, $input->{value} )
@@ -89,7 +89,7 @@
                     # Show the active task for active runs
                     $run->{state} eq 'active' && $task->{state} eq 'active' ? ('show', 'active')
                     # Show the last task for finished runs
-                    : $task->{state} eq 'finished' && $i == $#{ $run->{tasks} } ? ('show', 'active')
+                    : $run->{state} eq 'finished' && $i == $#{ $run->{tasks} } ? ('show', 'active')
                     # Show the failed/killed/stop task for runs
                     : $run->{state} eq 'failed' && $task->{state} eq 'failed' ? ('active')
                     : $run->{state} eq 'stopped' && $task->{state} eq 'stopped' && ( $i == 0 || $run->{tasks}[$i-1]{state} ne 'stopped' ) ? ('active')

@@ -42,17 +42,17 @@ subtest 'create new plan' => sub {
             ->element_exists( 'form#plan', 'form exists' )
             ->attr_is( 'form#plan', enctype => 'multipart/form-data', 'form enctype correct' )
             ->element_exists(
-                'label[for=name]',
-                'name label exists',
+                'label[for=label]',
+                'label label exists',
             )
             ->element_exists(
-                'input[id=name]',
-                'name input exists',
+                'input[id=label]',
+                'label input exists',
             )
             ->attr_is(
-                'input[id=name]',
-                name => 'name',
-                'name input name is correct',
+                'input[id=label]',
+                name => 'label',
+                'label input name is correct',
             )
             ->element_exists(
                 'label[for=description]',
@@ -105,14 +105,16 @@ subtest 'create new plan' => sub {
     subtest 'save plan' => sub {
         $t->post_ok( "/plan",
             form => {
-                name => 'The Mighty One',
+                label => 'The Mighty One',
                 description => 'Save the mighty one, save the universe.',
                 'input[0].name' => 'prank_name',
+                'input[0].label' => 'Prank Name',
                 'input[0].type' => 'string',
                 'input[0].description' => 'A funny name to demoralize the Mighty One',
                 'input[0].config' => 'I.C. Weiner',
                 'task[0].class' => 'Zapp::Task::Script',
-                'task[0].name' => 'Order pizza',
+                'task[0].name' => 'Order',
+                'task[0].label' => 'Order pizza',
                 'task[0].description' => 'I.C. Weiner',
                 'task[0].input.script' => 'echo make order',
                 'task[1].class' => 'Zapp::Task::Script',
@@ -127,7 +129,7 @@ subtest 'create new plan' => sub {
 
         my $got_plan = $t->app->yancy->get( zapp_plans => $plan_id );
         ok $got_plan, 'found plan';
-        is $got_plan->{name}, 'The Mighty One', 'plan name correct';
+        is $got_plan->{label}, 'The Mighty One', 'plan label correct';
         is $got_plan->{description}, 'Save the mighty one, save the universe.', 'plan description correct';
 
         my @got_tasks = $t->app->yancy->list(
@@ -148,7 +150,8 @@ subtest 'create new plan' => sub {
                 plan_id => $got_plan->{plan_id},
                 task_id => $got_tasks[0]{task_id},
                 class =>'Zapp::Task::Script',
-                name => 'Order pizza',
+                name => 'Order',
+                label => 'Order pizza',
                 description => 'I.C. Weiner',
                 input => {
                     script => 'echo make order',
@@ -165,6 +168,7 @@ subtest 'create new plan' => sub {
                 task_id => $got_tasks[1]{task_id},
                 class =>'Zapp::Task::Script',
                 name => 'Verify',
+                label => undef,
                 description => 'Verify freezer',
                 input => {
                     script => 'echo make test',
@@ -193,6 +197,7 @@ subtest 'create new plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'prank_name',
+            label => 'Prank Name',
             rank => 0,
             type => 'string',
             description => 'A funny name to demoralize the Mighty One',
@@ -205,11 +210,12 @@ subtest 'create new plan' => sub {
 subtest 'edit existing plan' => sub {
 
     my $plan = $t->app->create_plan( {
-        name => 'Blow up Garbage Ball',
+        label => 'Blow up Garbage Ball',
         description => 'Save New New York from certain, smelly doom.',
         tasks => [
             {
-                name => 'Deploy the Bomb',
+                label => 'Deploy the Bomb',
+                name => 'Deploy',
                 description => 'Deploy the bomb between the Bart Simpson dolls.',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
@@ -217,7 +223,8 @@ subtest 'edit existing plan' => sub {
                 }),
             },
             {
-                name => 'Activate the Bomb',
+                label => 'Activate the Bomb',
+                name => 'Activate',
                 description => q{Let's blow it up already!},
                 class => 'Zapp::Task::Script',
                 input => encode_json({
@@ -248,22 +255,22 @@ subtest 'edit existing plan' => sub {
         $t->$dump_debug;
         $t->element_exists( 'form#plan', 'form exists' )
             ->element_exists(
-                'label[for=name]',
-                'name label exists',
+                'label[for=label]',
+                'label label exists',
             )
             ->element_exists(
-                'input[id=name]',
-                'name input exists',
+                'input[id=label]',
+                'label input exists',
             )
             ->attr_is(
-                'input[id=name]',
-                name => 'name',
-                'name input name is correct',
+                'input[id=label]',
+                name => 'label',
+                'label input name is correct',
             )
             ->attr_is(
-                'input[id=name]',
+                'input[id=label]',
                 value => 'Blow up Garbage Ball',
-                'name input value is correct',
+                'label input value is correct',
             )
             ->element_exists(
                 'label[for=description]',
@@ -420,8 +427,18 @@ subtest 'edit existing plan' => sub {
             );
             $t->attr_is(
                 'input[name="task[0].name"]',
-                value => 'Deploy the Bomb',
+                value => 'Deploy',
                 'first plan task name input value correct',
+            );
+
+            $t->element_exists(
+                'input[name="task[0].label"]',
+                'first plan task label input exists',
+            );
+            $t->attr_is(
+                'input[name="task[0].label"]',
+                value => 'Deploy the Bomb',
+                'first plan task label input value correct',
             );
 
             $t->element_exists(
@@ -473,8 +490,18 @@ subtest 'edit existing plan' => sub {
             );
             $t->attr_is(
                 'input[name="task[1].name"]',
-                value => 'Activate the Bomb',
+                value => 'Activate',
                 'second plan task name input value correct',
+            );
+
+            $t->element_exists(
+                'input[name="task[1].label"]',
+                'second plan task label input exists',
+            );
+            $t->attr_is(
+                'input[name="task[1].label"]',
+                value => 'Activate the Bomb',
+                'second plan task label input value correct',
             );
 
             $t->element_exists(
@@ -504,24 +531,28 @@ subtest 'edit existing plan' => sub {
     subtest 'save plan' => sub {
         $t->post_ok( "/plan/$plan_id",
             form => {
-                name => 'Save NNY',
+                label => 'Save NNY',
                 description => 'Save New New York City',
                 'input[0].name' => 'delay',
+                'input[0].label' => 'Delay (hours)',
                 'input[0].type' => 'number',
                 'input[0].description' => 'Time to give crew to survive, in hours',
                 'input[0].config' => '0.4',
                 'input[1].name' => 'location',
+                'input[1].label' => 'Location',
                 'input[1].type' => 'string',
                 'input[1].description' => 'Where to put the bomb',
                 'input[1].config' => 'In the center',
                 'task[0].task_id' => $task_ids[0],
                 'task[0].class' => 'Zapp::Task::Script',
                 'task[0].name' => 'Build',
+                'task[0].label' => 'Build the Bomb',
                 'task[0].description' => 'Build a bomb',
                 'task[0].input.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
-                'task[1].name' => 'Verify Bomb',
+                'task[1].name' => 'Verify',
+                'task[1].label' => 'Verify Bomb',
                 'task[1].description' => 'Make sure this time',
                 'task[1].input.script' => 'make check',
             },
@@ -531,7 +562,7 @@ subtest 'edit existing plan' => sub {
 
         my $got_plan = $t->app->yancy->get( zapp_plans => $plan_id );
         ok $got_plan, 'found plan';
-        is $got_plan->{name}, 'Save NNY', 'plan name correct';
+        is $got_plan->{label}, 'Save NNY', 'plan label correct';
         is $got_plan->{description}, 'Save New New York City', 'plan description correct';
 
         my @got_tasks = $t->app->yancy->list(
@@ -553,6 +584,7 @@ subtest 'edit existing plan' => sub {
                 class => 'Zapp::Task::Script',
                 task_id => $task_ids[0],
                 name => 'Build',
+                label => 'Build the Bomb',
                 description => 'Build a bomb',
                 input => {
                     script => 'make thebomb',
@@ -568,7 +600,8 @@ subtest 'edit existing plan' => sub {
                 plan_id => $plan_id,
                 class => 'Zapp::Task::Script',
                 task_id => $task_ids[1],
-                name => 'Verify Bomb',
+                name => 'Verify',
+                label => 'Verify Bomb',
                 description => 'Make sure this time',
                 input => {
                     script => 'make check',
@@ -597,6 +630,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            label => 'Delay (hours)',
             rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in hours',
@@ -606,6 +640,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
+            label => 'Location',
             rank => 1,
             type => 'string',
             description => 'Where to put the bomb',
@@ -618,7 +653,7 @@ subtest 'edit existing plan' => sub {
     subtest 'add task to plan' => sub {
         $t->post_ok( "/plan/$plan_id",
             form => {
-                name => 'Save NNY',
+                label => 'Save NNY',
                 description => 'Save New New York City',
                 'input[0].name' => 'delay',
                 'input[0].type' => 'number',
@@ -639,7 +674,7 @@ subtest 'edit existing plan' => sub {
                 'task[1].input.script' => 'make flight',
                 'task[2].task_id' => $task_ids[1],
                 'task[2].class' => 'Zapp::Task::Script',
-                'task[2].name' => 'Verify Bomb',
+                'task[2].name' => 'Verify',
                 'task[2].description' => 'Make sure this time',
                 'task[2].input.script' => 'make check',
             },
@@ -667,6 +702,7 @@ subtest 'edit existing plan' => sub {
                 class => 'Zapp::Task::Script',
                 task_id => $task_ids[0],
                 name => 'Build',
+                label => 'Build the Bomb',
                 description => 'Build a bomb',
                 input => {
                     script => 'make thebomb',
@@ -684,6 +720,7 @@ subtest 'edit existing plan' => sub {
                 class => 'Zapp::Task::Script',
                 task_id => $got_tasks[2]{task_id},
                 name => 'Transit',
+                label => undef,
                 description => 'Fly to garbage ball',
                 input => {
                     script => 'make flight',
@@ -700,7 +737,8 @@ subtest 'edit existing plan' => sub {
                 plan_id => $plan_id,
                 class => 'Zapp::Task::Script',
                 task_id => $task_ids[1],
-                name => 'Verify Bomb',
+                name => 'Verify',
+                label => 'Verify Bomb',
                 description => 'Make sure this time',
                 input => {
                     script => 'make check',
@@ -739,6 +777,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            label => 'Delay (hours)',
             rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in hours',
@@ -748,6 +787,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
+            label => 'Location',
             rank => 1,
             type => 'string',
             description => 'Where to put the bomb',
@@ -760,7 +800,7 @@ subtest 'edit existing plan' => sub {
     subtest 'remove task from plan' => sub {
         $t->post_ok( "/plan/$plan_id",
             form => {
-                name => 'Save NNY',
+                label => 'Save NNY',
                 description => 'Save New New York City',
                 'input[0].name' => 'prank_name',
                 'input[0].type' => 'string',
@@ -777,7 +817,7 @@ subtest 'edit existing plan' => sub {
                 'task[0].input.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
-                'task[1].name' => 'Verify Bomb',
+                'task[1].name' => 'Verify',
                 'task[1].description' => 'Make sure this time',
                 'task[1].input.script' => 'make check',
             },
@@ -805,6 +845,7 @@ subtest 'edit existing plan' => sub {
                 class => 'Zapp::Task::Script',
                 task_id => $task_ids[0],
                 name => 'Build',
+                label => 'Build the Bomb',
                 description => 'Build a bomb',
                 input => {
                     script => 'make thebomb',
@@ -821,7 +862,8 @@ subtest 'edit existing plan' => sub {
                 plan_id => $plan_id,
                 class => 'Zapp::Task::Script',
                 task_id => $task_ids[1],
-                name => 'Verify Bomb',
+                name => 'Verify',
+                label => 'Verify Bomb',
                 description => 'Make sure this time',
                 input => {
                     script => 'make check',
@@ -843,7 +885,7 @@ subtest 'edit existing plan' => sub {
     subtest 'remove input from plan' => sub {
         $t->post_ok( "/plan/$plan_id",
             form => {
-                name => 'Save NNY',
+                label => 'Save NNY',
                 description => 'Save New New York City',
                 'input[0].name' => 'delay',
                 'input[0].type' => 'number',
@@ -856,7 +898,7 @@ subtest 'edit existing plan' => sub {
                 'task[0].input.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
-                'task[1].name' => 'Verify Bomb',
+                'task[1].name' => 'Verify',
                 'task[1].description' => 'Make sure this time',
                 'task[1].input.script' => 'make check',
             },
@@ -876,6 +918,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            label => 'Delay (hours)',
             rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
@@ -887,7 +930,7 @@ subtest 'edit existing plan' => sub {
     subtest 'add input to plan' => sub {
         $t->post_ok( "/plan/$plan_id",
             form => {
-                name => 'Save NNY',
+                label => 'Save NNY',
                 description => 'Save New New York City',
                 'input[0].name' => 'delay',
                 'input[0].type' => 'number',
@@ -904,7 +947,7 @@ subtest 'edit existing plan' => sub {
                 'task[0].input.script' => 'make thebomb',
                 'task[1].task_id' => $task_ids[1],
                 'task[1].class' => 'Zapp::Task::Script',
-                'task[1].name' => 'Verify Bomb',
+                'task[1].name' => 'Verify',
                 'task[1].description' => 'Make sure this time',
                 'task[1].input.script' => 'make check',
             },
@@ -924,6 +967,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[0], {
             plan_id => $plan_id,
             name => 'delay',
+            label => 'Delay (hours)',
             rank => 0,
             type => 'number',
             description => 'Time to give crew to survive, in minutes',
@@ -933,6 +977,7 @@ subtest 'edit existing plan' => sub {
         is_deeply $got_inputs[1], {
             plan_id => $plan_id,
             name => 'location',
+            label => undef,
             rank => 1,
             type => 'string',
             description => 'Where to place the bomb',
@@ -947,15 +992,15 @@ subtest 'list plans' => sub {
     $t->Test::Yancy::clear_backend;
     my @plans = (
         $t->app->create_plan({
-            name => 'Deliver a package',
+            label => 'Deliver a package',
             description => 'To a dangerous place',
         }),
         $t->app->create_plan({
-            name => 'Clean the ship',
+            label => 'Clean the ship',
             description => 'Of any remains of the crew',
         }),
         $t->app->create_plan({
-            name => 'Find a replacement crew',
+            label => 'Find a replacement crew',
             description => 'After their inevitable deaths',
         }),
     );
@@ -1004,7 +1049,7 @@ subtest 'list plans' => sub {
         push @runs, (
             # Should be second, since started after above
             $t->app->yancy->create( zapp_runs => {
-                $plans[1]->%{qw( name description )},
+                $plans[1]->%{qw( label description )},
                 plan_id => $plans[1]{plan_id},
                 created => '2021-02-01 00:00:00',
                 started => '2021-02-01 00:00:00',
@@ -1013,7 +1058,7 @@ subtest 'list plans' => sub {
             }),
             # Should be first, since finished last
             $t->app->yancy->create( zapp_runs => {
-                $plans[2]->%{qw( name description )},
+                $plans[2]->%{qw( label description )},
                 plan_id => $plans[2]{plan_id},
                 created => '2021-02-03 00:00:00',
                 started => '2021-02-04 00:00:00',
@@ -1055,7 +1100,7 @@ subtest 'list plans' => sub {
         push @runs, (
             # Should be first now, since it is active
             $t->app->yancy->create( zapp_runs => {
-                $plans[0]->%{qw( name description )},
+                $plans[0]->%{qw( label description )},
                 plan_id => $plans[0]{plan_id},
                 created => '2021-02-03 00:00:00',
                 started => '2021-02-04 00:00:00',
@@ -1063,7 +1108,7 @@ subtest 'list plans' => sub {
             }),
             # Should be second now, since it is inactive
             $t->app->yancy->create( zapp_runs => {
-                $plans[1]->%{qw( name description )},
+                $plans[1]->%{qw( label description )},
                 plan_id => $plans[1]{plan_id},
                 created => '2021-02-03 00:00:00',
                 state => 'inactive',
@@ -1103,15 +1148,16 @@ subtest 'list plans' => sub {
             ;
     };
 
-    # XXX: Filter plans by name/description
+    # XXX: Filter plans by label/description
 };
 
 subtest 'delete plan' => sub {
     my $plan = $t->app->create_plan({
-        name => 'Cut Ribbon at DOOP Headquarters',
+        label => 'Cut Ribbon at DOOP Headquarters',
         tasks => [
             {
-                name => 'Get Ceremonial Oversized Scissors',
+                label => 'Get Ceremonial Oversized Scissors',
+                name => 'GetScissors',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo What makes a man turn neutral?',
@@ -1129,7 +1175,7 @@ subtest 'delete plan' => sub {
     });
     my $plan_id = $plan->{plan_id};
     $t->get_ok( "/plan/$plan_id/delete" )->status_is( 200 )
-        ->content_like( qr{Cut Ribbon at DOOP Headquarters}, 'content contains plan name' )
+        ->content_like( qr{Cut Ribbon at DOOP Headquarters}, 'content contains plan label' )
         ->element_exists( '.alert form', 'form exists in alert' )
         ->attr_is( '.alert form', action => "/plan/$plan_id/delete", 'form url is correct' )
         ->attr_is( '.alert form', method => 'POST', 'form method is correct' )
@@ -1153,13 +1199,31 @@ subtest 'delete plan' => sub {
 subtest 'error - input name invalid' => sub {
     $t->post_ok( "/plan",
         form => {
-            name => 'Get Rich Quick x7q',
+            label => 'Get Rich Quick x7q',
             'input[0].name' => '}h3l:(){',
             'input[0].type' => 'string',
         },
     )
         ->status_is( 400 )
         ->text_like( '.alert.alert-danger li:nth-child(1)' => qr/Input name "\}h3l:\(\)\{" has invalid characters:/ )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(1)' => '(' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(2)' => ')' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(3)' => ':' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(4)' => '{' )
+        ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(5)' => '}' )
+        ;
+};
+
+subtest 'error - task name invalid' => sub {
+    $t->post_ok( "/plan",
+        form => {
+            label => 'Get Rich Quick x7q',
+            'task[0].name' => '}h3l:(){',
+            'task[0].class' => 'Zapp::Task::Script',
+        },
+    )
+        ->status_is( 400 )
+        ->text_like( '.alert.alert-danger li:nth-child(1)' => qr/Task name "\}h3l:\(\)\{" has invalid characters:/ )
         ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(1)' => '(' )
         ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(2)' => ')' )
         ->text_is( '.alert.alert-danger li:nth-child(1) kbd:nth-of-type(3)' => ':' )

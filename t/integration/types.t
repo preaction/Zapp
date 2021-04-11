@@ -24,7 +24,7 @@ my $file_value = $uploads_dir->child( 'file.txt' )->spurt( 'File content' )->to_
 
 # Create a plan with input of every type
 my %plan_data = (
-    name => 'Test Plan',
+    label => 'Test Plan',
     inputs => [
         {
             name => 'boolean',
@@ -121,7 +121,7 @@ subtest 'plan input' => sub {
     subtest 'save plan' => sub {
         my $plan = $t->app->create_plan({%plan_data});
         $t->post_ok( '/plan/' . $plan->{plan_id}, form => {
-            %plan_data{qw( name )},
+            %plan_data{qw( label )},
 
             'input[0].name' => 'boolean',
             'input[0].type' => 'boolean',
@@ -330,10 +330,11 @@ subtest 'task input' => sub {
 
     # XXX: Test tasks that output certain types
     my $plan = $t->app->create_plan({
-        name => 'Task Input Plan',
+        label => 'Task Input Plan',
         tasks => [
             {
-                name => 'string: input',
+                label => 'string: input',
+                name => 'string_input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
@@ -343,7 +344,8 @@ subtest 'task input' => sub {
                 }),
             },
             {
-                name => 'integer: input',
+                label => 'integer: input',
+                name => 'integer_input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
@@ -353,7 +355,8 @@ subtest 'task input' => sub {
                 }),
             },
             {
-                name => 'number: input',
+                label => 'number: input',
+                name => 'number_input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
@@ -363,7 +366,8 @@ subtest 'task input' => sub {
                 }),
             },
             {
-                name => 'boolean: input',
+                label => 'boolean: input',
+                name => 'boolean_input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
@@ -373,7 +377,8 @@ subtest 'task input' => sub {
                 }),
             },
             {
-                name => 'file: input',
+                label => 'file: input',
+                name => 'file_input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
@@ -383,7 +388,8 @@ subtest 'task input' => sub {
                 }),
             },
             {
-                name => 'selectbox: input',
+                label => 'selectbox: input',
+                name => 'selectbox_input',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [

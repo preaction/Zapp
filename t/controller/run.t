@@ -37,18 +37,20 @@ my $dump_debug = sub( $t ) {
 subtest 'run a plan' => sub {
     $t->clear_backend;
     my $plan = $t->app->create_plan({
-        name => 'Deliver a package',
+        label => 'Deliver a package',
         description => 'To a dangerous place',
         tasks => [
             {
-                name => 'Plan trip',
+                label => 'Plan trip',
+                name => 'Plan',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo Chapek 9',
                 }),
             },
             {
-                name => 'Deliver package',
+                label => 'Deliver package',
+                name => 'Deliver',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo Certain Doom',
@@ -103,8 +105,7 @@ subtest 'run a plan' => sub {
         is_deeply decode_json( $run->{input} ),
             [
                 {
-                    name => 'destination',
-                    type => 'string',
+                    $plan->{inputs}[0]->%{qw( name label type description )},
                     value => 'Galaxy of Terror',
                     config => 'Chapek 9',
                 },
@@ -125,7 +126,7 @@ subtest 'run a plan' => sub {
             },
             {
                 $tasks[0]->%{qw( job_id task_id )},
-                $plan->{tasks}[0]->%{qw( name description class )},
+                $plan->{tasks}[0]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[0]{input} ),
                 run_id => $run_id,
                 plan_task_id => $plan->{tasks}[0]{task_id},
@@ -141,7 +142,7 @@ subtest 'run a plan' => sub {
             },
             {
                 $tasks[1]->%{qw( job_id task_id )},
-                $plan->{tasks}[1]->%{qw( name description class )},
+                $plan->{tasks}[1]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[1]{input} ),
                 run_id => $run_id,
                 plan_task_id => $plan->{tasks}[1]{task_id},
@@ -166,25 +167,28 @@ subtest 'run a plan' => sub {
 subtest 'replay a run' => sub {
     $t->clear_backend;
     my $plan = $t->app->create_plan({
-        name => 'Meanwhile',
+        label => 'Meanwhile',
         description => 'Wanna go around again?',
         tasks => [
             {
-                name => 'Climb Vampire State Building',
+                name => 'Climb',
+                label => 'Climb Vampire State Building',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo Climbing',
                 }),
             },
             {
-                name => 'Check watch',
+                name => 'CheckTime',
+                label => 'Check time',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo 7:02pm',
                 }),
             },
             {
-                name => 'Jump off',
+                name => 'Jump',
+                label => 'Jump off',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo Life without Leela is no life at all',
@@ -263,7 +267,7 @@ subtest 'replay a run' => sub {
             },
             {
                 $tasks[0]->%{qw( job_id task_id )},
-                $plan->{tasks}[0]->%{qw( name description class )},
+                $plan->{tasks}[0]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[0]{input} ),
                 run_id => $new_run_id,
                 plan_task_id => $plan->{tasks}[0]{task_id},
@@ -279,7 +283,7 @@ subtest 'replay a run' => sub {
             },
             {
                 $tasks[1]->%{qw( job_id task_id )},
-                $plan->{tasks}[1]->%{qw( name description class )},
+                $plan->{tasks}[1]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[1]{input} ),
                 run_id => $new_run_id,
                 plan_task_id => $plan->{tasks}[1]{task_id},
@@ -295,7 +299,7 @@ subtest 'replay a run' => sub {
             },
             {
                 $tasks[2]->%{qw( job_id task_id )},
-                $plan->{tasks}[2]->%{qw( name description class )},
+                $plan->{tasks}[2]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[2]{input} ),
                 run_id => $new_run_id,
                 plan_task_id => $plan->{tasks}[2]{task_id},
@@ -363,7 +367,7 @@ subtest 'replay a run' => sub {
             },
             {
                 $tasks[0]->%{qw( task_id )},
-                $plan->{tasks}[0]->%{qw( name description class )},
+                $plan->{tasks}[0]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[0]{input} ),
                 run_id => $new_run_id,
                 plan_task_id => $plan->{tasks}[0]{task_id},
@@ -380,7 +384,7 @@ subtest 'replay a run' => sub {
             },
             {
                 $tasks[1]->%{qw( job_id task_id )},
-                $plan->{tasks}[1]->%{qw( name description class )},
+                $plan->{tasks}[1]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[1]{input} ),
                 run_id => $new_run_id,
                 plan_task_id => $plan->{tasks}[1]{task_id},
@@ -396,7 +400,7 @@ subtest 'replay a run' => sub {
             },
             {
                 $tasks[2]->%{qw( job_id task_id )},
-                $plan->{tasks}[2]->%{qw( name description class )},
+                $plan->{tasks}[2]->%{qw( name label description class )},
                 input => decode_json( $plan->{tasks}[2]{input} ),
                 run_id => $new_run_id,
                 plan_task_id => $plan->{tasks}[2]{task_id},
@@ -422,7 +426,7 @@ subtest 'replay a run' => sub {
 
 subtest 'view run status' => sub {
     my $plan = $t->app->create_plan({
-        name => 'Watch the What If Machine',
+        label => 'Watch the What If Machine',
         tasks => [
             {
                 name => 'Watch',
@@ -435,7 +439,8 @@ subtest 'view run status' => sub {
                 }),
             },
             {
-                name => 'Experience Ironic Consequences',
+                name => 'Consequences',
+                label => 'Experience Ironic Consequences',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     vars => [
@@ -522,7 +527,7 @@ subtest 'view run status' => sub {
 
 subtest 'task actions' => sub {
     my $plan = $t->app->create_plan({
-        name => 'Fire Diamondium Cannon!',
+        label => 'Fire Diamondium Cannon!',
         tasks => [
             {
                 name => 'Confirm',
@@ -571,7 +576,7 @@ subtest 'task actions' => sub {
 
 subtest 'stop/kill run' => sub {
     my $plan = $t->app->create_plan({
-        name => 'Open the Scary Door',
+        label => 'Open the Scary Door',
         tasks => [
             {
                 name => 'Open',
@@ -581,7 +586,8 @@ subtest 'stop/kill run' => sub {
                 }),
             },
             {
-                name => 'Twist Ending',
+                label => 'Twist Ending',
+                name => 'Twist',
                 class => 'Zapp::Task::Script',
                 input => encode_json({
                     script => 'echo Saw it coming',
@@ -781,13 +787,13 @@ subtest 'list runs' => sub {
     $t->clear_backend;
     my @runs = (
         {
-            name => 'Cannibalon',
+            label => 'Cannibalon',
             description => q{Food's good},
             state => 'inactive',
             created => '2021-02-01 00:00:00',
         },
         {
-            name => 'Nude Beach Planet',
+            label => 'Nude Beach Planet',
             description => 'Bar stool softener',
             state => 'active',
             created => '2021-01-01 00:00:00',

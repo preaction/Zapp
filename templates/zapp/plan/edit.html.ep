@@ -52,6 +52,10 @@
             %= text_field "name", $task->{name}, placeholder => 'Task Name', class => 'form-control'
         </div>
         <div class="form-group">
+            <label class="mb-1" for="label">Task Label</label>
+            %= text_field "label", $task->{label}, placeholder => 'Task Label', class => 'form-control'
+        </div>
+        <div class="form-group">
             <label for="description">Task Description</label>
             <%= include 'zapp/textarea',
                 name => 'description',
@@ -99,6 +103,10 @@
             <div class="col-auto">
                 <label for="input[<%= $input_num %>].name">Name</label>
                 %= text_field "input[$input_num].name", $input->{name}, placeholder => 'Name', class => 'form-control'
+            </div>
+            <div class="col-auto">
+                <label for="input[<%= $input_num %>].label">Label</label>
+                %= text_field "input[$input_num].label", $input->{label}, placeholder => 'Label', class => 'form-control'
             </div>
             <div class="col">
                 <% if ( my $type_name = $input->{type} ) {
@@ -164,8 +172,8 @@
         </div>
     % }
     <div class="form-group">
-        <label class="mb-1" for="name">Plan Name</label>
-        <input id="name" class="form-control" name="name" type="text" placeholder="Plan Name" value="<%= $plan->{name} %>">
+        <label class="mb-1" for="label">Plan Label</label>
+        <input id="label" class="form-control" name="label" type="text" placeholder="Plan Label" value="<%= $plan->{label} %>">
         <!-- XXX: Add folders to organize plans -->
     </div>
     <div class="form-group">

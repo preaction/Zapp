@@ -24,7 +24,7 @@ sub save_plan( $self ) {
     my $plan_id = $self->stash( 'plan_id' );
     my $plan = {
         map { $_ => $self->param( $_ ) }
-        qw( name description ),
+        qw( label description ),
     };
     my $tasks = build_data_from_params( $self, 'task' );
     my $form_inputs = build_data_from_params( $self, 'input' );
@@ -62,6 +62,19 @@ sub save_plan( $self ) {
             };
         }
     }
+
+    for my $i ( 0..$#$tasks ) {
+        my $task = $tasks->[ $i ];
+        if ( $task->{name} =~ /\P{Word}/ ) {
+            my @chars = uniqstr sort $task->{name} =~ /\P{Word}/g;
+            push @errors, {
+                name => "task[$i].name",
+                error => qq{Task name "$task->{name}" has invalid characters: }
+                    . join( '', map { "<kbd>$_</kbd>" } @chars ),
+            };
+        }
+    }
+
     if ( @errors ) {
         $self->log->error( "Error saving plan: " . $self->dumper( \@errors ) );
         $self->stash(

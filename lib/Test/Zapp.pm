@@ -67,7 +67,7 @@ sub run_task {
     }
     # XXX: We no longer need to create a plan to create a run
     my $plan = $self->{zapp}{plan} = $self->app->create_plan({
-        name => $name // $task_class,
+        label => $name // "Test $task_class",
         tasks => [
             {
                 name => $task_class,

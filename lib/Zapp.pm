@@ -176,6 +176,7 @@ sub create_plan( $self, $plan ) {
 
     $plan->{plan_id} = $plan_id;
     $plan->{tasks} = \@tasks;
+    $plan->{inputs} = \@inputs;
 
     return $plan;
 }
@@ -213,6 +214,8 @@ sub enqueue_plan( $self, $plan_id, $input={}, %opt ) {
 
     # Create the run in the database by copying the plan
     my $plan = $self->yancy->get( zapp_plans => $plan_id );
+    # XXX: Run inputs and plan inputs should either both be tables or
+    # both be JSON serialized
     my @inputs = $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'rank' } );
     delete $plan->{created};
     my $run = {
@@ -220,7 +223,7 @@ sub enqueue_plan( $self, $plan_id, $input={}, %opt ) {
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         input => encode_json([
             map +{
-                    $_->%{qw( name type )},
+                    $_->%{qw( name label type description )},
                     config => decode_json( $_->{config} // 'null' ),
                     value => $input->{ $_->{name} },
             },
@@ -229,33 +232,28 @@ sub enqueue_plan( $self, $plan_id, $input={}, %opt ) {
     };
     my $run_id = $run->{run_id} = $self->yancy->create( zapp_runs => $run );
 
-    my %task_id_map; # plan task_id -> run task_id
-    my @tasks = $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } );
-    for my $task ( @tasks ) {
-        delete $task->{plan_id};
-        $task->{run_id} = $run_id;
-        $task->{plan_task_id} = delete $task->{task_id};
-        my $task_id = $task->{task_id} = $self->yancy->create( zapp_run_tasks => $task );
-        ; $self->log->debug( "Creating run task: " . $self->dumper( $task ) );
-        $task_id_map{ $task->{plan_task_id} } = $task->{task_id};
-    }
-    $run->{tasks} = \@tasks;
+    my @tasks = $self->get_tasks( zapp_plan_tasks => { plan_id => $plan_id } );
 
-    # Calculate the parent/child relationships
-    my %task_parents;
-    for my $plan_task_id ( map $_->{plan_task_id}, @tasks ) {
-        my @parents = $self->yancy->list( zapp_plan_task_parents => { task_id => $plan_task_id } );
-        next unless @parents;
-        for my $parent ( @parents ) {
-            $parent->{task_id} = $task_id_map{ $parent->{task_id} };
-            $parent->{parent_task_id} = $task_id_map{ $parent->{parent_task_id} };
-            $self->yancy->create( zapp_run_task_parents => $parent );
-            push $task_parents{ $parent->{task_id} }->@*, $parent->{parent_task_id};
+    # Create the new task rows, mapping new task IDs from the old task
+    # IDs for parent/child relationships.
+    my %task_id_map;
+    for my $task ( @tasks ) {
+        delete $task->{ $_ } for qw( plan_id );
+        $task->{run_id} = $run_id;
+        my $parents = $task->{parents} ? delete $task->{parents} : [];
+        my $old_task_id = $task->{plan_task_id} = delete $task->{task_id};
+        my $new_task_id = $self->yancy->backend->create( zapp_run_tasks => $task );
+        $task->{task_id} = $task_id_map{ $old_task_id } = $new_task_id;
+        #$task->{task_id} = $new_task_id;
+        $task->{parents} = [ map { $task_id_map{ $_ } } @$parents ];
+        for my $parent_task_id ( @{ $task->{parents} } ) {
+            $self->yancy->backend->create( zapp_run_task_parents => {
+                $task->%{'task_id'},
+                parent_task_id => $parent_task_id,
+            } );
         }
     }
-    for my $task ( @tasks ) {
-        $task->{parents} = $task_parents{ $task->{task_id} };
-    }
+    $run->{tasks} = \@tasks;
 
     my $jobs = $self->enqueue_tasks( $input, @tasks );
     for my $i ( 0..$#$jobs ) {
@@ -276,6 +274,36 @@ Re-enqueue a run.
 
 =cut
 
+sub get_tasks( $self, $table, $search ) {
+    my $parents_table = $table =~ s/s$/_parents/r;
+    my @tasks = $self->yancy->list( $table => $search );
+
+    for my $task ( @tasks ) {
+        $task->{parents} = [
+            map { $_->{parent_task_id} }
+            $self->yancy->list( $parents_table => { $task->%{'task_id'} } )
+        ];
+        ; $self->log->debug( 'Got parents for task ' . $task->{task_id} . ': ' . join ', ', @{ $task->{parents} } );
+    }
+
+    # Put the tasks in an order they can be created so all parent tasks
+    # are before any dependent child tasks
+    my @ordered_tasks;
+    TASK: while ( @tasks ) {
+        my $task = shift @tasks;
+        for my $parent_task_id ( @{ $task->{parents} // [] } ) {
+            # If there's a parent task we haven't seen yet, try again later
+            if ( grep { $_->{task_id} eq $parent_task_id } @tasks ) {
+                push @tasks, $task;
+                next TASK;
+            }
+        }
+        push @ordered_tasks, $task;
+    }
+
+    return @ordered_tasks;
+}
+
 sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
     $opt{queue} ||= 'zapp';
 
@@ -291,49 +319,58 @@ sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
     };
     my $new_run_id = $new_run->{run_id} = $self->yancy->create( zapp_runs => $new_run );
 
-    # Calculate the old parent/child relationships so we know which
-    # tasks we should copy and which we should run
-    my @tasks = $self->yancy->list( zapp_run_tasks => { run_id => $old_run_id } );
-    my %old_task_parents;
-    for my $old_task_id ( map $_->{task_id}, @tasks ) {
-        my @old_parents = $self->yancy->list( zapp_run_task_parents => { task_id => $old_task_id } );
-        push $old_task_parents{ $old_task_id }->@*, map $_->{parent_task_id}, @old_parents;
+    my @tasks = $self->get_tasks( zapp_run_tasks => { run_id => $old_run_id } );
+    for my $task ( @tasks ) {
+        delete $task->{ $_ } for qw( job_id started finished );
+        $task->{ run_id } = $new_run_id;
+        $task->{ state } = 'inactive';
     }
+
     if ( my $start_task_id = $opt{task_id} ) {
-        # Delete the parents of the job we should start at, and their
-        # ancestors
-        my @parents_to_delete = @{ $old_task_parents{ $start_task_id } // [] };
-        $old_task_parents{ $start_task_id } = [];
-        while ( my $task_id = shift @parents_to_delete ) {
-            push @parents_to_delete, @{ $old_task_parents{ $task_id } // [] };
-            delete $old_task_parents{ $task_id };
+        ; $self->log->debug( "Starting from task: $start_task_id" );
+        # Mark which jobs should be re-run and which should be copied.
+        # Since we know @tasks is ordered with parents before children,
+        # we can reverse it to make sure we hit children before their
+        # parents.
+        # Start with the parents of the starting task
+        my %to_copy = (
+            map { $_ => 1 } map { $_->{parents}->@* }
+            grep { $_->{task_id} eq $start_task_id }
+            @tasks
+        );
+        ; $self->log->debug( "Copying " . %to_copy );
+        for my $task ( reverse @tasks ) {
+            # Remove parents that we aren't creating from the list we give
+            # to Minion
+            $task->{parents} = [ grep { !$to_copy{ $_ } } @{ $task->{parents} // [] } ];
+
+            next unless $to_copy{ $task->{task_id} };
+            ; $self->log->debug( "Copying $task->{task_id}" );
+            $task->{state} = 'copied';
+            $to_copy{ $_ }++ for @{ $task->{parents} // [] };
         }
     }
-    # %old_task_parents now has a key for every task we should do, and
-    # does not have a key for any task we should copy
 
-    my %task_id_map; # old run task_id -> new run task_id
+    # Create the new task rows, mapping new task IDs from the old task
+    # IDs for parent/child relationships.
+    my %task_id_map;
     for my $task ( @tasks ) {
-        my $old_task_id = $task->{task_id};
-        # XXX: Delete more from the old run task
-        delete $task->{ $_ } for qw( task_id job_id started finished state );
-        $task->{run_id} = $new_run_id;
-        $task->{state} = exists $old_task_parents{ $old_task_id } ? 'inactive' : 'copied';
-        my $new_task_id = $task->{task_id} = $self->yancy->create( zapp_run_tasks => $task );
-        ; $self->log->debug( "Creating run task: " . $self->dumper( $task ) );
-        $task->{old_task_id} = $old_task_id;
-        $task_id_map{ $old_task_id } = $new_task_id;
+        my $parents = $task->{parents} ? delete $task->{parents} : [];
+        my $old_task_id = delete $task->{task_id};
+        my $new_task_id = $self->yancy->backend->create( zapp_run_tasks => $task );
+        $task->{task_id} = $task_id_map{ $old_task_id } = $new_task_id;
+        #$task->{task_id} = $new_task_id;
+        $task->{parents} = [ map { $task_id_map{ $_ } } @$parents ];
+        for my $parent_task_id ( @{ $task->{parents} } ) {
+            $self->yancy->backend->create( zapp_run_task_parents => {
+                $task->%{'task_id'},
+                parent_task_id => $parent_task_id,
+            } );
+        }
     }
     $new_run->{tasks} = \@tasks;
 
-    # Calculate the new parent/child relationships
-    for my $task ( @tasks ) {
-        my $old_task_id = delete $task->{old_task_id};
-        ; $self->log->debug( "Mapping parents for task $old_task_id -> $task->{task_id}" );
-        ; $self->log->debug( join ", ", map { "$_ -> $task_id_map{$_}" } $old_task_parents{ $old_task_id }->@* );
-        $task->{parents} = [ map $task_id_map{ $_ }, $old_task_parents{ $old_task_id }->@* ];
-    }
-
+    # Enqueue any tasks we are not copying
     my $jobs = $self->enqueue_tasks( $input, grep $_->{state} eq 'inactive', @tasks );
     for my $i ( 0..$#$jobs ) {
         my $job = $jobs->[$i];
@@ -417,7 +454,7 @@ __DATA__
 -- 1 up
 CREATE TABLE zapp_plans (
     plan_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    label VARCHAR(255) NOT NULL,
     description TEXT,
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -426,10 +463,12 @@ CREATE TABLE zapp_plan_tasks (
     task_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     plan_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
     description TEXT,
     class VARCHAR(255) NOT NULL,
     input JSON,
-    CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
+    CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    UNIQUE ( plan_id, name )
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_plan_task_parents (
@@ -445,6 +484,7 @@ CREATE TABLE zapp_plan_inputs (
     name VARCHAR(255) NOT NULL,
     `rank` INTEGER NOT NULL,
     type VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
     description TEXT,
     config JSON,
     value JSON,
@@ -455,7 +495,7 @@ CREATE TABLE zapp_plan_inputs (
 CREATE TABLE zapp_runs (
     run_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     plan_id BIGINT NULL,
-    name VARCHAR(255) NOT NULL,
+    label VARCHAR(255) NOT NULL,
     description TEXT,
     input JSON,
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -470,6 +510,7 @@ CREATE TABLE zapp_run_tasks (
     run_id BIGINT NOT NULL,
     plan_task_id BIGINT NULL,
     name VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
     description TEXT,
     class VARCHAR(255) NOT NULL,
     input JSON,
@@ -477,7 +518,8 @@ CREATE TABLE zapp_run_tasks (
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
     job_id BIGINT,
     CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
-    CONSTRAINT FOREIGN KEY ( plan_task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL
+    CONSTRAINT FOREIGN KEY ( plan_task_id ) REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
+    UNIQUE ( run_id, name )
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE zapp_run_task_parents (
@@ -502,7 +544,7 @@ CREATE TABLE zapp_run_notes (
 -- 1 up
 CREATE TABLE zapp_plans (
     plan_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(255) NOT NULL,
+    label VARCHAR(255) NOT NULL,
     description TEXT,
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -511,9 +553,11 @@ CREATE TABLE zapp_plan_tasks (
     task_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
     description TEXT,
     class VARCHAR(255) NOT NULL,
-    input JSON
+    input JSON,
+    UNIQUE ( plan_id, name )
 );
 
 CREATE TABLE zapp_plan_task_parents (
@@ -527,6 +571,7 @@ CREATE TABLE zapp_plan_inputs (
     name VARCHAR(255) NOT NULL,
     rank INTEGER NOT NULL,
     type VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
     description TEXT,
     config JSON,
     value JSON,
@@ -536,7 +581,7 @@ CREATE TABLE zapp_plan_inputs (
 CREATE TABLE zapp_runs (
     run_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id BIGINT REFERENCES zapp_plans ( plan_id ) ON DELETE SET NULL,
-    name VARCHAR(255) NOT NULL,
+    label VARCHAR(255) NOT NULL,
     description TEXT,
     input JSON,
     created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -550,12 +595,14 @@ CREATE TABLE zapp_run_tasks (
     run_id BIGINT NOT NULL REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
     plan_task_id BIGINT NULL REFERENCES zapp_plan_tasks ( task_id ) ON DELETE SET NULL,
     name VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
     description TEXT,
     class VARCHAR(255) NOT NULL,
     input JSON,
     output JSON,
     state VARCHAR(20) NOT NULL DEFAULT 'inactive',
-    job_id BIGINT
+    job_id BIGINT,
+    UNIQUE ( run_id, name )
 );
 
 CREATE TABLE zapp_run_task_parents (

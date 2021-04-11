@@ -8,7 +8,7 @@ use Zapp::Util qw( build_data_from_params );
 
 sub _get_run_tasks( $self, $run_id, $filter={} ) {
     my @run_tasks;
-    my @tasks = $self->yancy->list( zapp_run_tasks => { %$filter, run_id => $run_id } );
+    my @tasks = $self->app->get_tasks( zapp_run_tasks => { %$filter, run_id => $run_id } );
 
     # XXX: Need to be run through type method
     my $run = $self->yancy->get( zapp_runs => $run_id ) || {};
@@ -76,7 +76,6 @@ sub create_run( $self ) {
             inputs => $run->{input},
             tasks => $run->{tasks},
         );
-        # XXX: Allow task_id
     }
 
     $self->render( 'zapp/run/create', %params );
@@ -108,6 +107,7 @@ sub save_run( $self ) {
         if ( my $task_id = $self->param( 'task_id' ) ) {
             $opt{ task_id } = $task_id;
         }
+        ; $self->log->debug( "Replaying run $run_id" . ( $opt{task_id} ? " task $opt{task_id}" : "" ) );
         $run = $self->app->enqueue_run( $run_id, \@run_input, %opt );
     }
 

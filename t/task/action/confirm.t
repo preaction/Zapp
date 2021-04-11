@@ -54,7 +54,7 @@ subtest 'action form' => sub {
 
 subtest 'run' => sub {
     my $run_id = $t->app->yancy->create(
-        zapp_runs => { name => 'Confirmation' },
+        zapp_runs => { label => 'Confirmation' },
     );
     my $job_id = $t->app->minion->enqueue(
         'Zapp::Task::Action::Confirm',

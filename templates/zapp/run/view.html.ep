@@ -14,7 +14,7 @@
 </div>
 
 <header class="align-items-center">
-    <h1>Run Plan: <%= $run->{name} %></h1>
+    <h1><%= $run->{label} %></h1>
 
 </header>
 
@@ -72,7 +72,7 @@
             <h6 class="dropdown-header">Start at...</h6>
             % for my $i ( 0..$#{ $run->{tasks} } ) {
                 % my $task = $run->{tasks}[$i];
-                <%= tag a => href => '#', class => 'dropdown-item', $task->{name} %>
+                <%= tag a => href => '#', class => 'dropdown-item', $task->{label} // $task->{name} %>
             % }
         </div>
     </div>

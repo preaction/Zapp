@@ -6,7 +6,7 @@
 
 
 <header>
-    <h1><%= stash 'name' %></h1>
+    <h1><%= stash( 'label' ) // stash( 'name' ) %></h1>
     %= link_to 'zapp.list_plans', class => 'btn btn-secondary', begin
         <i class="fa fa-arrow-left"></i> Back to Plans
     % end
@@ -18,11 +18,12 @@
         % for my $input_num ( 0..$#inputs ) {
             % my $input = $inputs[ $input_num ];
             <div class="form-group" data-input="<%= $input_num %>">
-                <h4 data-input-name><%= $input->{name} =~ s/_/ /gr %></h4>
+                <h4 data-input-name><%= $input->{label} // ( $input->{name} =~ s/_/ /gr ) %></h4>
                 %# These hidden fields will allow us to create runs for
                 %# unsaved, ad-hoc plans
                 %= hidden_field "input[$input_num].type", $input->{type}
                 %= hidden_field "input[$input_num].name", $input->{name}
+                %= hidden_field "input[$input_num].label", $input->{label}
                 %= hidden_field "input[$input_num].config", encode_json $input->{config}
                 <%
                     my $type_name = $input->{type};
