@@ -14,6 +14,9 @@
 <div class="mb-3 text-break text-pre-wrap"><%= stash 'description' %></div>
 
 %= form_for 'zapp.save_run', enctype => 'multipart/form-data' => begin
+    %= hidden_field "plan_id", $self->param( 'plan_id' )
+    %= hidden_field "run_id", $self->param( 'run_id' )
+    %= hidden_field "task_id", $self->param( 'task_id' )
     % if ( my @inputs = @{ stash( 'inputs' ) // [] } ) {
         % for my $input_num ( 0..$#inputs ) {
             % my $input = $inputs[ $input_num ];
