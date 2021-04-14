@@ -22,6 +22,7 @@
     % for my $i ( 0..$#$tasks ) {
         % my $task = $tasks->[$i];
         <%= tag a => href => '#tab-task-' . $task->{task_id}, id => 'tab-task-' . $task->{task_id} . '-label',
+            'data-task-label' => $task->{task_id},
             class => join( ' ',
                 'list-group-item', 'list-group-item-action', 'text-nowrap', 'flex-grow-1', 'flex-shrink', 'w-auto',
                 (
@@ -57,11 +58,11 @@
         <h2>Info</h2>
         <dl>
             <dt>Started: </dt>
-            <dd data-run-started><%= $run->{started} // 'N/A' %></dd>
+            <dd data-run="started"><%= $run->{started} // 'N/A' %></dd>
             <dt>Finished: </dt>
-            <dd data-run-finished><%= $run->{finished} // 'N/A' %></dd>
+            <dd data-run="finished"><%= $run->{finished} // 'N/A' %></dd>
             <dt>State: </dt>
-            <dd data-run-state><%= $run->{state} %></dd>
+            <dd data-run="state"><%= $run->{state} %></dd>
         </dl>
 
         % if ( my @inputs = @{ $run->{input} // [] } ) {
@@ -80,7 +81,7 @@
 
     % for my $i ( 0..$#{ $run->{tasks} } ) {
         % my $task = $run->{tasks}[ $i ];
-        <%= tag div => 'data-task' => $task->{task_id},
+        <%= tag div => 'data-task-output' => $task->{task_id},
             id => "tab-task-$task->{task_id}",
             role => "tabpanel", 'aria-labelledby' => "tab-task-$task->{task_id}-label",
             class => join( ' ',

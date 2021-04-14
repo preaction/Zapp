@@ -321,12 +321,93 @@ sub list_runs( $self ) {
     #   4. Jobs by started datetime
     #   5. Jobs by created datetime
     @runs = sort {
+        no warnings 'uninitialized';
         ( $b->{state} =~ /(in)?active/n ) cmp ( $a->{state} =~ /(in)?active/n )
         || $b->{finished} cmp $a->{finished}
         || $b->{started} cmp $a->{started}
         || $b->{created} cmp $a->{created}
     } @runs;
     $self->render( 'zapp/run/list', runs => \@runs );
+}
+
+sub feed_run( $self ) {
+    $self->inactivity_timeout(3600);
+    my $interval = int( $self->param( 'interval' ) ) || 1;
+
+    # Establish the current state of the run and every task
+    my $run_id = $self->param( 'run_id' );
+    my $old_run = $self->_get_run( $run_id ) || return $self->reply->not_found;
+    my @old_tasks = @{ delete $old_run->{tasks} };
+
+    # Send the initial state in case something has changed since the
+    # original HTML page was sent
+    $self->send({
+        json => {
+            %$old_run,
+            tasks => \@old_tasks,
+        },
+    });
+
+    # If the run is finished or failed, we're done here: Nothing can
+    # change about this run.
+    if ( $old_run->{state} =~ /^(finished|failed)$/n ) {
+        # See https://tools.ietf.org/html/rfc6455#section-7.4.1 for
+        # websocket status codes
+        $self->finish(1000);
+        return;
+    }
+
+    # Poll for updates
+    my $timer_id;
+    $self->on( finish => sub {
+        if ( $timer_id ) {
+            Mojo::IOLoop->remove( $timer_id );
+            $timer_id = undef;
+        }
+    } );
+    $timer_id = Mojo::IOLoop->recurring( $interval, sub( $loop ) {
+        my $new_run = $self->_get_run( $run_id );
+        my @new_tasks = @{ delete $new_run->{tasks} };
+
+        # Send any changed fields / tasks
+        my %delta = (
+            map { $_ => $new_run->{ $_ } }
+            grep { no warnings 'uninitialized'; $old_run->{ $_ } ne $new_run->{ $_ } }
+            keys %$new_run
+        );
+        for my $i ( 0..$#new_tasks ) {
+            my ( $old_task, $new_task ) = ( $old_tasks[ $i ], $new_tasks[ $i ] );
+            # XXX: What if we add new tasks?
+            my %task_delta = (
+                map { $_ => $new_task->{ $_ } }
+                grep { no warnings 'uninitialized'; $old_task->{ $_ } ne $new_task->{ $_ } }
+                keys %$new_task
+            );
+            if ( %task_delta ) {
+                $task_delta{ task_id } = $new_task->{ task_id };
+                push @{ $delta{tasks} }, \%task_delta;
+            }
+        }
+
+        if ( %delta ) {
+            $self->send({ json => \%delta });
+
+            # Update the state with the new information
+            $old_run = $new_run;
+            @old_tasks = @new_tasks;
+        }
+
+        if ( $old_run->{state} =~ /^(finished|failed)$/n ) {
+            # We're done here...
+            if ( $timer_id ) {
+                $loop->remove( $timer_id );
+                $timer_id = undef;
+            }
+            # See https://tools.ietf.org/html/rfc6455#section-7.4.1 for
+            # websocket status codes
+            $self->finish(1000);
+        }
+    } );
 }
 
 1;

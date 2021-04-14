@@ -1,5 +1,13 @@
 <%
     layout 'zapp';
+    use Mojo::JSON qw( encode_json );
+    my %state_bg = (
+        active => 'list-group-item-primary',
+        finished => 'list-group-item-success',
+        failed => 'list-group-item-danger',
+        stopped => 'list-group-item-warning',
+        killed => 'list-group-item-secondary',
+    );
 %>
 
 <div class="d-flex justify-content-between mt-2">
@@ -93,3 +101,70 @@
 % }
 
 %= include 'zapp/run/task_list'
+
+%= javascript begin
+var stateClass = <%== encode_json \%state_bg %>;
+
+function updateRun( delta ) {
+    for ( var i in delta ) {
+        var el = document.querySelector( '[data-run=' + i + ']' );
+        if ( !el ) continue;
+        el.innerHTML = delta[i];
+    }
+}
+
+function updateTask( delta ) {
+    var labelEl = document.querySelector( '[data-task-label="' + delta.task_id + '"]' );
+    if ( !labelEl ) {
+        console.log( "Could not find label element for task ID " + delta.task_id );
+        return;
+    }
+
+    // Update task bar class
+    if ( delta.state ) {
+        if ( delta.state != "inactive" ) {
+            labelEl.classList.remove( 'disabled' );
+        }
+        for ( var k in stateClass ) {
+            labelEl.classList.remove( stateClass[ k ] );
+        }
+        labelEl.classList.add( stateClass[ delta.state ] );
+    }
+
+    // XXX: Update task pane content
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        if ( xhr.readyState == XMLHttpRequest.DONE ) {
+            if ( xhr.status != 200 ) {
+                console.log( "Error fetching task output: " + xhr.responseText );
+                return;
+            }
+            var outputEl = document.querySelector( '[data-task-output="' + delta.task_id + '"]' );
+            if ( !outputEl ) {
+                console.log( "Could not find output element for task ID " + delta.task_id );
+                return;
+            }
+            outputEl.innerHTML = xhr.responseText;
+        }
+    };
+    xhr.open( 'GET', '<%= url_for( "zapp.get_run_task" ) %>' + delta.task_id );
+    xhr.send();
+}
+
+%# if ( $run->{state} !~ /^(finished|failed)$/ ) {
+    document.addEventListener('DOMContentLoaded', function ( event ) {
+        var ws = new WebSocket( '<%= url_for( "zapp.feed_run", $run )->to_abs( $c->req->url->base )->scheme( $self->req->is_secure ? "wss" : "ws" ) %>' );
+        ws.onmessage = function ( event ) {
+            var delta = JSON.parse(event.data);
+            var tasks = delta.tasks;
+            delete delta.tasks;
+            updateRun( delta );
+            tasks.forEach( function (t) { updateTask( t ) } );
+            if ( delta.state && ( delta.state == "finished" || delta.state == "failed" ) ) {
+                ws.close();
+            }
+        };
+    } );
+%# }
+
+% end

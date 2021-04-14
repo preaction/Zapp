@@ -139,6 +139,8 @@ sub startup( $self ) {
         ->to( 'run#kill_run' )->name( 'zapp.kill_run' );
     $self->routes->post( '/run/:run_id/kill' )
         ->to( 'run#kill_run' )->name( 'zapp.kill_run_confirm' );
+    $self->routes->websocket( '/run/:run_id/feed' )
+        ->to( 'run#feed_run' )->name( 'zapp.feed_run' );
 
 }
 
