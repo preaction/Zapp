@@ -75,6 +75,20 @@ sub save_plan( $self ) {
         }
     }
 
+    my $f = $self->app->formula;
+    for my $name ( grep /^task\[\d+\]\.input/, $self->req->params->names->@* ) {
+        my ( $value ) = $self->param( $name ) =~ /^=(.+)/;
+        next unless $value;
+        local $@;
+        eval { $f->parse( $value ) };
+        if ( $@ ) {
+            push @errors, {
+                name => $name,
+                error => qq{Failed to parse formula: $@},
+            };
+        }
+    }
+
     if ( @errors ) {
         $self->log->error( "Error saving plan: " . $self->dumper( \@errors ) );
         $self->stash(

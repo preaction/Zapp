@@ -1232,6 +1232,20 @@ subtest 'error - task name invalid' => sub {
         ;
 };
 
+subtest 'error - formula could not be parsed' => sub {
+    $t->post_ok( "/plan",
+        form => {
+            label => 'Syntax error',
+            'task[0].name' => 'Error',
+            'task[0].class' => 'Zapp::Task::Script',
+            'task[0].input.script' => '="Foo',
+        },
+    )
+        ->status_is( 400 )
+        ->text_like( '.alert.alert-danger li:nth-child(1)' => qr/Failed to parse formula:/ )
+        ;
+};
+
 done_testing;
 
 sub Test::Yancy::clear_backend {
