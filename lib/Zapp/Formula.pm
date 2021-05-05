@@ -43,14 +43,15 @@ our %FUNCTIONS = (
     AND => \&_func_and,
     OR => \&_func_or,
     XOR => \&_func_xor,
+    EVAL => \&_func_eval,
     ### Text functions
     # Case manipulation
-    LOWER => sub( $str ) { lc $str },
-    UPPER => sub( $str ) { uc $str },
-    PROPER => sub( $str ) { ( lc $str ) =~ s/(?:^|[^a-zA-Z'])([a-z])/uc $1/er },
+    LOWER => sub( $f, $str ) { lc $str },
+    UPPER => sub( $f, $str ) { uc $str },
+    PROPER => sub( $f, $str ) { ( lc $str ) =~ s/(?:^|[^a-zA-Z'])([a-z])/uc $1/er },
     # Substrings
-    LEFT => sub( $str, $len ) { substr $str, 0, $len },
-    RIGHT => sub( $str, $len ) { substr $str, -$len },
+    LEFT => sub( $f, $str, $len ) { substr $str, 0, $len },
+    RIGHT => sub( $f, $str, $len ) { substr $str, -$len },
 );
 
 my ( @result, @term, @args, @binop, @call, @array, @hash, @var, $depth, $expected, $failed_at );
@@ -173,6 +174,8 @@ our $GRAMMAR = qr{
     )
 }xms;
 
+has context => sub { {} };
+
 # XXX: Strings that look like money amounts can be coerced into numbers
 # XXX: Strings that look like dates can be coerced into dates
 #       ... Or maybe not, since that's one of the biggest complaints
@@ -198,6 +201,7 @@ sub parse( $self, $expr ) {
 
 # Does not expect `=` prefix
 sub eval( $self, $expr, $context={} ) {
+    $self->context( $context );
     my $tree = $self->parse( $expr );
     my $handle = sub( $tree ) {
         if ( $tree->[0] eq 'string' ) {
@@ -211,6 +215,7 @@ sub eval( $self, $expr, $context={} ) {
         }
         if ( $tree->[0] eq 'var' ) {
             my $var = join '.', $tree->@[1..$#$tree];
+            my $context = $self->context;
             return ref $context eq 'CODE' ? $context->( $var )
                 : get_path_from_data( $var, $context )
                 ;
@@ -218,7 +223,7 @@ sub eval( $self, $expr, $context={} ) {
         if ( $tree->[0] eq 'call' ) {
             my $name = join '.', $tree->[1]->@[1..$tree->[1]->$#*];
             my @args = map { __SUB__->( $_ ) } @{$tree}[2 .. $#{$tree}];
-            return $FUNCTIONS{ $name }->( @args );
+            return $FUNCTIONS{ $name }->( $self, @args );
         }
         if ( $tree->[0] eq 'binop' ) {
             my $op = $tree->[1];
@@ -241,7 +246,7 @@ XXX: Add real-world examples of usage of all functions
 # NOTE: Arrange all functions in alphabetical order inside their
 # category
 
-=head2 Logic Functions
+=head2 Logic/Control Functions
 
 =head3 AND
 
@@ -251,8 +256,24 @@ Returns C<TRUE> if all expressions are true.
 
 =cut
 
-sub _func_and( @exprs ) {
-    return ( all { !!$_ } @exprs ) ? _func_true() : _func_false();
+sub _func_and( $f, @exprs ) {
+    return ( all { !!$_ } @exprs ) ? _func_true($f) : _func_false($f);
+}
+
+=head3 EVAL
+
+    =EVAL( <string> )
+
+Evaluate the string as a formula and return the result. The string must
+not begin with an C<=>.
+
+=cut
+
+sub _func_eval( $f, $expr ) {
+    # XXX: This context attribute is a bad way of doing things, but we
+    # need some way for functions to get the context, or values from the
+    # context...
+    return $f->eval( $expr, $f->context );
 }
 
 =head3 FALSE
@@ -263,7 +284,7 @@ Returns a false value.
 
 =cut
 
-sub _func_false() {
+sub _func_false( $f ) {
     return Mojo::JSON->false;
 }
 
@@ -276,7 +297,7 @@ the condition is true, or C<false_result> if the condition is false.
 
 =cut
 
-sub _func_if( $expr, $true_result, $false_result ) {
+sub _func_if( $f, $expr, $true_result, $false_result ) {
     return $expr ? $true_result : $false_result;
 }
 
@@ -289,7 +310,7 @@ expression is true. Return C<default_result> if no condition is true.
 
 =cut
 
-sub _func_ifs( @args ) {
+sub _func_ifs( $f, @args ) {
     my $default = pop @args;
     for my $pair ( pairs @args ) {
         return $pair->[1] if $pair->[0];
@@ -305,8 +326,8 @@ Returns C<TRUE> if the expression is true, C<FALSE> otherwise.
 
 =cut
 
-sub _func_not( $expr ) {
-    return !!$expr ? _func_false() : _func_true();
+sub _func_not( $f, $expr ) {
+    return !!$expr ? _func_false($f) : _func_true($f);
 }
 
 =head3 OR
@@ -317,8 +338,8 @@ Returns C<TRUE> if one expression is true.
 
 =cut
 
-sub _func_or( @exprs ) {
-    return ( any { !!$_ } @exprs ) ? _func_true() : _func_false();
+sub _func_or( $f, @exprs ) {
+    return ( any { !!$_ } @exprs ) ? _func_true($f) : _func_false($f);
 }
 
 =head3 TRUE
@@ -329,7 +350,7 @@ Returns a true value.
 
 =cut
 
-sub _func_true() {
+sub _func_true( $f ) {
     return Mojo::JSON->true;
 }
 
@@ -341,8 +362,8 @@ Returns C<TRUE> if one and only one expression is true.
 
 =cut
 
-sub _func_xor( @exprs ) {
-    return ( grep { !!$_ } @exprs ) == 1 ? _func_true() : _func_false();
+sub _func_xor( $f, @exprs ) {
+    return ( grep { !!$_ } @exprs ) == 1 ? _func_true($f) : _func_false($f);
 }
 
 #=head2 Text Functions

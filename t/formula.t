@@ -317,6 +317,14 @@ subtest 'built-in functions' => sub {
             is $result, Mojo::JSON->true, "not false is true";
         };
 
+        subtest 'EVAL( <string> )' => sub {
+            my $result = $f->eval( q{EVAL("TRUE()")} );
+            is $result, Mojo::JSON->true, "evaling true is true";
+
+            $result = $f->eval( q{EVAL("TR" & "UE()")} );
+            is $result, Mojo::JSON->true, "evaling true is true";
+        };
+
         # - [ ] SWITCH function
         # - [ ] CHOOSE function
     };
