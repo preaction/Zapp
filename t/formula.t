@@ -146,6 +146,23 @@ subtest 'parse' => sub {
         'multiple binops parsed correctly'
             or diag explain $tree;
 
+    $tree = $f->parse( qq[{\n"foo": "bar",\r\n"baz": 1,\n}] );
+    is_deeply $tree,
+        [
+            hash => [
+                q{"foo"} => [
+                    string => q{"bar"},
+                ],
+            ],
+            [
+                q{"baz"} => [
+                    number => 1,
+                ],
+            ],
+        ],
+        'formula with newlines is parsed correctly'
+            or diag explain $tree;
+
     subtest 'unclosed string literal' => sub {
         my $tree;
         eval { $tree = $f->parse( q{UPPER(Foo&"Bar)} ) };
