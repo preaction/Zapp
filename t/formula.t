@@ -248,5 +248,103 @@ subtest 'eval' => sub {
     is $result, "fooSTRING", 'binary operator with function call as operands';
 };
 
+subtest 'built-in functions' => sub {
+    subtest 'logic' => sub {
+        subtest 'TRUE()' => sub {
+            my $result = $f->eval( q{TRUE()} );
+            is $result, Mojo::JSON->true, 'true value is returned';
+        };
+
+        subtest 'FALSE()' => sub {
+            my $result = $f->eval( q{FALSE()} );
+            is $result, Mojo::JSON->false, 'false value is returned';
+        };
+
+        subtest 'IF( <expression>, <true_result>, <false_result> )' => sub {
+            my $result = $f->eval( q{IF(TRUE(),"true","false")} );
+            is $result, "true", "<true_result> value is returned when <expression> is true";
+
+            $result = $f->eval( q{IF(FALSE(),"true","false")} );
+            is $result, "false", "<false_result> value is returned when <expression> is false";
+        };
+
+        subtest 'IFS( <expression>, <result>, ..., <default_result> )' => sub {
+            my $result = $f->eval( q{IFS(TRUE(),"true","false")} );
+            is $result, "true", "<result> value is returned when <expression> is true (first position)";
+
+            $result = $f->eval( q{IFS(FALSE(),"false",TRUE(),"true","false")} );
+            is $result, "true", "<result> value is returned when <expression> is true (second position)";
+
+            $result = $f->eval( q{IFS(FALSE(),"false",FALSE(),"false","true")} );
+            is $result, "true", "<default_result> value is returned when all <expression> are false";
+        };
+
+        subtest 'AND( <expression>, <...> )' => sub {
+            my $result = $f->eval( q{AND(TRUE(),TRUE())} );
+            is $result, Mojo::JSON->true, "true value is returned when all <expression> are true";
+
+            $result = $f->eval( q{AND(TRUE(),FALSE())} );
+            is $result, Mojo::JSON->false, "false value is returned when one <expression> is false";
+        };
+
+        subtest 'OR( <expression>, <...> )' => sub {
+            my $result = $f->eval( q{OR(TRUE(),FALSE())} );
+            is $result, Mojo::JSON->true, "true value is returned when one <expression> is true";
+
+            $result = $f->eval( q{OR(TRUE(),TRUE())} );
+            is $result, Mojo::JSON->true, "true value is returned when all <expression> are true";
+
+            $result = $f->eval( q{OR(FALSE(),FALSE())} );
+            is $result, Mojo::JSON->false, "false value is returned when all <expression> are false";
+        };
+
+        subtest 'XOR( <expression>, <...> )' => sub {
+            my $result = $f->eval( q{XOR(TRUE(),FALSE())} );
+            is $result, Mojo::JSON->true, "true value is returned when one <expression> is true";
+
+            $result = $f->eval( q{XOR(TRUE(),TRUE())} );
+            is $result, Mojo::JSON->false, "false value is returned when more than one <expression> are true";
+
+            $result = $f->eval( q{OR(FALSE(),FALSE())} );
+            is $result, Mojo::JSON->false, "false value is returned when all <expression> are false";
+        };
+
+        subtest 'NOT( <expression> )' => sub {
+            my $result = $f->eval( q{NOT(TRUE())} );
+            is $result, Mojo::JSON->false, "not true is false";
+
+            $result = $f->eval( q{NOT(FALSE())} );
+            is $result, Mojo::JSON->true, "not false is true";
+        };
+
+        # - [ ] SWITCH function
+        # - [ ] CHOOSE function
+    };
+
+    #subtest 'text functions' => sub {
+        # - [ ] CONCAT function
+        # - [ ] FIXED function
+        # - [ ] TRIM function
+        # - [ ] TEXTJOIN function
+    #};
+
+    #subtest 'date/time' => sub {
+        # - [ ] DATE function
+        # - [ ] TIME function
+        # - [ ] DATEVALUE function
+        # - [ ] NOW function
+        # - [ ] TODAY function
+        # - [ ] YEAR function
+        # - [ ] MONTH function
+        # - [ ] DAY function
+        # - [ ] HOUR function
+        # - [ ] MINUTE function
+        # - [ ] SECOND function
+        # - [ ] WEEKDAY function
+        # - [ ] WEEKNUM function
+    #};
+
+};
+
 done_testing;
 

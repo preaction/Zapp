@@ -12,6 +12,7 @@ L<Zapp::Task>, L<Zapp>
 
 use Mojo::Base -base, -signatures;
 use Zapp::Util qw( get_path_from_data );
+use List::Util qw( any all pairs );
 
 # XXX: binops, functions, and grammar should all be attributes so that
 # they can be configured per-instance
@@ -33,6 +34,15 @@ our %BINOPS = (
 );
 
 our %FUNCTIONS = (
+    ### Logic functions
+    TRUE => \&_func_true,
+    FALSE => \&_func_false,
+    NOT => \&_func_not,
+    IF => \&_func_if,
+    IFS => \&_func_ifs,
+    AND => \&_func_and,
+    OR => \&_func_or,
+    XOR => \&_func_xor,
     ### Text functions
     # Case manipulation
     LOWER => sub( $str ) { lc $str },
@@ -221,5 +231,126 @@ sub eval( $self, $expr, $context={} ) {
     my $result = $handle->( $tree );
     return $result;
 }
+
+=head1 FUNCTIONS
+
+XXX: Add real-world examples of usage of all functions
+
+=cut
+
+# NOTE: Arrange all functions in alphabetical order inside their
+# category
+
+=head2 Logic Functions
+
+=head3 AND
+
+    =AND( <expression>... )
+
+Returns C<TRUE> if all expressions are true.
+
+=cut
+
+sub _func_and( @exprs ) {
+    return ( all { !!$_ } @exprs ) ? _func_true() : _func_false();
+}
+
+=head3 FALSE
+
+    =FALSE()
+
+Returns a false value.
+
+=cut
+
+sub _func_false() {
+    return Mojo::JSON->false;
+}
+
+=head3 IF
+
+    =IF( <expression>, <true_result>, <false_result> )
+
+Evaluate the expression in C<expression> and return C<true_result> if
+the condition is true, or C<false_result> if the condition is false.
+
+=cut
+
+sub _func_if( $expr, $true_result, $false_result ) {
+    return $expr ? $true_result : $false_result;
+}
+
+=head3 IFS
+
+    =IFS( <expression>, <result>, ..., <default_result> )
+
+Evaluate each expression and return its corresponding result if the
+expression is true. Return C<default_result> if no condition is true.
+
+=cut
+
+sub _func_ifs( @args ) {
+    my $default = pop @args;
+    for my $pair ( pairs @args ) {
+        return $pair->[1] if $pair->[0];
+    }
+    return $default;
+}
+
+=head3 NOT
+
+    =NOT( <expression> )
+
+Returns C<TRUE> if the expression is true, C<FALSE> otherwise.
+
+=cut
+
+sub _func_not( $expr ) {
+    return !!$expr ? _func_false() : _func_true();
+}
+
+=head3 OR
+
+    =OR( <expression>... )
+
+Returns C<TRUE> if one expression is true.
+
+=cut
+
+sub _func_or( @exprs ) {
+    return ( any { !!$_ } @exprs ) ? _func_true() : _func_false();
+}
+
+=head3 TRUE
+
+    =TRUE()
+
+Returns a true value.
+
+=cut
+
+sub _func_true() {
+    return Mojo::JSON->true;
+}
+
+=head3 XOR
+
+    =XOR( <expression>... )
+
+Returns C<TRUE> if one and only one expression is true.
+
+=cut
+
+sub _func_xor( @exprs ) {
+    return ( grep { !!$_ } @exprs ) == 1 ? _func_true() : _func_false();
+}
+
+#=head2 Text Functions
+
+#=cut
+
+#=head2 Date/Time Functions
+
+#=cut
 
 1;
