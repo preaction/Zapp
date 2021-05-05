@@ -25,9 +25,14 @@ subtest 'parse' => sub {
     $tree = $f->parse( q{ foo . bar } );
     is_deeply $tree, [ var => qw{foo bar} ], 'whitespace around vars stripped';
 
+    $tree = $f->parse( q{TRUE()} );
+    is_deeply $tree, [ call => [ var => 'TRUE' ] ],
+        'function call without args parsed correctly'
+            or diag explain $tree;
+
     $tree = $f->parse( q{UPPER("string")} );
     is_deeply $tree, [ call => [ var => 'UPPER' ] => [ string => q{"string"} ] ],
-        'function call parsed correctly'
+        'function call with args parsed correctly'
             or diag explain $tree;
 
     $tree = $f->parse( q{ UPPER ( "string" ) } );

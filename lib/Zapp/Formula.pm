@@ -55,18 +55,22 @@ our $GRAMMAR = qr{
             (?:
                 # Terminator first, to escape infinite loops
                 (?> (?&TERM) ) (?! (?&OP) | \( ) \s*
-                (?{ push @result, pop @term })
+                (*COMMIT) (?{ push @result, pop @term })
+                # If there is more to match, it must've been an attempt
+                # at an operator
                 (?{ $expected = 'Expected operator'; $failed_at = pos() })
             |
                 (?> (?&CALL) ) (?! (?&OP) ) \s*
-                (?{ push @result, [ call => @{ pop @call } ] })
+                (*COMMIT) (?{ push @result, [ call => @{ pop @call } ] })
+                # If there is more to match, it must've been an attempt
+                # at an operator
                 (?{ $expected = 'Expected operator'; $failed_at = pos() })
             |
                 (?> (?&ARRAY) ) (?! (?&OP) )
-                (?{ push @result, [ array => @{ pop @array } ] })
+                (*COMMIT) (?{ push @result, [ array => @{ pop @array } ] })
             |
                 (?> (?&HASH) ) (?! (?&OP) )
-                (?{ push @result, [ hash => @{ pop @hash } ] })
+                (*COMMIT) (?{ push @result, [ hash => @{ pop @hash } ] })
             |
                 (?{ push @binop, [] })
                 (?>
@@ -76,10 +80,16 @@ our $GRAMMAR = qr{
                     (?> (?&TERM) )
                     (?{ push @{ $binop[-1] }, [ @{ pop @term } ] })
                 )
+                (*COMMIT) (?{ $expected = 'Expected operator'; $failed_at = pos() })
                 (?<op> (?&OP) ) \s*
-                (?{ $expected = 'Expected expression'; $failed_at = pos() })
+                (*COMMIT) (?{ $expected = 'Expected expression'; $failed_at = pos() })
                 (?> (?&EXPR) )
                 (?{ push @result, [ binop => $+{op}, @{ pop @binop }, pop @result ] })
+            |
+                # Characters that cannot be used to start a term, call,
+                # array, or hash
+                [^a-zA-Z0-9\."\-\[\{]
+                (*FAIL)
             )
             )(?{ $depth-- })
         )
@@ -90,15 +100,18 @@ our $GRAMMAR = qr{
             \s* \( \s*
                 (?>
                     (?{ push @args, [] })
-                    (?> (?&EXPR) )
-                    (?{ push @{ $args[-1] }, pop @result })
+                    (?>
+                        (?&EXPR)
+                        (?{ push @{ $args[-1] }, pop @result })
+                    )?
                     (?:
                         \s* , \s* (?> (?&EXPR) )
                         (?{ push @{ $args[-1] }, pop @result })
                     )*
                 )
+                \s* (*COMMIT)
                 (?{ $expected = 'Could not find end parenthesis'; $failed_at = pos() })
-            \s* \) \s*
+            \) \s*
             (?{ push $call[-1]->@*, @{ pop @args } })
         ))
         (?<ARRAY>(?>
@@ -143,7 +156,7 @@ our $GRAMMAR = qr{
             (?>
                 [^"\\]*+  (?: \\" [^"\\]*+ )*+
             )
-            (?{ $expected = 'Could not find closing quote for string'; $failed_at = pos() })
+            (*COMMIT) (?{ $expected = 'Could not find closing quote for string'; $failed_at = pos() })
             "
         )
         (?<NUMBER> -? \d+ %? | -? \d* \. \d+ %? )
