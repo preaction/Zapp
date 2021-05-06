@@ -8,10 +8,12 @@ use Test::More;
 sub new {
     my $class = shift;
     # Test Zapp itself by default
-    if ( ref $_[0] && !blessed $_[0] ) {
+    if ( !@_ || ( ref $_[0] && !blessed $_[0] ) ) {
         unshift @_, 'Zapp';
     }
-    return $class->SUPER::new( @_ );
+    my $t = $class->SUPER::new( @_ );
+    $t->app->ua( $t->ua );
+    return $t;
 }
 
 sub render_ok {
