@@ -6,9 +6,18 @@ our $VERSION = '0.001';
 
 =head1 DESCRIPTION
 
+Zapp is a graphical workflow builder that provides a UI to build and
+execute jobs.
+
+For documentation on running and using Zapp, see L<Zapp::Guides>.
+
+This file documents the main application class, L<Zapp>. This class can
+be used to L<embed Zapp into an existing Mojolicious application|https://docs.mojolicious.org/Mojolicious/Guides/Routing#Embed-applications>, or
+can be extended to add customizations.
+
 =head1 SEE ALSO
 
-L<Minion>, L<Mojolicious::Plugin::Minion::Admin>
+L<Yancy>, L<Mojolicious>
 
 =cut
 
