@@ -29,8 +29,8 @@
         <i class="fa fa-arrow-left"></i> Back to Runs
     % end
     % if ( my $plan_id = $run->{plan_id} ) {
-        %= link_to 'zapp.edit_plan', { plan_id => $plan_id }, class => 'btn btn-secondary', begin
-            <i class="fa fa-arrow-up"></i> Edit Plan
+        %= link_to 'zapp.edit_plan', { plan_id => $plan_id }, class => 'btn btn-outline-secondary', begin
+            <i class="fa fa-pencil"></i> Edit Plan
         % end
     % }
 </div>
