@@ -8,6 +8,20 @@
         stopped => 'list-group-item-warning',
         killed => 'list-group-item-secondary',
     );
+    my %btn_state = (
+        start => {
+            disabled => 'btn btn-outline-secondary disabled',
+            enabled => 'btn btn-success',
+        },
+        stop => {
+            disabled => 'btn btn-outline-secondary disabled',
+            enabled => 'btn btn-warning',
+        },
+        kill => {
+            disabled => 'btn btn-outline-secondary disabled',
+            enabled => 'btn btn-danger',
+        },
+    );
 %>
 
 <div class="d-flex justify-content-between mt-2">
@@ -28,34 +42,19 @@
 
 <div class="d-flex mb-1 justify-content-between">
     <div class="btn-toolbar" role="toolbar" aria-label="Job control">
-        <%
-            my $start_btn_class
-                = $run->{state} eq 'stopped'
-                ? 'btn btn-success'
-                : 'btn btn-outline-secondary disabled'
-                ;
-            my $stop_btn_class
-                = $run->{state} !~ qr{failed|stopped|finished|killed}
-                ? 'btn btn-warning'
-                : 'btn btn-outline-secondary disabled'
-                ;
-            my $kill_btn_class
-                = $run->{state} !~ qr{failed|finished|killed}
-                ? 'btn btn-danger'
-                : 'btn btn-outline-secondary disabled'
-                ;
-        %>
         <div class="btn-group mr-2" role="group">
             %= form_for 'zapp.start_run_confirm', begin
-                <button <%= $run->{state} ne 'stopped' ? 'disabled' : '' %>
-                    class="<%= $start_btn_class %>" aria-label="Start job"
+                <button data-btn-start <%= $run->{state} ne 'stopped' ? 'disabled' : '' %>
+                    class="<%= $btn_state{start}{ $run->{state} ne 'stopped' ? 'disabled' : 'enabled' } %>"
+                    aria-label="Start job"
                 >
                     <i class="fa fa-play"></i>
                 </button>
             % end
             %= form_for 'zapp.stop_run' => begin
-                <button <%= $run->{state} =~ /^(?:stopped|killed|failed|finished)$/ ? 'disabled' : '' %>
-                    class="<%= $stop_btn_class %>" aria-label="Stop job"
+                <button data-btn-stop <%= $run->{state} =~ /^(?:stopped|killed|failed|finished)$/ ? 'disabled' : '' %>
+                    class="<%= $btn_state{stop}{ $run->{state} =~ /stopped|killed|failed|finished/ ? 'disabled' : 'enabled' } %>"
+                    aria-label="Stop job"
                 >
                     <i class="fa fa-stop"></i>
                 </button>
@@ -63,8 +62,9 @@
         </div>
         <div class="btn-group" role="group">
             %= form_for 'zapp.kill_run' => begin
-                <button <%= $run->{state} =~ /^(?:killed|failed|finished)$/ ? 'disabled' : '' %>
-                    class="<%= $kill_btn_class %>" aria-label="Kill job"
+                <button data-btn-kill <%= $run->{state} =~ /^(?:killed|failed|finished)$/ ? 'disabled' : '' %>
+                    class="<%= $btn_state{kill}{ $run->{state} =~ /killed|failed|finished/ ? 'disabled' : 'enabled' } %>"
+                    aria-label="Kill job"
                 >
                     <i class="fa fa-times-circle"></i>
                 </button>
@@ -104,12 +104,48 @@
 
 %= javascript begin
 var stateClass = <%== encode_json \%state_bg %>;
+var btnClass = <%== encode_json \%btn_state %>;
 
 function updateRun( delta ) {
     for ( var i in delta ) {
         var el = document.querySelector( '[data-run=' + i + ']' );
         if ( !el ) continue;
         el.innerHTML = delta[i];
+    }
+    if ( delta.state ) {
+        // XXX: Add Selenium (or Playwright) tests for this
+        var btn = {
+            start: document.querySelector( '[data-btn-start]' ),
+            stop: document.querySelector( '[data-btn-stop]' ),
+            kill: document.querySelector( '[data-btn-kill]' ),
+        };
+        // Inactive or Active: Play is disabled, Stop/Kill are enabled
+        // Stopped: Play is enabled, Stop is disabled, Kill is enabled
+        // Killed, Failed, or Finished: All buttons are disabled
+        if ( delta.state == "inactive" || delta.state == "active" ) {
+            btn.start.disabled = true;
+            btn.start.className = btnClass.start.disabled;
+            btn.stop.disabled = false;
+            btn.stop.className = btnClass.stop.enabled;
+            btn.kill.disabled = false;
+            btn.kill.className = btnClass.kill.enabled;
+        }
+        else if ( delta.state == "stopped" ) {
+            btn.start.disabled = false;
+            btn.start.className = btnClass.start.enabled;
+            btn.stop.disabled = true;
+            btn.stop.className = btnClass.stop.disabled;
+            btn.kill.disabled = false;
+            btn.kill.className = btnClass.kill.enabled;
+        }
+        else if ( delta.state == "killed" || delta.state == "failed" || delta.state == "finished" ) {
+            btn.start.disabled = true;
+            btn.start.className = btnClass.start.disabled;
+            btn.stop.disabled = true;
+            btn.stop.className = btnClass.stop.disabled;
+            btn.kill.disabled = true;
+            btn.kill.className = btnClass.kill.disabled;
+        }
     }
 }
 
