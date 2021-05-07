@@ -27,6 +27,7 @@ use Scalar::Util qw( blessed );
 use Yancy::Util qw( load_backend );
 use Mojo::JSON qw( encode_json decode_json );
 use Mojo::Loader qw( find_modules load_class );
+use Mojo::File qw( curfile );
 use Zapp::Formula;
 
 has formula => sub { Zapp::Formula->new };
@@ -34,10 +35,13 @@ has action_queue => 'zapp_action';
 
 sub startup( $self ) {
 
+    push @{ $self->renderer->paths }, curfile->sibling( 'Zapp', 'resources', 'templates' );
+    push @{ $self->static->paths }, curfile->sibling( 'Zapp', 'resources', 'public' );
+
     # XXX: Allow configurable backends, like Minion
     $self->plugin( Config => { default => {
-        backend => 'sqlite:zapp.db',
-        minion => { SQLite => 'sqlite:zapp.db' },
+        backend => 'sqlite:' . $self->home->child( 'zapp.db' ),
+        minion => { SQLite => 'sqlite:' . $self->home->child( 'zapp.db' ) },
     } } );
 
     # XXX: Add migrate() method to Yancy app base class, varying by

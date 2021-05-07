@@ -2,6 +2,9 @@ package Test::Zapp;
 
 use Mojo::Base 'Test::Mojo';
 use Mojo::JSON qw( encode_json );
+use Mojo::File qw( tempdir );
+use Mojo::Home;
+use Zapp;
 use Scalar::Util qw( blessed );
 use Test::More;
 
@@ -9,7 +12,9 @@ sub new {
     my $class = shift;
     # Test Zapp itself by default
     if ( !@_ || ( ref $_[0] && !blessed $_[0] ) ) {
-        unshift @_, 'Zapp';
+        unshift @_, Zapp->new(
+            home => Mojo::Home->new( tempdir ),
+        );
     }
     my $t = $class->SUPER::new( @_ );
     $t->app->ua( $t->ua );

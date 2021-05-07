@@ -6,27 +6,12 @@ This tests the base Zapp::Task class.
 =cut
 
 use Mojo::Base -strict, -signatures;
-use Test::Mojo;
+use Test::Zapp;
 use Test::More;
-use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
 use Zapp::Task;
 
-my $mysqld = Test::mysqld->new(
-    my_cnf => {
-        # Needed for Minion::Backend::mysql
-        log_bin_trust_function_creators => 1,
-    },
-) or plan skip_all => $Test::mysqld::errstr;
-
-my $t = Test::Mojo->new( 'Zapp', {
-    backend => {
-        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
-    },
-    minion => {
-        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
-    },
-} );
+my $t = Test::Zapp->new;
 
 subtest 'execute' => sub {
     my $plan = $t->app->create_plan({

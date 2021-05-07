@@ -201,6 +201,23 @@ sub delete_plan( $self ) {
         );
     }
     $self->yancy->delete( zapp_plans => $plan_id );
+    # Clean up if foreign keys are disabled...
+    # XXX: This can be removed when Yancy fixes the SQLite backend to
+    # always enable foreign keys
+    # XXX: Yancy should allow a query to the delete() function
+    for my $task ( $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id } ) ) {
+        for my $parent ( $self->yancy->list( zapp_plan_task_parents => { task_id => $task->{task_id} } ) ) {
+            $self->yancy->delete( zapp_plan_task_parents => { $parent->%{qw( task_id parent_task_id )} } );
+        }
+        $self->yancy->delete( zapp_plan_tasks => $task->{task_id} );
+    }
+    for my $input ( $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id } ) ) {
+        $self->yancy->delete( zapp_plan_inputs => { $input->%{qw( plan_id name )} } );
+    }
+    for my $run ( $self->yancy->list( zapp_runs => { plan_id => $plan_id } ) ) {
+        $self->yancy->backend->set( zapp_runs => $run->{run_id}, { plan_id => undef } );
+    }
+
     $self->redirect_to( 'zapp.list_plans' );
 }
 

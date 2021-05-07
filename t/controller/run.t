@@ -8,25 +8,9 @@ This tests Zapp::Controller::Plan (except for the JavaScript involved).
 use Mojo::Base -strict, -signatures;
 use Test::Zapp;
 use Test::More;
-use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
 
-my $mysqld = Test::mysqld->new(
-    my_cnf => {
-        sql_mode => 'ANSI,TRADITIONAL',
-        # Needed for Minion::Backend::mysql
-        log_bin_trust_function_creators => 1,
-    },
-) or plan skip_all => $Test::mysqld::errstr;
-
-my $t = Test::Zapp->new( 'Zapp', {
-    backend => {
-        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
-    },
-    minion => {
-        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
-    },
-} );
+my $t = Test::Zapp->new;
 
 my $dump_debug = sub( $t ) {
     diag $t->tx->res->dom->find(

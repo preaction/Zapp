@@ -8,27 +8,11 @@ This tests the Zapp::Task::Request class.
 use Mojo::Base -strict, -signatures;
 use Test::Zapp;
 use Test::More;
-use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json );
 use Mojo::Loader qw( data_section );
 use Mojo::DOM;
 
-my $mysqld = Test::mysqld->new(
-    my_cnf => {
-        # Needed for Minion::Backend::mysql
-        log_bin_trust_function_creators => 1,
-    },
-) or plan skip_all => $Test::mysqld::errstr;
-
-my $t = Test::Zapp->new( {
-    backend => {
-        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
-    },
-    minion => {
-        mysql => { dsn => $mysqld->dsn( dbname => 'test' ) },
-    },
-} );
-$t->app->ua( $t->ua );
+my $t = Test::Zapp->new;
 
 # Add some test endpoints
 my $last_request;
