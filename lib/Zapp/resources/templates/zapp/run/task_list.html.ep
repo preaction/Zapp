@@ -13,7 +13,7 @@
 
 <div class="list-group list-group-horizontal text-center flex-wrap task-tabs">
     <%= tag a => href => '#tab-info', id => 'tab-info-label',
-        class => 'list-group-item list-group-item-action col flex-grow-0 ' . ( $run->{state} eq 'inactive' ? 'active list-group-item-primary' : 'list-group-item-success' ),
+        class => 'list-group-item list-group-item-action col flex-grow-0 ' . ( !$run->{state} || $run->{state} eq 'inactive' ? 'active list-group-item-primary' : 'list-group-item-success' ),
         'data-toggle' => 'tab', role => 'tab', 'aria-controls' => 'tab-info',
         ( 'aria-selected' => 'true' )x!!( $run->{state} eq 'inactive' ),
         begin %>
@@ -52,7 +52,7 @@
 </div>
 
 <div class="tab-content">
-    <div class="tab-pane <%= $run->{state} eq 'inactive' ? 'show active' : '' %>"
+    <div class="tab-pane <%= !$run->{state} || $run->{state} eq 'inactive' ? 'show active' : '' %>"
         id="tab-info" role="tabpanel" aria-labelledby="tab-info-label"
     >
         <h2>Info</h2>

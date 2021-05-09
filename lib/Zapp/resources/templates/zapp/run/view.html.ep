@@ -129,6 +129,13 @@ function updateRun( delta ) {
             btn.stop.className = btnClass.stop.enabled;
             btn.kill.disabled = false;
             btn.kill.className = btnClass.kill.enabled;
+
+            // Also update the info tab
+            var labelEl = document.querySelector( '#tab-info-label' );
+            for ( var k in stateClass ) {
+                labelEl.classList.remove( stateClass[ k ] );
+            }
+            labelEl.classList.add( stateClass[ delta.state == 'active' ? 'finished' : 'active' ] );
         }
         else if ( delta.state == "stopped" ) {
             btn.start.disabled = false;
