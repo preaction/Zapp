@@ -1,8 +1,127 @@
 package Zapp::Formula;
+# ABSTRACT: Formula interpreter
+
+# "That was almost the perfect crime. But you forgot one thing: rock
+# crushes scissors. But paper covers rock … and scissors cuts paper!"
 
 =head1 SYNOPSIS
 
+    my $f = Zapp::Formula->new;
+
+    # [ call => [ var => 'UPPER' ], [ binop => '&', [ string => "hello " ], [ var => "name" ] ] ]
+    my $tree = $f->parse( 'UPPER( "hello " & name )' );
+
+    # HELLO LEELA
+    my $res = $f->eval( 'UPPER( "hello " & name )', { name => 'Leela' } );
+
+    # { greeting => "HELLO LEELA" }
+    my $data = $f->resolve( { greeting => 'UPPER( "hello " & name )' }, { name => 'Leela' } );
+
 =head1 DESCRIPTION
+
+This module parses and evaluates formulas. Formulas are strings that
+begin with one C<=> and contain an expression. Formula expressions can
+contain strings, numbers, variables, binary operations, function calls,
+and array or hash literals.
+
+=head1 FORMULA SYNTAX
+
+Where possible, the formula syntax resembles the syntax from popular spreadsheet
+programs like Lotus 1-2-3, Excel, and Sheets, and Microsoft's Power Fx.
+
+=head2 Strings
+
+Strings are surrounded by double-quotes (C<"Professor Fisherprice
+Shpeekenshpell">). Double-quotes can be inserted into strings by adding
+a backslash (C<"The horse says \"Doctorate Denied\"">).
+
+=head2 Numbers
+
+Numbers can be integers (C<312>) or decimals (C<3.12>). Negative numbers have
+C<-> in front (C<-3.12>).
+
+=head2 Variables
+
+Variables start with a letter and can contain letters, numbers, and
+underscores (C<_>).  Variable values are defined in the context.
+Variables cannot be created by formulas (yet).
+
+=head2 Binary Operators
+
+=over
+
+=item Mathematical Operators
+
+    # Addition
+    1.2 + 3             -> 4.2
+
+    # Subtraction
+    4 - 2.3             -> 1.7
+
+    # Multiplication
+    2 * 3               -> 6
+
+    # Division
+    8 / 2               -> 4
+
+    # Exponentation
+    2 ^ 3               -> 8
+
+=item String Operators
+
+    # Concatenation
+    "Hello, " & "World" -> "Hello, World"
+
+=item Logical Operators
+
+    # Equality
+    2 = 2               -> TRUE
+
+    # Inequality
+    3 <> 3              -> FALSE
+
+    # Less-/Greater-than
+    3 < 8               -> TRUE
+    3 > 8               -> FALSE
+
+    # Less-/Greater-than-or-equal
+    3 <= 2              -> FALSE
+    3 >= 3              -> TRUE
+
+=back
+
+=head2 Function Calls
+
+Function calls start with the name of the function followed by empty parentheses or
+parentheses containing function parameters (expressions) separated by commas.
+
+    IF( name = "Leela", TRUE(), FALSE() )
+
+See L</FUNCTIONS> for a list of available functions.
+
+=head2 Arrays
+
+Arrays begin with square brackets and contain expressions separated by commas.
+
+    [ name, name = "Leela", TRUE() ]
+
+Get a value from an array using square brackets and the index of the
+item (0-based).
+
+    # Characters = [ "Fry", "Leela", "Bender" ]
+    Characters[2]       # Bender
+
+=head2 Hashes
+
+Hashes begin with curly braces and contain key/value pairs separated by commas.
+Keys must be strings (for now) and are separated from values with colons.
+
+    { "name": "Leela", "captain": TRUE() }
+
+Get a value from a hash using dot followed by the key.
+
+    # Employees = { "Pilot": "Leela", "Cook": "Bender", "Person": "Fry" }
+    Employees.Pilot     # Leela
 
 =head1 SEE ALSO
 
@@ -174,13 +293,22 @@ our $GRAMMAR = qr{
     )
 }xms;
 
-has context => sub { {} };
+has _context => sub { {} };
 
 # XXX: Strings that look like money amounts can be coerced into numbers
 # XXX: Strings that look like dates can be coerced into dates
 #       ... Or maybe not, since that's one of the biggest complaints
 #       about Excel. Though, that might just refer to the
 #       auto-formatting thing, which we will not be doing.
+
+=method parse
+
+    my $tree = $f->parse( $formula )
+
+Parse the given formula (without C<=> prefix) and return an abstract
+syntax tree that can be evaluated.
+
+=cut
 
 # Does not expect `=` prefix
 sub parse( $self, $expr ) {
@@ -199,9 +327,18 @@ sub parse( $self, $expr ) {
     return $result[0];
 }
 
+=method eval
+
+    my $value = $f->eval( $formula, $context );
+
+Parse and execute the given formula (without C<=> prefix) using the given context as
+values for any variables.
+
+=cut
+
 # Does not expect `=` prefix
 sub eval( $self, $expr, $context={} ) {
-    $self->context( $context );
+    $self->_context( $context );
     my $tree = $self->parse( $expr );
     my $handle = sub( $tree ) {
         if ( $tree->[0] eq 'string' ) {
@@ -215,7 +352,7 @@ sub eval( $self, $expr, $context={} ) {
         }
         if ( $tree->[0] eq 'var' ) {
             my $var = join '.', $tree->@[1..$#$tree];
-            my $context = $self->context;
+            my $context = $self->_context;
             return ref $context eq 'CODE' ? $context->( $var )
                 : get_path_from_data( $var, $context )
                 ;
@@ -259,10 +396,9 @@ sub resolve( $self, $data, $context={} ) {
 
 =head1 FUNCTIONS
 
-XXX: Add real-world examples of usage of all functions
-
 =cut
 
+# XXX: Add real-world examples of usage of all functions
 # NOTE: Arrange all functions in alphabetical order inside their
 # category
 
@@ -293,7 +429,7 @@ sub _func_eval( $f, $expr ) {
     # XXX: This context attribute is a bad way of doing things, but we
     # need some way for functions to get the context, or values from the
     # context...
-    return $f->eval( $expr, $f->context );
+    return $f->eval( $expr, $f->_context );
 }
 
 =head3 FALSE
