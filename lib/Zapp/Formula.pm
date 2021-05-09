@@ -237,6 +237,26 @@ sub eval( $self, $expr, $context={} ) {
     return $result;
 }
 
+=method resolve
+
+    my $data = $f->resolve( $data, $context );
+
+Resolve all formulas in the data structure C<$data> and return a new data structure
+with the resolved values. Formulas are strings that begin with C<=>. Use C<==> to escape
+parsing.
+
+    # { val => 1, str => '=num' }
+    $f->resolve( { val => '=num', str => '==num' }, { num => 1 } );
+
+=cut
+
+sub resolve( $self, $data, $context={} ) {
+    return ref $data eq 'ARRAY' ? [ map { $self->resolve( $_, $context ) } @$data ]
+        : ref $data eq 'HASH' ? { map { $_ => $self->resolve( $data->{ $_ }, $context ) } keys %$data }
+        : !ref $data && $data =~ /^=(?!=)/ ? $self->eval( substr( $data, 1 ), $context )
+        : $data =~ s/^==/=/r;
+}
+
 =head1 FUNCTIONS
 
 XXX: Add real-world examples of usage of all functions

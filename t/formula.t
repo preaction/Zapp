@@ -248,6 +248,27 @@ subtest 'eval' => sub {
     is $result, "fooSTRING", 'binary operator with function call as operands';
 };
 
+subtest 'resolve' => sub {
+    my $context = {
+        Hash => {
+            Key => 'success',
+        },
+        Str => 'string',
+    };
+
+    my $result = $f->resolve( q{="string"}, $context );
+    is $result, 'string', 'scalar with string literal';
+
+    $result = $f->resolve( q{=="string"}, $context );
+    is $result, '="string"', 'two =s escapes formula';
+
+    $result = $f->resolve( [ q{="string"}, q{=Hash.Key} ], $context );
+    is_deeply $result, [ 'string', 'success' ], 'array is resolved';
+
+    $result = $f->resolve( { foo => [ q{="string"}, q{=Hash.Key} ] }, $context );
+    is_deeply $result, { foo => [ 'string', 'success' ] }, 'hash of arrays is resolved';
+};
+
 subtest 'built-in functions' => sub {
     subtest 'logic' => sub {
         subtest 'TRUE()' => sub {
