@@ -109,6 +109,26 @@ sub startup( $self ) {
 
     # XXX: Add config file for adding types
 
+    # Add basic triggers
+    my %base_triggers = (
+        Webhook => 'Zapp::Trigger::Webhook',
+    );
+    $self->helper( 'zapp.triggers' => sub( $c ) { state %triggers; \%triggers } );
+    $self->helper( 'zapp.add_trigger' => sub( $c, $name, $trigger ) {
+        my $obj = blessed( $trigger ) ? $trigger : undef;
+        if ( !defined $obj ) {
+            if ( my $e = load_class( $trigger ) ) {
+                die "Could not load trigger class $trigger $e\n";
+            }
+            $obj = $trigger->new;
+        }
+        $obj->install( $self );
+        $c->zapp->triggers->{ $name } = $obj;
+    });
+    for my $trigger_name ( keys %base_triggers ) {
+        $self->zapp->add_trigger( $trigger_name, $base_triggers{ $trigger_name } );
+    }
+
     # Create/edit plans
     # XXX: Make Yancy support this basic CRUD with relationships?
     # XXX: Otherwise, add custom JSON API
@@ -155,6 +175,8 @@ sub startup( $self ) {
     $self->routes->websocket( '/run/:run_id/feed' )
         ->to( 'run#feed_run' )->name( 'zapp.feed_run' );
 
+    $self->routes->any( [qw( GET POST )], '/plan/:plan_id/trigger/:trigger_id', { trigger_id => undef } )
+        ->to( 'trigger#edit' )->name( 'zapp.edit_trigger' );
 }
 
 =method create_plan
@@ -554,6 +576,27 @@ CREATE TABLE zapp_run_notes (
     CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE
 );
 
+-- 2 up
+CREATE TABLE zapp_triggers (
+    trigger_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    class VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
+    description TEXT,
+    plan_id BIGINT NOT NULL,
+    config JSON,
+    input JSON,
+    state VARCHAR(20) DEFAULT "inactive",
+    CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
+);
+CREATE TABLE zapp_trigger_runs (
+    trigger_id BIGINT NOT NULL,
+    run_id BIGINT NOT NULL,
+    context JSON,
+    PRIMARY KEY ( trigger_id, run_id ),
+    CONSTRAINT FOREIGN KEY ( trigger_id ) REFERENCES zapp_triggers ( trigger_id ) ON DELETE CASCADE,
+    CONSTRAINT FOREIGN KEY ( run_id ) REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE
+);
+
 @@ migrations.sqlite.sql
 
 -- 1 up
@@ -632,5 +675,24 @@ CREATE TABLE zapp_run_notes (
     created DATETIME DEFAULT CURRENT_TIMESTAMP,
     event VARCHAR(20) NOT NULL,
     note TEXT NOT NULL
+);
+
+-- 2 up
+
+CREATE TABLE zapp_triggers (
+    trigger_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    class VARCHAR(255) NOT NULL,
+    label VARCHAR(255),
+    description TEXT,
+    plan_id INTEGER NOT NULL REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
+    config JSON,
+    input JSON,
+    state VARCHAR(20) DEFAULT "inactive"
+);
+CREATE TABLE zapp_trigger_runs (
+    trigger_id INTEGER NOT NULL REFERENCES zapp_triggers ( trigger_id ) ON DELETE CASCADE,
+    run_id INTEGER NOT NULL REFERENCES zapp_runs ( run_id ) ON DELETE CASCADE,
+    context JSON,
+    PRIMARY KEY ( trigger_id, run_id )
 );
 
