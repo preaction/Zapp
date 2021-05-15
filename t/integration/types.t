@@ -71,7 +71,7 @@ my %plan_data = (
 subtest 'plan input' => sub {
     subtest 'plan edit form' => sub {
         my $plan = $t->app->create_plan({%plan_data});
-        $t->get_ok( '/plan/' . $plan->{plan_id} )->status_is( 200 );
+        $t->get_ok( '/plan/' . $plan->{plan_id} . '/edit' )->status_is( 200 );
 
         subtest 'input 0 - boolean' => sub {
             $t->element_exists( 'form [name="input[0].config"]' )
@@ -120,7 +120,7 @@ subtest 'plan input' => sub {
 
     subtest 'save plan' => sub {
         my $plan = $t->app->create_plan({%plan_data});
-        $t->post_ok( '/plan/' . $plan->{plan_id}, form => {
+        $t->post_ok( '/plan/' . $plan->{plan_id} . '/edit', form => {
             %plan_data{qw( label )},
 
             'input[0].name' => 'boolean',

@@ -137,7 +137,7 @@ sub Test::Yancy::clear_backend {
         zapp_plans => 'plan_id',
         zapp_plan_inputs => [ 'plan_id', 'name' ],
         zapp_plan_tasks => 'task_id',
-        zapp_plan_task_parents => 'task_id',
+        zapp_plan_task_parents => [ 'task_id', 'parent_task_id' ],
         zapp_runs => 'run_id',
     );
     for my $table ( keys %tables ) {

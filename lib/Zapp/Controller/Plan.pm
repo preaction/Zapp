@@ -135,7 +135,7 @@ sub save_plan( $self ) {
                 # We're supposed to have this row, so ignore it
                 next if grep { $parent->{parent_task_id} eq $_ } ( $parent_task_id );
                 # We're not supposed to have this row, so delete it
-                $self->yancy->backend->delete( zapp_plan_task_parents => [ $parent->@{qw( task_id parent_task_id )} ] );
+                $self->yancy->backend->delete( zapp_plan_task_parents => { $parent->%{qw( task_id parent_task_id )} } );
             }
             for my $new_parent ( $parent_task_id ) {
                 # We already have this row, so ignore it
@@ -155,7 +155,7 @@ sub save_plan( $self ) {
         $self->yancy->delete( zapp_plan_tasks => $task_id );
         my ( @existing_parents ) = $self->yancy->list( zapp_plan_task_parents => { task_id => $task_id } );
         for my $parent ( @existing_parents ) {
-            $self->yancy->backend->delete( zapp_plan_task_parents => [ $parent->@{qw( task_id parent_task_id )} ] );
+            $self->yancy->backend->delete( zapp_plan_task_parents => { $parent->%{qw( task_id parent_task_id )} } );
         }
     }
 
@@ -253,6 +253,11 @@ sub list_plans( $self ) {
         || $b->{created} cmp $a->{created}
     } @plans;
     $self->render( 'zapp/plan/list', plans => \@plans );
+}
+
+sub get_plan( $self ) {
+    # XXX: List plan runs and triggers
+    # XXX: Show form to run plan
 }
 
 1;

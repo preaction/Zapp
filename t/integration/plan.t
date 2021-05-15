@@ -14,7 +14,7 @@ my $t = Test::Zapp->new( 'Zapp' );
 my ( $plan_id, $run_id );
 
 subtest 'create a new plan' => sub {
-    $t->post_ok( '/plan',
+    $t->post_ok( '/plan/create',
         form => {
             label => 'Assassinate Fry the Solid',
             description => 'He must die so Bont may live!',
@@ -39,7 +39,7 @@ subtest 'create a new plan' => sub {
         },
     )
         ->status_is( 302 )
-        ->header_like( Location => qr{/plan/\d+} )
+        ->header_like( Location => qr{/plan/\d+/edit} )
         ;
     ( $plan_id ) = $t->tx->res->headers->location =~ m{(\d+)};
 };
@@ -70,8 +70,9 @@ subtest 'start a run' => sub {
 };
 
 subtest 'edit the plan' => sub {
+    my $plan = $t->app->get_plan( $plan_id );
     # Add a task
-    $t->post_ok( '/plan',
+    $t->post_ok( '/plan/' . $plan_id . '/edit',
         form => {
             label => 'Assassinate Fry the Solid',
             description => 'He must die so Bont may live!',
@@ -84,6 +85,7 @@ subtest 'edit the plan' => sub {
             'input[2].name' => 'who',
             'input[2].type' => 'string',
             'input[2].value' => 'Gorgak',
+            'task[0].task_id' => $plan->{tasks}[0]{task_id},
             'task[0].class' => 'Zapp::Task::Script',
             'task[0].name' => 'Execute',
             'task[0].input.vars[0].name' => 'who',
@@ -99,7 +101,7 @@ subtest 'edit the plan' => sub {
         },
     )
         ->status_is( 302 )
-        ->header_like( Location => qr{/plan/\d+} )
+        ->header_like( Location => qr{/plan/\d+/edit} )
         ;
 
     # Run is not changed

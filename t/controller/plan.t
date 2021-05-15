@@ -21,7 +21,7 @@ my $dump_debug = sub( $t ) {
 subtest 'create new plan' => sub {
 
     subtest 'new plan form' => sub {
-        $t->get_ok( '/plan' )->status_is( 200 )
+        $t->get_ok( '/plan/create' )->status_is( 200 )
             ->or( $dump_debug )
             ->element_exists( 'form#plan', 'form exists' )
             ->attr_is( 'form#plan', enctype => 'multipart/form-data', 'form enctype correct' )
@@ -87,7 +87,7 @@ subtest 'create new plan' => sub {
     };
 
     subtest 'save plan' => sub {
-        $t->post_ok( "/plan",
+        $t->post_ok( "/plan/create",
             form => {
                 label => 'The Mighty One',
                 description => 'Save the mighty one, save the universe.',
@@ -108,7 +108,7 @@ subtest 'create new plan' => sub {
             },
         );
         $t->status_is( 302 )->or( sub( $t ) { diag $t->tx->res->dom->find( '#error,#context,#trace,#log' )->each } );
-        $t->header_like( Location => qr{/plan/(\d+)} );
+        $t->header_like( Location => qr{/plan/(\d+)/edit} );
         my ( $plan_id ) = $t->tx->res->headers->location =~ m{/plan/(\d+)};
 
         my $got_plan = $t->app->yancy->get( zapp_plans => $plan_id );
@@ -235,7 +235,7 @@ subtest 'edit existing plan' => sub {
     my @task_ids = map { $_->{task_id} } @{ $plan->{tasks} };
 
     subtest 'edit plan form' => sub {
-        $t->get_ok( "/plan/$plan_id" )->status_is( 200 );
+        $t->get_ok( "/plan/$plan_id/edit" )->status_is( 200 );
         $t->$dump_debug;
         $t->element_exists( 'form#plan', 'form exists' )
             ->element_exists(
@@ -513,7 +513,7 @@ subtest 'edit existing plan' => sub {
     };
 
     subtest 'save plan' => sub {
-        $t->post_ok( "/plan/$plan_id",
+        $t->post_ok( "/plan/$plan_id/edit",
             form => {
                 label => 'Save NNY',
                 description => 'Save New New York City',
@@ -542,7 +542,7 @@ subtest 'edit existing plan' => sub {
             },
         );
         $t->status_is( 302 );
-        $t->header_is( Location => "/plan/$plan_id" );
+        $t->header_is( Location => "/plan/$plan_id/edit" );
 
         my $got_plan = $t->app->yancy->get( zapp_plans => $plan_id );
         ok $got_plan, 'found plan';
@@ -635,7 +635,7 @@ subtest 'edit existing plan' => sub {
     };
 
     subtest 'add task to plan' => sub {
-        $t->post_ok( "/plan/$plan_id",
+        $t->post_ok( "/plan/$plan_id/edit",
             form => {
                 label => 'Save NNY',
                 description => 'Save New New York City',
@@ -664,7 +664,7 @@ subtest 'edit existing plan' => sub {
             },
         );
         $t->status_is( 302 );
-        $t->header_is( Location => "/plan/$plan_id" );
+        $t->header_is( Location => "/plan/$plan_id/edit" );
 
         my @got_tasks = $t->app->yancy->list(
             zapp_plan_tasks => {
@@ -782,7 +782,7 @@ subtest 'edit existing plan' => sub {
     };
 
     subtest 'remove task from plan' => sub {
-        $t->post_ok( "/plan/$plan_id",
+        $t->post_ok( "/plan/$plan_id/edit",
             form => {
                 label => 'Save NNY',
                 description => 'Save New New York City',
@@ -807,7 +807,7 @@ subtest 'edit existing plan' => sub {
             },
         );
         $t->status_is( 302 );
-        $t->header_is( Location => "/plan/$plan_id" );
+        $t->header_is( Location => "/plan/$plan_id/edit" );
 
         my @got_tasks = $t->app->yancy->list(
             zapp_plan_tasks => {
@@ -867,7 +867,7 @@ subtest 'edit existing plan' => sub {
     };
 
     subtest 'remove input from plan' => sub {
-        $t->post_ok( "/plan/$plan_id",
+        $t->post_ok( "/plan/$plan_id/edit",
             form => {
                 label => 'Save NNY',
                 description => 'Save New New York City',
@@ -888,7 +888,7 @@ subtest 'edit existing plan' => sub {
             },
         );
         $t->status_is( 302 );
-        $t->header_is( Location => "/plan/$plan_id" );
+        $t->header_is( Location => "/plan/$plan_id/edit" );
 
         my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
             {
@@ -912,7 +912,7 @@ subtest 'edit existing plan' => sub {
     };
 
     subtest 'add input to plan' => sub {
-        $t->post_ok( "/plan/$plan_id",
+        $t->post_ok( "/plan/$plan_id/edit",
             form => {
                 label => 'Save NNY',
                 description => 'Save New New York City',
@@ -937,7 +937,7 @@ subtest 'edit existing plan' => sub {
             },
         );
         $t->status_is( 302 );
-        $t->header_is( Location => "/plan/$plan_id" );
+        $t->header_is( Location => "/plan/$plan_id/edit" );
 
         my @got_inputs = $t->app->yancy->list( zapp_plan_inputs =>
             {
@@ -995,7 +995,7 @@ subtest 'list plans' => sub {
         ->element_exists( '.plans-list > :nth-child(1) a.run', 'run button exists' )
         ->attr_is( '.plans-list > :nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run' )
         ->element_exists( '.plans-list > :nth-child(1) a.edit', 'edit button exists' )
-        ->attr_is( '.plans-list > :nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} )
+        ->attr_is( '.plans-list > :nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} . '/edit' )
         ->element_exists( '.plans-list > :nth-child(1) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(1) a.delete', href => '/plan/' . $plans[0]{plan_id} . '/delete' )
         ->element_exists_not( '.plans-list > :nth-child(1) [data-last-run-finished]', 'run finished not shown' )
@@ -1007,7 +1007,7 @@ subtest 'list plans' => sub {
         ->element_exists( '.plans-list > :nth-child(2) a.run', 'run button exists' )
         ->attr_is( '.plans-list > :nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run' )
         ->element_exists( '.plans-list > :nth-child(2) a.edit', 'edit button exists' )
-        ->attr_is( '.plans-list > :nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} )
+        ->attr_is( '.plans-list > :nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} . '/edit' )
         ->element_exists( '.plans-list > :nth-child(2) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(2) a.delete', href => '/plan/' . $plans[1]{plan_id} . '/delete' )
         ->element_exists_not( '.plans-list > :nth-child(2) [data-last-run-finished]', 'run finished not shown' )
@@ -1019,7 +1019,7 @@ subtest 'list plans' => sub {
         ->element_exists( '.plans-list > :nth-child(3) a.run', 'run button exists' )
         ->attr_is( '.plans-list > :nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run' )
         ->element_exists( '.plans-list > :nth-child(3) a.edit', 'edit button exists' )
-        ->attr_is( '.plans-list > :nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} )
+        ->attr_is( '.plans-list > :nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} . '/edit' )
         ->element_exists( '.plans-list > :nth-child(3) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(3) a.delete', href => '/plan/' . $plans[2]{plan_id} . '/delete' )
         ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-finished]', 'run finished not shown' )
@@ -1181,7 +1181,7 @@ subtest 'delete plan' => sub {
 };
 
 subtest 'error - input name invalid' => sub {
-    $t->post_ok( "/plan",
+    $t->post_ok( "/plan/create",
         form => {
             label => 'Get Rich Quick x7q',
             'input[0].name' => '}h3l:(){',
@@ -1199,7 +1199,7 @@ subtest 'error - input name invalid' => sub {
 };
 
 subtest 'error - task name invalid' => sub {
-    $t->post_ok( "/plan",
+    $t->post_ok( "/plan/create",
         form => {
             label => 'Get Rich Quick x7q',
             'task[0].name' => '}h3l:(){',
@@ -1217,7 +1217,7 @@ subtest 'error - task name invalid' => sub {
 };
 
 subtest 'error - formula could not be parsed' => sub {
-    $t->post_ok( "/plan",
+    $t->post_ok( "/plan/create",
         form => {
             label => 'Syntax error',
             'task[0].name' => 'Error',
@@ -1231,24 +1231,4 @@ subtest 'error - formula could not be parsed' => sub {
 };
 
 done_testing;
-
-sub Test::Yancy::clear_backend {
-    my ( $self ) = @_;
-    my %tables = (
-        zapp_plans => 'plan_id',
-        zapp_plan_inputs => [ 'plan_id', 'name' ],
-        zapp_plan_tasks => 'task_id',
-        zapp_plan_task_parents => 'task_id',
-    );
-    for my $table ( keys %tables ) {
-        my $id_field = $tables{ $table };
-        for my $item ( $self->app->yancy->list( $table ) ) {
-            my $id = ref $id_field eq 'ARRAY'
-                ? { map { $_ => $item->{ $_ } } @$id_field }
-                : $item->{ $id_field }
-                ;
-            $self->app->yancy->backend->delete( $table => $id );
-        }
-    }
-}
 

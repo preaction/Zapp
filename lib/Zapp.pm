@@ -76,6 +76,10 @@ sub startup( $self ) {
                 # XXX: Fix read_schema to detect compound primary keys
                 'x-id-field' => [qw( plan_id name )],
             },
+            zapp_plan_task_parents => {
+                # XXX: Fix read_schema to detect compound primary keys
+                'x-id-field' => [qw( task_id parent_task_id )],
+            },
         },
     );
 
@@ -132,9 +136,13 @@ sub startup( $self ) {
     # Create/edit plans
     # XXX: Make Yancy support this basic CRUD with relationships?
     # XXX: Otherwise, add custom JSON API
-    $self->routes->get( '/plan/:plan_id', { plan_id => undef } )
+    $self->routes->get( '/plan/:plan_id/edit' )
         ->to( 'plan#edit_plan' )->name( 'zapp.edit_plan' );
-    $self->routes->post( '/plan/:plan_id', { plan_id => undef } )
+    $self->routes->post( '/plan/:plan_id/edit' )
+        ->to( 'plan#save_plan' )->name( 'zapp.save_plan' );
+    $self->routes->get( '/plan/create' )
+        ->to( 'plan#edit_plan' )->name( 'zapp.edit_plan' );
+    $self->routes->post( '/plan/create' )
         ->to( 'plan#save_plan' )->name( 'zapp.save_plan' );
     $self->routes->get( '/plan/:plan_id/delete' )
         ->to( 'plan#delete_plan' )->name( 'zapp.delete_plan' );
