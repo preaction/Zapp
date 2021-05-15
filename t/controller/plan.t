@@ -998,9 +998,9 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(1) a.edit', href => '/plan/' . $plans[0]{plan_id} . '/edit' )
         ->element_exists( '.plans-list > :nth-child(1) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(1) a.delete', href => '/plan/' . $plans[0]{plan_id} . '/delete' )
-        ->element_exists_not( '.plans-list > :nth-child(1) [data-last-run-finished]', 'run finished not shown' )
-        ->element_exists_not( '.plans-list > :nth-child(1) [data-last-run-started]', 'run started not shown' )
-        ->element_exists_not( '.plans-list > :nth-child(1) [data-last-run-state]', 'run state not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(1) [data-run-finished]', 'run finished not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(1) [data-run-started]', 'run started not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(1) [data-run-state]', 'run state not shown' )
 
         ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
         ->text_like( '.plans-list > :nth-child(2) .description', qr{Of any remains of the crew} )
@@ -1010,9 +1010,9 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(2) a.edit', href => '/plan/' . $plans[1]{plan_id} . '/edit' )
         ->element_exists( '.plans-list > :nth-child(2) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(2) a.delete', href => '/plan/' . $plans[1]{plan_id} . '/delete' )
-        ->element_exists_not( '.plans-list > :nth-child(2) [data-last-run-finished]', 'run finished not shown' )
-        ->element_exists_not( '.plans-list > :nth-child(2) [data-last-run-started]', 'run started not shown' )
-        ->element_exists_not( '.plans-list > :nth-child(2) [data-last-run-state]', 'run state not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(2) [data-run-finished]', 'run finished not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(2) [data-run-started]', 'run started not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(2) [data-run-state]', 'run state not shown' )
 
         ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
         ->text_like( '.plans-list > :nth-child(3) .description', qr{After their inevitable deaths} )
@@ -1022,9 +1022,9 @@ subtest 'list plans' => sub {
         ->attr_is( '.plans-list > :nth-child(3) a.edit', href => '/plan/' . $plans[2]{plan_id} . '/edit' )
         ->element_exists( '.plans-list > :nth-child(3) a.delete', 'delete button exists' )
         ->attr_is( '.plans-list > :nth-child(3) a.delete', href => '/plan/' . $plans[2]{plan_id} . '/delete' )
-        ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-finished]', 'run finished not shown' )
-        ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-started]', 'run started not shown' )
-        ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-state]', 'run state not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(3) [data-run-finished]', 'run finished not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(3) [data-run-started]', 'run started not shown' )
+        ->element_exists_not( '.plans-list > :nth-child(3) [data-run-state]', 'run state not shown' )
         ;
 
     my @runs;
@@ -1053,29 +1053,29 @@ subtest 'list plans' => sub {
 
         $t->get_ok( '/' )->status_is( 200 )
             ->text_like( '.plans-list > :nth-child(3) h2', qr{Deliver a package} )
-            ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-finished]', 'last run finished not showing' )
-            ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-started]', 'last run started not showing' )
-            ->element_exists_not( '.plans-list > :nth-child(3) [data-last-run-state]', 'last run state not showing' )
+            ->element_exists_not( '.plans-list > :nth-child(3) [data-run-finished]', 'last run finished not showing' )
+            ->element_exists_not( '.plans-list > :nth-child(3) [data-run-started]', 'last run started not showing' )
+            ->element_exists_not( '.plans-list > :nth-child(3) [data-run-state]', 'last run state not showing' )
 
             ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
-            ->element_exists( '.plans-list > :nth-child(2) [data-last-run-finished]', 'last run finished showing' )
+            ->element_exists( '.plans-list > :nth-child(2) [data-run-finished]', 'last run finished showing' )
             ->attr_is(
-                '.plans-list > :nth-child(2) [data-last-run-finished]',
+                '.plans-list > :nth-child(2) [data-run-finished]',
                 href => '/run/' . $runs[0],
                 'last run finished link is correct',
             )
             ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-02 00:00:00' )
-            ->text_is( '.plans-list > :nth-child(2) [data-last-run-state]', 'failed', 'run state shown' )
+            ->text_is( '.plans-list > :nth-child(2) [data-run-state]', 'failed', 'run state shown' )
 
             ->text_like( '.plans-list > :nth-child(1) h2', qr{Find a replacement crew} )
-            ->element_exists( '.plans-list > :nth-child(1) [data-last-run-finished]', 'last run finished showing' )
+            ->element_exists( '.plans-list > :nth-child(1) [data-run-finished]', 'last run finished showing' )
             ->attr_is(
-                '.plans-list > :nth-child(1) [data-last-run-finished]',
+                '.plans-list > :nth-child(1) [data-run-finished]',
                 href => '/run/' . $runs[1],
                 'last run finished link is correct',
             )
             ->attr_is( '.plans-list > :nth-child(1) time', datetime => '2021-02-05 00:00:00' )
-            ->text_is( '.plans-list > :nth-child(1) [data-last-run-state]', 'killed', 'run state shown' )
+            ->text_is( '.plans-list > :nth-child(1) [data-run-state]', 'killed', 'run state shown' )
             ;
     };
 
@@ -1101,34 +1101,34 @@ subtest 'list plans' => sub {
 
         $t->get_ok( '/' )->status_is( 200 )
             ->text_like( '.plans-list > :nth-child(1) h2', qr{Deliver a package} )
-            ->element_exists( '.plans-list > :nth-child(1) [data-last-run-started]', 'last run started showing' )
+            ->element_exists( '.plans-list > :nth-child(1) [data-run-started]', 'last run started showing' )
             ->attr_is(
-                '.plans-list > :nth-child(1) [data-last-run-started]',
+                '.plans-list > :nth-child(1) [data-run-started]',
                 href => '/run/' . $runs[2],
                 'last run started link is correct',
             )
             ->attr_is( '.plans-list > :nth-child(1) time', datetime => '2021-02-04 00:00:00' )
-            ->text_is( '.plans-list > :nth-child(1) [data-last-run-state]', 'active', 'run state shown' )
+            ->text_is( '.plans-list > :nth-child(1) [data-run-state]', 'active', 'run state shown' )
 
             ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
-            ->element_exists( '.plans-list > :nth-child(2) [data-last-run-created]', 'last run created showing' )
+            ->element_exists( '.plans-list > :nth-child(2) [data-run-created]', 'last run created showing' )
             ->attr_is(
-                '.plans-list > :nth-child(2) [data-last-run-created]',
+                '.plans-list > :nth-child(2) [data-run-created]',
                 href => '/run/' . $runs[3],
                 'last run inactive link is correct',
             )
             ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-03 00:00:00' )
-            ->text_is( '.plans-list > :nth-child(2) [data-last-run-state]', 'inactive', 'run state shown' )
+            ->text_is( '.plans-list > :nth-child(2) [data-run-state]', 'inactive', 'run state shown' )
 
             ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
-            ->element_exists( '.plans-list > :nth-child(3) [data-last-run-finished]', 'last run finished showing' )
+            ->element_exists( '.plans-list > :nth-child(3) [data-run-finished]', 'last run finished showing' )
             ->attr_is(
-                '.plans-list > :nth-child(3) [data-last-run-finished]',
+                '.plans-list > :nth-child(3) [data-run-finished]',
                 href => '/run/' . $runs[1],
                 'last run finished link is correct',
             )
             ->attr_is( '.plans-list > :nth-child(3) time', datetime => '2021-02-05 00:00:00' )
-            ->text_is( '.plans-list > :nth-child(3) [data-last-run-state]', 'killed', 'run state shown' )
+            ->text_is( '.plans-list > :nth-child(3) [data-run-state]', 'killed', 'run state shown' )
             ;
     };
 
