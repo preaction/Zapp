@@ -593,7 +593,7 @@ CREATE TABLE zapp_triggers (
     plan_id BIGINT NOT NULL,
     config JSON,
     input JSON,
-    state VARCHAR(20) DEFAULT "inactive",
+    state VARCHAR(20) DEFAULT 'inactive',
     CONSTRAINT FOREIGN KEY ( plan_id ) REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE
 );
 CREATE TABLE zapp_trigger_runs (
@@ -695,7 +695,7 @@ CREATE TABLE zapp_triggers (
     plan_id INTEGER NOT NULL REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
     config JSON,
     input JSON,
-    state VARCHAR(20) DEFAULT "inactive"
+    state VARCHAR(20) DEFAULT 'inactive'
 );
 CREATE TABLE zapp_trigger_runs (
     trigger_id INTEGER NOT NULL REFERENCES zapp_triggers ( trigger_id ) ON DELETE CASCADE,
