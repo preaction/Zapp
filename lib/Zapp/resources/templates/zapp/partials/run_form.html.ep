@@ -1,5 +1,6 @@
 <%
     use Mojo::JSON qw( encode_json );
+    use Zapp::Util qw( prefix_field );
 %>
 %= form_for 'zapp.save_run', enctype => 'multipart/form-data' => begin
     %= hidden_field "plan_id", param( 'plan_id' )
