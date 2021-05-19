@@ -41,14 +41,16 @@ subtest 'fire trigger' => sub {
 
     my $trigger_id = $t->app->yancy->create(
         zapp_triggers => {
-            class => 'Zapp::Trigger::Webhook',
+            type => 'Webhook',
             plan_id => $plan->{plan_id},
             config => encode_json({
                 slug => 'good_news_everyone',
                 method => 'POST',
             }),
             input => encode_json({
-                Danger => '=params.danger',
+                Danger => {
+                    value => '=params.danger',
+                },
             }),
         },
     );

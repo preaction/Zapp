@@ -1172,7 +1172,7 @@ subtest 'view plan' => sub {
         plan_id => $plan->{plan_id},
         label => 'PlanEx Button',
         description => 'One-click ordering!',
-        class => 'Zapp::Trigger::Webhook',
+        type => 'Webhook',
         config => encode_json({ method => 'POST', slug => 'pillow' }),
         input => encode_json({ color => '=params.color' }),
     } );
@@ -1186,7 +1186,8 @@ subtest 'view plan' => sub {
         ->element_exists( '[name="input[0].value"]', 'Color input exists' )
         ->or(sub { diag shift->tx->res->dom->at( 'form' ) } )
         ->element_exists( 'form button', 'submit button exists' )
-        ->element_exists( qq{a[href="/plan/$plan_id/trigger/"]}, 'add trigger link exists' )
+        ->element_exists( qq{a[href="/plan/$plan_id/trigger/?type=Webhook"]}, 'add trigger link exists' )
+        ->or(sub { diag shift->tx->res->dom->at( '.add-trigger-types' ) })
         ->element_exists( qq{a[href="/plan/$plan_id/trigger/$trigger_id"]}, 'edit trigger link exists' )
         ->text_like(
             qq{a[href="/plan/$plan_id/trigger/$trigger_id"]},

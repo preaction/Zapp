@@ -4,10 +4,12 @@ package Zapp::Trigger;
 use Mojo::Base -base, -signatures;
 use Mojo::JSON qw( decode_json encode_json );
 use Scalar::Util qw( blessed );
+use Mojo::Loader qw( data_section );
 
 has app => ;
+has moniker => ;
 
-sub install( $self, $app ) {
+sub install( $self, $app, $config={} ) {
     $self->app( $app );
 }
 
@@ -40,9 +42,14 @@ sub enqueue( $self, $trigger_id, $context ) {
 
     # Should modify $input from the trigger input to the plan input, if
     # needed.
-    my $input = $self->app->formula->resolve( decode_json( $trigger->{input} ), $context );
+    my $raw_input = decode_json( $trigger->{input} );
+    my %input;
+    for my $field ( keys %$raw_input ) {
+        my $raw_value = $raw_input->{ $field }{ value };
+        $input{ $field } = $self->app->formula->resolve( $raw_value, $context );
+    }
 
-    my $run = $self->app->enqueue_plan( $trigger->{plan_id}, $input );
+    my $run = $self->app->enqueue_plan( $trigger->{plan_id}, \%input );
     $self->app->yancy->create(
         zapp_trigger_runs => {
             trigger_id => $trigger_id,

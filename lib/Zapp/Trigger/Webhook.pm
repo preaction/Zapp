@@ -18,8 +18,8 @@ use Mojo::JSON qw( decode_json );
 use Scalar::Util qw( blessed );
 use Yancy::Util qw( currym );
 
-sub install( $self, $app ) {
-    $self->SUPER::install( $app );
+sub install( $self, $app, $config={} ) {
+    $self->SUPER::install( $app, $config );
     # Set up base webhook handler
     $app->routes->any( '/webhook/:slug' )->to( cb => currym( $self, '_handle_webhook' ) );
 }
@@ -29,13 +29,18 @@ sub _handle_webhook( $self, $c ) {
     my $slug = $c->param( 'slug' );
     my $hook;
     # XXX: Yancy has no JSON query capability...
-    for my $h ( $c->yancy->list( zapp_triggers => { class => blessed $self } ) ) {
+    for my $h ( $c->yancy->list( zapp_triggers => { type => $self->moniker } ) ) {
         # XXX: Auto-decode JSON fields in Yancy
         my $config = $h->{config} = decode_json( $h->{config} );
         if ( $config->{slug} eq $slug ) {
             $hook = $h;
             last;
         }
+    }
+
+    if ( !$hook ) {
+        $c->log->warn( sprintf 'No webhook for slug %s', $slug );
+        return $c->reply->not_found;
     }
 
     # Map params to plan input

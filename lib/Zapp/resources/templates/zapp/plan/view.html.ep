@@ -24,9 +24,20 @@
     <div class="col">
         <div class="d-flex justify-content-between align-items-center">
             <h2>Triggers</h2>
-            %= link_to 'zapp.edit_trigger', { plan_id => $plan->{plan_id} }, class => 'btn btn-outline-secondary add', begin
-                <i class="fa fa-plus"></i> Add Trigger
-            % end
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="add-trigger" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fa fa-plus"></i> Add Trigger
+                </button>
+                <div class="dropdown-menu add-trigger-types" aria-labelledby="add-trigger">
+                    % for my $type ( keys %{ $c->zapp->triggers // {} } ) {
+                        <%= link_to $type,
+                            url_for('zapp.edit_trigger')->query( type => $type ),
+                            { plan_id => $plan->{plan_id} },
+                            class => 'dropdown-item',
+                        %>
+                    % }
+                </div>
+            </div>
         </div>
         % if ( my @triggers = @{ stash( 'triggers' ) // [] } ) {
             % for my $trigger ( @triggers ) {

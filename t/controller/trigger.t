@@ -53,13 +53,13 @@ subtest 'create/edit a trigger' => sub {
     my $plan_id = $plan->{plan_id};
 
     subtest 'create trigger form' => sub {
-        $t->get_ok( "/plan/$plan_id/trigger", form => { class => 'Zapp::Trigger::Webhook' } )
+        $t->get_ok( "/plan/$plan_id/trigger", form => { type => 'Webhook' } )
             ->status_is( 200 )
             ->element_exists( 'form' )
             ->attr_is( form => action => "/plan/$plan_id/trigger/" )
             ->attr_is( form => method => 'POST' )
-            ->element_exists( 'input[name=class]' )
-            ->attr_is( 'input[name=class]', value => 'Zapp::Trigger::Webhook' )
+            ->element_exists( 'input[name=type]' )
+            ->attr_is( 'input[name=type]', value => 'Webhook' )
             ->element_exists( 'input[name=plan_id]' )
             ->attr_is( 'input[name=plan_id]', value => $plan_id )
             ->element_exists( 'input[name=label]' )
@@ -85,7 +85,7 @@ subtest 'create/edit a trigger' => sub {
             form => {
                 label => 'Return to Sender',
                 description => 'Return to whence it came',
-                class => 'Zapp::Trigger::Webhook',
+                type => 'Webhook',
                 plan_id => $plan_id,
                 'config.method' => 'POST',
                 'config.slug' => 'received',
@@ -100,7 +100,7 @@ subtest 'create/edit a trigger' => sub {
         $trigger_id = $trigger->{trigger_id};
         is $trigger->{label}, 'Return to Sender', 'label is correct';
         is $trigger->{description}, 'Return to whence it came', 'description is correct';
-        is $trigger->{class}, 'Zapp::Trigger::Webhook', 'class is correct';
+        is $trigger->{type}, 'Webhook', 'type is correct';
         is_deeply decode_json( $trigger->{config} ),
             { method => 'POST', slug => 'received' },
             'config is correct';
@@ -115,7 +115,7 @@ subtest 'create/edit a trigger' => sub {
             form => {
                 label => 'Return to Us',
                 description => 'Return to whence it went',
-                class => 'Zapp::Trigger::Webhook',
+                type => 'Webhook',
                 plan_id => $plan_id,
                 'config.method' => 'POST',
                 'config.slug' => 'sent',
@@ -129,7 +129,7 @@ subtest 'create/edit a trigger' => sub {
         ok $trigger, 'trigger exists';
         is $trigger->{label}, 'Return to Us', 'label is correct';
         is $trigger->{description}, 'Return to whence it went', 'description is correct';
-        is $trigger->{class}, 'Zapp::Trigger::Webhook', 'class is correct';
+        is $trigger->{type}, 'Webhook', 'type is correct';
         is_deeply decode_json( $trigger->{config} ),
             { method => 'POST', slug => 'sent' },
             'config is correct';

@@ -10,8 +10,8 @@ use Mojo::Loader qw( data_section );
 has default_options => sub { undef };
 
 sub _value_label( $self, $config, $value ) {
-    my ( $label ) = map { $_->{label} } first { $_->{value} eq $value } $config->{options}->@*;
-    return $label // $value;
+    my $option = first { $_->{value} eq $value } $config->{options}->@*;
+    return $option->{label} // $value;
 }
 
 sub _field_values( $self, $config, $selected_value ) {

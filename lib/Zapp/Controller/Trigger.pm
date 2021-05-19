@@ -24,7 +24,7 @@ sub edit( $self ) {
         }
         else {
             $trigger = {
-                class => $self->param( 'class' ),
+                type => $self->param( 'type' ),
                 plan_id => $self->param( 'plan_id' ),
             };
         }

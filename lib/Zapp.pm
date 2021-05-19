@@ -124,7 +124,7 @@ sub startup( $self ) {
             if ( my $e = load_class( $trigger ) ) {
                 die "Could not load trigger class $trigger $e\n";
             }
-            $obj = $trigger->new;
+            $obj = $trigger->new( moniker => $name );
         }
         $obj->install( $self );
         $c->zapp->triggers->{ $name } = $obj;
@@ -587,7 +587,7 @@ CREATE TABLE zapp_run_notes (
 -- 2 up
 CREATE TABLE zapp_triggers (
     trigger_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    class VARCHAR(255) NOT NULL,
+    type VARCHAR(255) NOT NULL,
     label VARCHAR(255),
     description TEXT,
     plan_id BIGINT NOT NULL,
@@ -689,7 +689,7 @@ CREATE TABLE zapp_run_notes (
 
 CREATE TABLE zapp_triggers (
     trigger_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    class VARCHAR(255) NOT NULL,
+    type VARCHAR(255) NOT NULL,
     label VARCHAR(255),
     description TEXT,
     plan_id INTEGER NOT NULL REFERENCES zapp_plans ( plan_id ) ON DELETE CASCADE,
