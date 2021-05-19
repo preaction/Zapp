@@ -12,7 +12,7 @@
 <div class="plans-list">
 % for my $plan ( @{ $plans // [] } ) {
     <section data-plan-id="<%= $plan->{plan_id} %>">
-        <h2><%= $plan->{label} %></h2>
+        <h2><%= link_to $plan->{label}, 'zapp.get_plan', $plan %></h2>
         <p class="description text-pre-wrap text-break"><%= $plan->{description} %></p>
         <div class="buttons d-flex justify-content-between">
             <div>

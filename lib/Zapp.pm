@@ -136,13 +136,15 @@ sub startup( $self ) {
     # Create/edit plans
     # XXX: Make Yancy support this basic CRUD with relationships?
     # XXX: Otherwise, add custom JSON API
+    $self->routes->get( '/plan/create' )
+        ->to( 'plan#edit_plan' )->name( 'zapp.create_plan' );
+    $self->routes->post( '/plan/create' )
+        ->to( 'plan#save_plan' )->name( 'zapp.save_plan' );
+    $self->routes->get( '/plan/:plan_id' )
+        ->to( 'plan#get_plan' )->name( 'zapp.get_plan' );
     $self->routes->get( '/plan/:plan_id/edit' )
         ->to( 'plan#edit_plan' )->name( 'zapp.edit_plan' );
     $self->routes->post( '/plan/:plan_id/edit' )
-        ->to( 'plan#save_plan' )->name( 'zapp.save_plan' );
-    $self->routes->get( '/plan/create' )
-        ->to( 'plan#edit_plan' )->name( 'zapp.edit_plan' );
-    $self->routes->post( '/plan/create' )
         ->to( 'plan#save_plan' )->name( 'zapp.save_plan' );
     $self->routes->get( '/plan/:plan_id/delete' )
         ->to( 'plan#delete_plan' )->name( 'zapp.delete_plan' );

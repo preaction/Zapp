@@ -1,0 +1,34 @@
+
+<header>
+    <h1><%= $plan->{label} %></h1>
+    <div>
+        %= link_to 'zapp.edit_plan', $plan, class => 'btn btn-outline-secondary edit', begin
+            <i class="fa fa-pencil"></i> Edit
+        % end
+        %= link_to 'zapp.delete_plan', $plan, class => 'btn btn-outline-danger delete', begin
+            <i class="fa fa-times-circle"></i> Delete...
+        % end
+    </div>
+</header>
+
+<div><%= $plan->{description} %></div>
+
+<div class="row">
+    <div class="col">
+        <h2>Run</h2>
+        %= include 'zapp/partials/run_form', inputs => $plan->{inputs}
+    </div>
+    <div class="col">
+        <h2>Recent Runs</h2>
+        % if ( my @runs = @{ stash( 'runs' ) // [] } ) {
+            % for my $run ( @runs ) {
+                %= include 'zapp/partials/run', run => $run
+            % }
+            %# XXX: Add "More..." link
+        % }
+        % else {
+            No recent runs.
+        % }
+    </div>
+</div>
+

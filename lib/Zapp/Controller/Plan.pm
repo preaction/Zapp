@@ -256,8 +256,13 @@ sub list_plans( $self ) {
 }
 
 sub get_plan( $self ) {
-    # XXX: List plan runs and triggers
-    # XXX: Show form to run plan
+    my $plan = $self->app->get_plan( $self->param( 'plan_id' ) ) // return $self->reply->not_found;
+    my @runs = $self->yancy->list( zapp_runs => { plan_id => $plan->{plan_id} }, { limit => 10 } );
+    return $self->render(
+        'zapp/plan/view',
+        plan => $plan,
+        runs => \@runs,
+    );
 }
 
 1;

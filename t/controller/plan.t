@@ -990,7 +990,8 @@ subtest 'list plans' => sub {
     );
 
     $t->get_ok( '/' )->status_is( 200 )
-        ->text_like( '.plans-list > :nth-child(1) h2', qr{Deliver a package} )
+        ->text_like( '.plans-list > :nth-child(1) h2 a', qr{Deliver a package} )
+        ->attr_is( '.plans-list > :nth-child(1) h2 a', href => "/plan/$plans[0]{plan_id}" )
         ->text_like( '.plans-list > :nth-child(1) .description', qr{To a dangerous place} )
         ->element_exists( '.plans-list > :nth-child(1) a.run', 'run button exists' )
         ->attr_is( '.plans-list > :nth-child(1) a.run', href => '/plan/' . $plans[0]{plan_id} . '/run' )
@@ -1002,7 +1003,8 @@ subtest 'list plans' => sub {
         ->element_exists_not( '.plans-list > :nth-child(1) [data-run-started]', 'run started not shown' )
         ->element_exists_not( '.plans-list > :nth-child(1) [data-run-state]', 'run state not shown' )
 
-        ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
+        ->text_like( '.plans-list > :nth-child(2) h2 a', qr{Clean the ship} )
+        ->attr_is( '.plans-list > :nth-child(2) h2 a', href => "/plan/$plans[1]{plan_id}" )
         ->text_like( '.plans-list > :nth-child(2) .description', qr{Of any remains of the crew} )
         ->element_exists( '.plans-list > :nth-child(2) a.run', 'run button exists' )
         ->attr_is( '.plans-list > :nth-child(2) a.run', href => '/plan/' . $plans[1]{plan_id} . '/run' )
@@ -1014,7 +1016,8 @@ subtest 'list plans' => sub {
         ->element_exists_not( '.plans-list > :nth-child(2) [data-run-started]', 'run started not shown' )
         ->element_exists_not( '.plans-list > :nth-child(2) [data-run-state]', 'run state not shown' )
 
-        ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
+        ->text_like( '.plans-list > :nth-child(3) h2 a', qr{Find a replacement crew} )
+        ->attr_is( '.plans-list > :nth-child(3) h2 a', href => "/plan/$plans[2]{plan_id}" )
         ->text_like( '.plans-list > :nth-child(3) .description', qr{After their inevitable deaths} )
         ->element_exists( '.plans-list > :nth-child(3) a.run', 'run button exists' )
         ->attr_is( '.plans-list > :nth-child(3) a.run', href => '/plan/' . $plans[2]{plan_id} . '/run' )
@@ -1052,12 +1055,12 @@ subtest 'list plans' => sub {
         );
 
         $t->get_ok( '/' )->status_is( 200 )
-            ->text_like( '.plans-list > :nth-child(3) h2', qr{Deliver a package} )
+            ->text_like( '.plans-list > :nth-child(3) h2 a', qr{Deliver a package} )
             ->element_exists_not( '.plans-list > :nth-child(3) [data-run-finished]', 'last run finished not showing' )
             ->element_exists_not( '.plans-list > :nth-child(3) [data-run-started]', 'last run started not showing' )
             ->element_exists_not( '.plans-list > :nth-child(3) [data-run-state]', 'last run state not showing' )
 
-            ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
+            ->text_like( '.plans-list > :nth-child(2) h2 a', qr{Clean the ship} )
             ->element_exists( '.plans-list > :nth-child(2) [data-run-finished]', 'last run finished showing' )
             ->attr_is(
                 '.plans-list > :nth-child(2) [data-run-finished]',
@@ -1067,7 +1070,7 @@ subtest 'list plans' => sub {
             ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-02 00:00:00' )
             ->text_is( '.plans-list > :nth-child(2) [data-run-state]', 'failed', 'run state shown' )
 
-            ->text_like( '.plans-list > :nth-child(1) h2', qr{Find a replacement crew} )
+            ->text_like( '.plans-list > :nth-child(1) h2 a', qr{Find a replacement crew} )
             ->element_exists( '.plans-list > :nth-child(1) [data-run-finished]', 'last run finished showing' )
             ->attr_is(
                 '.plans-list > :nth-child(1) [data-run-finished]',
@@ -1100,7 +1103,7 @@ subtest 'list plans' => sub {
         );
 
         $t->get_ok( '/' )->status_is( 200 )
-            ->text_like( '.plans-list > :nth-child(1) h2', qr{Deliver a package} )
+            ->text_like( '.plans-list > :nth-child(1) h2 a', qr{Deliver a package} )
             ->element_exists( '.plans-list > :nth-child(1) [data-run-started]', 'last run started showing' )
             ->attr_is(
                 '.plans-list > :nth-child(1) [data-run-started]',
@@ -1110,7 +1113,7 @@ subtest 'list plans' => sub {
             ->attr_is( '.plans-list > :nth-child(1) time', datetime => '2021-02-04 00:00:00' )
             ->text_is( '.plans-list > :nth-child(1) [data-run-state]', 'active', 'run state shown' )
 
-            ->text_like( '.plans-list > :nth-child(2) h2', qr{Clean the ship} )
+            ->text_like( '.plans-list > :nth-child(2) h2 a', qr{Clean the ship} )
             ->element_exists( '.plans-list > :nth-child(2) [data-run-created]', 'last run created showing' )
             ->attr_is(
                 '.plans-list > :nth-child(2) [data-run-created]',
@@ -1120,7 +1123,7 @@ subtest 'list plans' => sub {
             ->attr_is( '.plans-list > :nth-child(2) time', datetime => '2021-02-03 00:00:00' )
             ->text_is( '.plans-list > :nth-child(2) [data-run-state]', 'inactive', 'run state shown' )
 
-            ->text_like( '.plans-list > :nth-child(3) h2', qr{Find a replacement crew} )
+            ->text_like( '.plans-list > :nth-child(3) h2 a', qr{Find a replacement crew} )
             ->element_exists( '.plans-list > :nth-child(3) [data-run-finished]', 'last run finished showing' )
             ->attr_is(
                 '.plans-list > :nth-child(3) [data-run-finished]',
@@ -1133,6 +1136,42 @@ subtest 'list plans' => sub {
     };
 
     # XXX: Filter plans by label/description
+};
+
+subtest 'view plan' => sub {
+    my $plan = $t->app->create_plan({
+        label => 'Deliver Pillows',
+        tasks => [
+            {
+                label => 'Get A Pillow',
+                name => 'GetPillow',
+                class => 'Zapp::Task::Script',
+                input => encode_json({
+                    script => 'echo We could be faster with more pillows!',
+                }),
+            },
+        ],
+        inputs => [
+            {
+                name => 'color',
+                type => 'string',
+                description => 'What color of pillow?',
+                value => encode_json( 'White' ),
+            },
+        ],
+    });
+
+    my $plan_id = $plan->{plan_id};
+    $t->get_ok( "/plan/$plan_id" )->status_is( 200 )
+        ->text_is( h1 => $plan->{label} )
+        ->element_exists( qq{a[href="/plan/$plan_id/edit"]}, 'edit link exists' )
+        ->element_exists( qq{a[href="/plan/$plan_id/delete"]}, 'delete link exists' )
+        ->element_exists( form => 'run form exists' )
+        ->attr_is( form => action => '/run' )
+        ->element_exists( '[name="input[0].value"]', 'Color input exists' )
+        ->or(sub { diag shift->tx->res->dom->at( 'form' ) } )
+        ->element_exists( 'form button', 'submit button exists' )
+        ;
 };
 
 subtest 'delete plan' => sub {
