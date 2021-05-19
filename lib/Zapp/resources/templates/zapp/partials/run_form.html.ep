@@ -25,9 +25,8 @@
                     my $input_dom = prefix_field( $input_field, "input[$input_num]" );
                     $input_dom->children->[0]->attr( 'aria-describedby', "input[$input_num].description" );
                 %><%== $input_dom %>
-                <small class="form-text text-break text-pre-wrap" id="input[<%= $input_num %>].description">
-                    %= $input->{description}
-                </small>
+                <small class="form-text text-break text-pre-wrap" id="input[<%= $input_num %>].description"
+                    ><%= $input->{description} %></small>
             </div>
         % }
     % }
