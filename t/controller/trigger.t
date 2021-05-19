@@ -64,6 +64,7 @@ subtest 'create/edit a trigger' => sub {
             ->attr_is( 'input[name=plan_id]', value => $plan_id )
             ->element_exists( 'input[name=label]' )
             ->element_exists( '[name=description]' )
+            ->element_exists( 'form button' )
             ;
 
         # Trigger input form
