@@ -1,3 +1,6 @@
+<%
+    layout 'zapp';
+%>
 
 <header>
     <h1><%= $plan->{label} %></h1>
