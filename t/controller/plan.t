@@ -25,6 +25,8 @@ subtest 'create new plan' => sub {
             ->or( $dump_debug )
             ->element_exists( 'form#plan', 'form exists' )
             ->attr_is( 'form#plan', enctype => 'multipart/form-data', 'form enctype correct' )
+            ->attr_is( 'form#plan', action => '/plan/create', 'form action correct' )
+            ->attr_is( 'form#plan', method => 'POST', 'form method correct' )
             ->element_exists(
                 'label[for=label]',
                 'label label exists',
@@ -235,9 +237,11 @@ subtest 'edit existing plan' => sub {
     my @task_ids = map { $_->{task_id} } @{ $plan->{tasks} };
 
     subtest 'edit plan form' => sub {
-        $t->get_ok( "/plan/$plan_id/edit" )->status_is( 200 );
-        $t->$dump_debug;
-        $t->element_exists( 'form#plan', 'form exists' )
+        $t->get_ok( "/plan/$plan_id/edit" )->status_is( 200 )
+            ->or( $dump_debug )
+            ->element_exists( 'form#plan', 'form exists' )
+            ->attr_is( 'form#plan', action => "/plan/$plan_id/edit", 'form action correct' )
+            ->attr_is( 'form#plan', method => 'POST', 'form method correct' )
             ->element_exists(
                 'label[for=label]',
                 'label label exists',
