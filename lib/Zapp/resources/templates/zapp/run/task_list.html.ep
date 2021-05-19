@@ -46,7 +46,7 @@
             ( 'aria-selected' => 'true' )x!!( $task->{state} eq 'active' ),
             ( 'aria-disabled' => 'true', tabindex => '-1' )x!!( $task->{state} eq 'inactive' ),
         begin %>
-            %= $task->{label} // $task->{name} // ( ( $task->{class} // '' ) =~ s/^Zapp::Task:://r )
+            %= $task->{label} || $task->{name} || ( ( $task->{class} // '' ) =~ s/^Zapp::Task:://r )
         <% end %>
     % }
 </div>
@@ -69,7 +69,7 @@
             <h2>Input</h2>
             <dl>
             % for my $input ( @inputs ) {
-                <dt><%= $input->{label} // ( $input->{name} =~ s/_/ /gr ) %></dt>
+                <dt><%= $input->{label} || ( $input->{name} =~ s/_/ /gr ) %></dt>
                 % my $type = $self->app->zapp->types->{ $input->{type} } or die qq{Could not find type "$input->{type}"};
                 <dd>
                     %= $type->display_value( $c, $input->{config}, $input->{value} )
