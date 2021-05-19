@@ -20,7 +20,7 @@
                     <i class="fa fa-arrow-right"></i> Run...
                 % end
                 % if ( my $run = $plan->{last_run} ) {
-                    Last run <%= include 'zapp/partials/run', run => $plan->{last_run} %>
+                    <%= include 'zapp/partials/run', run => $plan->{last_run} %>
                 % }
             </div>
             <div>
