@@ -1166,6 +1166,17 @@ subtest 'view plan' => sub {
     });
 
     my $plan_id = $plan->{plan_id};
+
+    # Add a trigger to show
+    my $trigger_id = $t->app->yancy->create( zapp_triggers => {
+        plan_id => $plan->{plan_id},
+        label => 'PlanEx Button',
+        description => 'One-click ordering!',
+        class => 'Zapp::Trigger::Webhook',
+        config => encode_json({ method => 'POST', slug => 'pillow' }),
+        input => encode_json({ color => '=params.color' }),
+    } );
+
     $t->get_ok( "/plan/$plan_id" )->status_is( 200 )
         ->text_is( h1 => $plan->{label} )
         ->element_exists( qq{a[href="/plan/$plan_id/edit"]}, 'edit link exists' )
@@ -1175,6 +1186,13 @@ subtest 'view plan' => sub {
         ->element_exists( '[name="input[0].value"]', 'Color input exists' )
         ->or(sub { diag shift->tx->res->dom->at( 'form' ) } )
         ->element_exists( 'form button', 'submit button exists' )
+        ->element_exists( qq{a[href="/plan/$plan_id/trigger/"]}, 'add trigger link exists' )
+        ->element_exists( qq{a[href="/plan/$plan_id/trigger/$trigger_id"]}, 'edit trigger link exists' )
+        ->text_like(
+            qq{a[href="/plan/$plan_id/trigger/$trigger_id"]},
+            qr{PlanEx Button},
+            'edit trigger link has correct text',
+        )
         ;
 };
 

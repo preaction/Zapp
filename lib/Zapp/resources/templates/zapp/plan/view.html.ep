@@ -22,6 +22,24 @@
         %= include 'zapp/partials/run_form', inputs => $plan->{inputs}
     </div>
     <div class="col">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>Triggers</h2>
+            %= link_to 'zapp.edit_trigger', { plan_id => $plan->{plan_id} }, class => 'btn btn-outline-secondary add', begin
+                <i class="fa fa-plus"></i> Add Trigger
+            % end
+        </div>
+        % if ( my @triggers = @{ stash( 'triggers' ) // [] } ) {
+            % for my $trigger ( @triggers ) {
+                <%= link_to 'zapp.edit_trigger', { plan_id => $plan->{plan_id}, trigger_id => $trigger->{trigger_id} },
+                    class => 'btn btn-link', begin %>
+                    %= $trigger->{label}
+                % end
+            % }
+        % }
+        % else {
+            No triggers.
+        % }
+
         <h2>Recent Runs</h2>
         % if ( my @runs = @{ stash( 'runs' ) // [] } ) {
             % for my $run ( @runs ) {
