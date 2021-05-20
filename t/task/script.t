@@ -8,7 +8,6 @@ This tests the Zapp::Task::Script class.
 use Mojo::Base -strict, -signatures;
 use Test::Zapp;
 use Test::More;
-use Test::mysqld;
 use Mojo::JSON qw( decode_json encode_json false true );
 use Mojo::Loader qw( data_section );
 use Zapp::Task::Script;
