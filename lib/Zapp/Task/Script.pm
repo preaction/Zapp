@@ -82,6 +82,12 @@ sub run( $self, $input ) {
     # character...
     my $script = $input->{script} =~ s/\r\n/\n/gr;
 
+    my $exe = $ENV{SHELL} // "/bin/sh";
+    if ( $script =~ /^\#!([^\n]+)/s ) {
+        $exe = $1;
+        $script =~ s/^\#!\n+//;
+    }
+
     my $cwd = cwd;
     my $dir = tempdir;
     chdir $dir;
@@ -98,14 +104,8 @@ sub run( $self, $input ) {
         }
         #; $self->app->log->debug( "Environment: \n" . join "\n", map { "$_=$ENV{$_}" } keys %ENV ); 
 
-        if ( $input->{script} =~ /^\#!/ ) {
-            $file->chmod( 0700 );
-            $pid = open3( my $stdin, $stdout, $stderr, $file );
-        }
-        else {
-            $pid = open3( my $stdin, $stdout, $stderr, $ENV{SHELL} // '/bin/sh', $file );
-        }
-        # XXX: Put PID somewhere we can use it
+        $pid = open3( my $stdin, $stdout, $stderr, $exe, $file );
+        # XXX: Put PID somewhere we can use it while process is running
     }
 
     if ( !$pid || $pid <= 0 ) {
