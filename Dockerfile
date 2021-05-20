@@ -7,7 +7,7 @@ RUN cpanm --installdeps --notest /zapp
 
 # Then install the rest of Zapp
 COPY ./ /zapp/
-RUN cpanm -v /zapp \
+RUN cpanm --notest -v /zapp \
     && rm -rf /zapp
 
 # XXX: Create all-in-one process
