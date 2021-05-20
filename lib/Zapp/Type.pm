@@ -1,21 +1,49 @@
 package Zapp::Type;
+# ABSTRACT: Input/output handling for data types
 
 =head1 SYNOPSIS
 
+    package My::Type;
+    use Mojo::Base 'Zapp::Type';
+    sub process_config( $self, $c, $form_value ) {
+        # Return the $config_value
+    }
+
+    sub process_input( $self, $c, $config_value, $form_value ) {
+        # Return the $input_value
+    }
+
+    sub task_input( $self, $config_value, $input_value ) {
+        # Return the $task_value
+    }
+
+    sub task_output( $self, $config_value, $task_value ) {
+        # Return the $input_value
+    }
+
+    __DATA__
+    @@ config.html.ep
+    %# Form to configure the input
+
+    @@ input.html.ep
+    %# Form for the user to fill in
+
+    @@ output.html.ep
+    %# Template to display the value
+
 =head1 DESCRIPTION
 
-1. User sees blank config field
-2. User sees filled-in config field
-3. User sees blank input field
-4. User sees filled-in input field
-5. User sees display field
+This is the base class for Zapp types. Types are configured when
+building a plan, then filled out by the user when running the plan.
+Tasks then get the type's value as input, and can return a value
+of the given type.
 
 =head2 Type Value
 
-The type value is returned from the input methods and should contain all
-the information needed to use the value in a task. This does not need to
-be the actual content that tasks will use, but can be an identifier to
-look up that content.
+The type value returned from L</process_input> should contain all the
+information needed to use the value in a task. This does not need to be
+the actual content that tasks will use, but can be an identifier to look
+up that content.
 
 For example, the L<Zapp::Type::File> type stores a path relative to the
 application's home directory. When saving plans or starting runs, the
@@ -132,7 +160,12 @@ sub task_output( $self, $config_value, $task_value ) {
     ...;
 }
 
-# For display on run view pages
+=head2 display_value
+
+Show the value on the run page.
+
+=cut
+
 sub display_value( $self, $c, $config_value, $input_value ) {
     my $class = blessed $self;
     my $tmpl = data_section( $class, 'output.html.ep' );

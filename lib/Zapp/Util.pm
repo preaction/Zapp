@@ -1,4 +1,5 @@
 package Zapp::Util;
+# ABSTRACT: General utilities for Zapp
 
 use Mojo::Base 'Exporter', -signatures;
 use Text::Balanced qw( extract_delimited );
@@ -8,13 +9,29 @@ our @EXPORT_OK = qw(
     ansi_colorize
 );
 
+=sub build_data_from_params
+
+Build a data structure from the parameters in the given request,
+optionally with the given prefix. Parameter names are paths in the
+resulting data structure.
+
+    # ?name.first=Turanga&name.last=Leela
+    { name => { first => 'Turanga', last => 'Leela' } }
+
+    # ?crew[0]=Fry&crew[1]=Leela&crew[2]=Zoidberg%20Why%20Not
+    { crew => [ 'Fry', 'Leela', 'Zoidberg Why Not' ] }
+
+    # ?[0].name=Hubert&[0].age=160&[1].name=Cubert&[1].age=12
+    [ { name => 'Hubert', age => 160 }, { name => 'Cubert', age => 12 } ]
+
+=cut
+
 sub build_data_from_params( $c, $prefix='' ) {
     my $data = '';
     # XXX: Move to Yancy (Util? Controller?)
     my $dot = $prefix ? '.' : '';
     my @params = grep /^$prefix(?:\[\d+\]|\Q$dot\E\w+)/, $c->req->params->names->@*;
     for my $param ( @params ) {
-        ; $c->log->debug( "Param: $param" );
         my $value = $c->param( $param );
         my $path = $param =~ s/^$prefix//r;
         my $slot = get_slot_from_data( $path, \$data );
@@ -22,28 +39,19 @@ sub build_data_from_params( $c, $prefix='' ) {
     }
     my @uploads = grep $_->name =~ /^$prefix(?:\[\d+\]|\.\w+)/, $c->req->uploads->@*;
     for my $upload ( @uploads ) {
-        ; $c->log->debug( "Upload: " . $upload->name );
         my $path = $upload->name =~ s/^$prefix//r;
         my $slot = get_slot_from_data( $path, \$data );
         $$slot = $upload;
     }
-    ; $c->log->debug( "Build data: " . $c->dumper( $data ) );
     return $data ne '' ? $data : undef;
 }
 
-sub get_path_from_schema( $path, $schema ) {
-    my $slot = $schema;
-    for my $part ( $path =~ m{((?:\w+|\[\d*\]))(?=\.|\[|$)}g ) {
-        if ( $part =~ /^\[\d*\]$/ ) {
-            $slot = $slot->{ items };
-            next;
-        }
-        else {
-            $slot = $slot->{ properties }{ $part };
-        }
-    }
-    return $slot;
-}
+=sub get_slot_from_data
+
+Get a reference to the given path in the given data. Can be used to set values
+at paths.
+
+=cut
 
 sub get_slot_from_data( $path, $data ) {
     my $slot = $data;
@@ -66,10 +74,45 @@ sub get_slot_from_data( $path, $data ) {
     return $slot;
 }
 
+=sub get_path_from_data
+
+Get the value for a given path out of the given data.
+
+=cut
+
 sub get_path_from_data( $path, $data ) {
     my $slot = get_slot_from_data( $path, \$data );
     return $$slot;
 }
+
+=sub get_path_from_schema
+
+Get the schema for a given path out of the given JSON Schema. Will traverse
+object C<properties> and array C<items> to find the schema.
+
+=cut
+
+sub get_path_from_schema( $path, $schema ) {
+    my $slot = $schema;
+    for my $part ( $path =~ m{((?:\w+|\[\d*\]))(?=\.|\[|$)}g ) {
+        if ( $part =~ /^\[\d*\]$/ ) {
+            $slot = $slot->{ items };
+            next;
+        }
+        else {
+            $slot = $slot->{ properties }{ $part };
+        }
+    }
+    return $slot;
+}
+
+=sub prefix_field
+
+Add a prefix to any field in the given HTML or L<Mojo::DOM> object.
+Prefixes are added to the C<name> and C<id> attributes of any form inputs, and
+the C<for> attribute of any labels.
+
+=cut
 
 sub prefix_field( $dom, $prefix ) {
     if ( ref $dom ne 'Mojo::DOM' ) {
@@ -97,6 +140,14 @@ sub prefix_field( $dom, $prefix ) {
     return $dom;
 }
 
+=sub rename_field
+
+Rename any form fields in the given HTML or L<Mojo::DOM> object using
+the provided mapping. This changes the field C<name> and C<id>
+attributes, and also the corresponding label C<for> attribute.
+
+=cut
+
 sub rename_field( $dom, %map ) {
     if ( ref $dom ne 'Mojo::DOM' ) {
         $dom = Mojo::DOM->new( $dom );
@@ -120,6 +171,30 @@ sub rename_field( $dom, %map ) {
 
     return $dom;
 }
+
+=sub parse_zapp_attrs
+
+Parse special C<data-zapp> attributes in the given HTML or L<Mojo::DOM> object.
+These attributes add dynamic features to templates for L<Zapp::Task>, L<Zapp::Type>,
+or L<Zapp::Trigger>.
+
+=over
+
+=item data-zapp-if="<expression>"
+
+Display this element if the given C<< <expression> >> is true. The expression can
+contain string literals, data paths, and the following operators:
+
+    == != >  <  >= <=
+    eq ne gt lt ge le
+
+If the expression is true, the element is given the C<zapp-visible> class and
+will appear. Expressions are evaluated in Perl when rendering the template and
+in JavaScript when the user is modifying the form.
+
+=cut
+
+# XXX: Add data-zapp-array here
 
 sub parse_zapp_attrs( $dom, $data ) {
     if ( ref $dom ne 'Mojo::DOM' ) {
@@ -216,6 +291,14 @@ $colors{256} = {
     ( map { 232 + $_ => sprintf 'rgb(%d,%d,%d)', (8 + $_*10)x3 } 0..23 ),
 };
 
+=sub ansi_colorize
+
+Apply ANSI coloring and formatting to the given text. This is used to render
+output from a program that uses ANSI escape sequences.
+
+    my $html = ansi_colorize( $stdout );
+
+=cut
 
 sub ansi_colorize( $text ) {
     my @parts = split /\e\[([\d;]*)m/, $text;

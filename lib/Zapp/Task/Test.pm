@@ -1,11 +1,29 @@
 package Zapp::Task::Test;
+# ABSTRACT: Test the output of previous tasks
+
+=head1 DESCRIPTION
+
+This task allows testing of previous tasks' output. If any test fails,
+this task fails.
+
+=head2 Output
+
+    tests       - An array of test hashes with the following fields
+        expr        - An expression to evaluate
+        op          - An operator
+        value       - The expected value
+        expr_value  - The value of the evaluated expression
+        pass        - True if the test passed
+
+=head1 SEE ALSO
+
+=cut
 
 use Mojo::Base 'Zapp::Task', -signatures;
 use Yancy::Util qw( currym );
 
 sub run( $self, $input ) {
     my $fail = 0;
-    ; $self->app->log->info( 'Running tests' );
     my @tests = $input->{tests}->@*;
     for my $test ( @tests ) {
         # Stringify whatever data we get because the value to test

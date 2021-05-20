@@ -84,7 +84,6 @@ sub execute( $self ) {
 }
 
 sub prepare( $self, $task_input ) {
-    ; $self->app->log->debug( 'Preparing prompt: ' . $self->app->dumper( $self->zapp_task ) );
     # Delay re-running the job for a while
     $self->retry({ delay => $DELAY });
     # Update the Zapp status to display the action form

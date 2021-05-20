@@ -16,10 +16,8 @@ sub run( $self, $task_input ) {
     my $form_input = $self->info->{notes}{input};
     # Clicking a button adds the name to the form input
     if ( exists $form_input->{confirm} ) {
-        ; $self->app->log->debug( 'Confirmed!' );
         return $self->finish( { is_success => 1 } );
     }
-    ; $self->app->log->debug( 'Cancelled!' );
     return $self->fail( { is_success => 0 } );
 }
 

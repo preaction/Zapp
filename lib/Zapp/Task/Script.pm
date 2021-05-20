@@ -1,4 +1,23 @@
 package Zapp::Task::Script;
+# ABSTRACT: Run a Script
+
+=head1 DESCRIPTION
+
+This task executes arbitrary scripts. By default, they are run as
+scripts for the current shell. With a shebang line (e.g.
+C<#!/usr/bin/perl>), any arbitrary interpreter can be invoked.
+
+=head2 Output
+
+    output      - The output of the script
+    pid         - The process ID of the script
+    exit        - The exit code
+    info        - A text description of the exit code
+
+=head1 SEE ALSO
+
+=cut
+
 use Mojo::Base 'Zapp::Task', -signatures;
 use Mojo::File qw( tempdir tempfile );
 use IPC::Open3 qw( open3 );
@@ -58,7 +77,6 @@ sub schema( $class ) {
 my $ANSI = qr{ \e \[ [HJ] }x;
 
 sub run( $self, $input ) {
-    ; $self->app->log->debug( 'Running script: ' . $input->{script} );
     # The script came from the browser's form with \r\n as line ending
     # character, but we need to use the native OS's line ending
     # character...
@@ -113,8 +131,6 @@ sub run( $self, $input ) {
         $error_output .= $line =~ s/$ANSI//gr;
         # XXX: Put output somewhere it can be seen while process runs
     }
-
-    $self->app->log->debug( "STDOUT: $output\n\nSTDERR: $error_output\n" );
 
     waitpid $pid, 0;
     my $exit = $?;

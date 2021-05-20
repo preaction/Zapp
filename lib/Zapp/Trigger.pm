@@ -1,13 +1,60 @@
 package Zapp::Trigger;
 # ABSTRACT: Trigger a plan from an event
 
+=head1 SYNOPSIS
+
+    package My::Trigger;
+    use Mojo::Base 'Zapp::Trigger', -signatures;
+
+    sub install( $self, $app, $config={} ) {
+        $self->SUPER::install( $app, $config );
+        # Set up trigger to call $self->enqueue when needed
+    }
+
+    __DATA__
+    @@ config.html.ep
+    %# Form to configure trigger
+
+=head1 DESCRIPTION
+
+This is the base class for Zapp triggers. Triggers handle events and run
+configured plans. Triggers can accept configuration and plan input.
+
+=head1 SEE ALSO
+
+L<Zapp>
+
+=cut
+
 use Mojo::Base -base, -signatures;
 use Mojo::JSON qw( decode_json encode_json );
 use Scalar::Util qw( blessed );
 use Mojo::Loader qw( data_section );
 
+=attr app
+
+The application object.
+
+=cut
+
 has app => ;
+
+=attr moniker
+
+The name of the trigger. Multiple configurations for a trigger class
+should have different names.
+
+=cut
+
 has moniker => ;
+
+=method install
+
+Called automatically when adding the trigger. Should be overridden to set up
+any routes, timers, connections, or other kind of listeners to fire the
+configured triggers.
+
+=cut
 
 sub install( $self, $app, $config={} ) {
     $self->app( $app );
@@ -34,6 +81,14 @@ sub set( $self, $trigger_id, $data ) {
     $data->{input} &&= encode_json( $data->{input} );
     return $self->app->yancy->set( zapp_triggers => $trigger_id, $data );
 }
+
+=method enqueue
+
+Enqueue the plan for the given trigger ID. The plan input will be processed via
+L<Zapp::Formula/resolve>, passing in the given C<context> hash reference of data.
+Returns the run enqueued (from L<Zapp/enqueue_plan>).
+
+=cut
 
 sub enqueue( $self, $trigger_id, $context ) {
     # Called by the trigger to enqueue a job. Creates a row in

@@ -1,8 +1,14 @@
 package Zapp;
 our $VERSION = '0.001';
-# ABSTRACT: Write a sentence about what it does
+# ABSTRACT: Plan building, job creating web app
 
 =head1 SYNOPSIS
+
+    # Start the web application
+    zapp daemon
+
+    # Start the task runner
+    zapp minion worker
 
 =head1 DESCRIPTION
 
@@ -30,8 +36,19 @@ use Mojo::Loader qw( find_modules load_class );
 use Mojo::File qw( curfile );
 use Zapp::Formula;
 
+=attr formula
+
+The formula interpreter. Usually a L<Zapp::Formula> object.
+
+=cut
+
 has formula => sub { Zapp::Formula->new };
-has action_queue => 'zapp_action';
+
+=method startup
+
+Initialize the application. Called automatically by L<Mojolicious>.
+
+=cut
 
 sub startup( $self ) {
 
@@ -226,6 +243,12 @@ sub create_plan( $self, $plan ) {
     return $plan;
 }
 
+=method get_plan
+
+Get a plan and all related data (tasks, inputs).
+
+=cut
+
 sub get_plan( $self, $plan_id ) {
     my $plan = $self->yancy->get( zapp_plans => $plan_id ) || {};
     if ( my $plan_id = $plan->{plan_id} ) {
@@ -313,9 +336,9 @@ sub enqueue_plan( $self, $plan_id, $input={}, %opt ) {
     return $run;
 }
 
-=method enqueue_run
+=method get_tasks
 
-Re-enqueue a run.
+Get the tasks for a plan/run from the given table.
 
 =cut
 
@@ -348,6 +371,12 @@ sub get_tasks( $self, $table, $search ) {
 
     return @ordered_tasks;
 }
+
+=method enqueue_run
+
+Re-enqueue a run.
+
+=cut
 
 sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
     $opt{queue} ||= 'zapp';
@@ -430,6 +459,12 @@ sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
     return $new_run;
 }
 
+=method
+
+Create L<Minion> jobs for a run using L<Minion/enqueue>.
+
+=cut
+
 sub enqueue_tasks( $self, $input, @tasks ) {
     my @jobs;
     # Create Minion jobs for this run
@@ -479,6 +514,12 @@ sub enqueue_tasks( $self, $input, @tasks ) {
 
     return \@jobs;
 }
+
+=method list_tasks
+
+List tasks for a run.
+
+=cut
 
 sub list_tasks( $self, $run_id, $opt={} ) {
     my @tasks = $self->yancy->list(

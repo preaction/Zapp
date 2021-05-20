@@ -1,4 +1,25 @@
 package Zapp::Task::Request;
+# ABSTRACT: Make an HTTP Request
+
+=head1 DESCRIPTION
+
+This task makes an HTTP request for a web site.
+
+=head2 Output
+
+    is_success          - True if the response was successful
+    code                - The response code (like 200 or 404)
+    message             - The HTTP message (like "OK" or "Not Found")
+    json                - If the response was JSON, the decoded JSON structure
+    file                - If the response was a file, the path to the file
+    body                - If the response was anything else, the response body
+    headers             - The headers from the response
+        content_type    - The Content-Type header
+
+=head1 SEE ALSO
+
+=cut
+
 use Mojo::Base 'Zapp::Task', -signatures;
 use Mojo::JSON qw( false true encode_json );
 

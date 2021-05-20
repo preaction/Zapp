@@ -1,4 +1,5 @@
 package Zapp::Task;
+# ABSTRACT: Base class for individual steps in a job
 
 =head1 SYNOPSIS
 
@@ -12,6 +13,8 @@ package Zapp::Task;
             greeting => "Hello, $input->{who}!",
         });
     }
+
+    1;
 
     __DATA__
     @@ input.html.ep
@@ -30,9 +33,40 @@ package Zapp::Task;
 
 =head1 DESCRIPTION
 
+L<Zapp::Task> is the base class for all tasks. Tasks are the individual
+steps of a job. Each task has an input template to configure its input
+and an output template to display its output. Task input and output are
+declared with JSON Schema (see the L</schema> method), and input will be
+processed with L<Zapp::Formula> before being given to L</run>.
+
+=head2 Creating a Task
+
+To create a task, start by extending this class. Create a C<run> method
+that takes one argument, C<$input>.  Inside this method, do the work you
+want to do. Then, in the C<DATA> section of your module, create two
+templates: C<input.html.ep> for the input form, and C<output.html.ep>
+for the output display.
+
+The input form should have a set of fields. Field names will be used as
+the keys to the C<$input> hash reference given to the C<run> method. You
+can build complex data structures using C<[\d]> to make arrays and C<.>
+to nest hashes (see L<Zapp::Util/build_data_from_params>).
+
+    <!-- { name => 'Planet Express', loc => { city => 'New New York' } } -->
+    <input name="name" value="Planet Express">
+    <input name="loc.city" value="New New York">
+
+Input forms can also use special C<data-zapp-*> attributes to add
+dynamic features without writing the JavaScript yourself. See
+L<Mojo::Util/parse_zapp_attrs>.
+
+Your C<run> method should do the actual work, and then call either
+C<finish> (for success) or C<fail> (for failure) with the output data.
+This data will be given to the C<output.html.ep> template for display.
+
 =head1 SEE ALSO
 
-L<Zapp::Task::Action>, L<Zapp>
+L<Zapp::Task::Action>, L<Minion::Job>, L<Zapp>
 
 =cut
 
@@ -146,7 +180,10 @@ sub execute( $self, @args ) {
 sub finish( $self, $output=undef ) {
     # Minion calls this again while reaping the child process, so bail
     # out if we're in the parent process after having started a child.
+    # XXX: This may be a problem when trying to run a job synchronously
+    # in a web request...
     return $self->SUPER::finish if $self->{pid};
+
     my $run_job = $self->zapp_task;
     my ( $run_id, $task_id ) = $run_job->@{qw( run_id task_id )};
 

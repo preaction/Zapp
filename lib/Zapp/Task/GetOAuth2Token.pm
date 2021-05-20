@@ -1,4 +1,22 @@
 package Zapp::Task::GetOAuth2Token;
+# ABSTRACT: Get an OAuth2 Token
+
+=head1 DESCRIPTION
+
+This task gets an OAuth2 token from the given provider.
+
+=head2 Output
+
+    access_token        - The access token
+    token_type          - The type of token. Only Bearer tokens are available so far.
+    scope               - The scopes returned
+    expires_in
+    refresh_token
+
+=head1 SEE ALSO
+
+=cut
+
 use Mojo::Base 'Zapp::Task', -signatures;
 use Mojo::JSON qw( false true );
 use Mojo::Util qw( b64_encode );
@@ -24,9 +42,6 @@ sub schema( $class ) {
             },
             additionalProperties => false,
         },
-        # XXX: There should be output that is required to be configured,
-        # so that users don't forget that they need to store the token
-        # somewhere in order to use it.
         output => {
             type => 'object',
             required => [qw( access_token token_type )],
