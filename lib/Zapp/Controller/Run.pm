@@ -68,7 +68,6 @@ sub create_run( $self ) {
         );
     }
     elsif ( my $run_id = $self->param( 'run_id' ) ) {
-        ; $self->log->debug( "Replaying run $run_id" );
         my $run = $self->_get_run( $run_id );
         %params = (
             name => $run->{name},
@@ -96,7 +95,6 @@ sub save_run( $self ) {
             value => $type->process_input( $self, $input->{config}, $input->{value} ),
         };
     }
-    ; $self->log->debug( 'Run input: ' . $self->dumper( \@run_input ) );
 
     my $run;
     if ( my $plan_id = $self->param( 'plan_id' ) ) {
@@ -107,7 +105,6 @@ sub save_run( $self ) {
         if ( my $task_id = $self->param( 'task_id' ) ) {
             $opt{ task_id } = $task_id;
         }
-        ; $self->log->debug( "Replaying run $run_id" . ( $opt{task_id} ? " task $opt{task_id}" : "" ) );
         $run = $self->app->enqueue_run( $run_id, \@run_input, %opt );
     }
 
@@ -206,7 +203,6 @@ sub start_run( $self ) {
     # Requeue all jobs that were stopped
     my %task_jobs;
     for my $task ( $run->{tasks}->@* ) {
-        ; $self->log->debug( 'Requeueing task: ' . $self->dumper( $task ) );
         if ( $task->{state} ne 'stopped' ) {
             $task_jobs{ $task->{task_id} } = $task->{job_id};
             next;
@@ -265,7 +261,6 @@ sub kill_run( $self ) {
     }
 
     # Add the note
-    ; $self->log->debug( 'Note: ' . $self->param( 'note' ) );
     $self->yancy->create( zapp_run_notes => {
         $run->%{qw( run_id )},
         event => 'kill',

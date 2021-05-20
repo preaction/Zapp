@@ -163,7 +163,6 @@ sub save_plan( $self ) {
     for my $i ( 0 .. $#$form_inputs ) {
         my $form_input = $form_inputs->[ $i ];
         $form_input->{rank} = $i;
-        ; $self->log->debug( "Input: " . $self->dumper( $form_input ) );
         # XXX: Auto-encode/-decode JSON fields in Yancy schema
         for my $json_field ( qw( value config ) ) {
             $form_input->{ $json_field } = encode_json( $form_input->{ $json_field } );
@@ -246,8 +245,8 @@ sub list_plans( $self ) {
         || (
             defined $a->{last_run} && (
                 ( $b->{last_run}{state} =~ /(in)?active/n ) cmp ( $a->{last_run}{state} =~ /(in)?active/n )
-                || $b->{last_run}{finished} cmp $a->{last_run}{finished}
-                || $b->{last_run}{started} cmp $a->{last_run}{started}
+                || ($b->{last_run}{finished}//'') cmp ($a->{last_run}{finished}//'')
+                || ($b->{last_run}{started}//'') cmp ($a->{last_run}{started}//'')
             )
         )
         || $b->{created} cmp $a->{created}

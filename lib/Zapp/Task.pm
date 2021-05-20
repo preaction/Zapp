@@ -78,7 +78,6 @@ use Zapp::Util qw( get_path_from_data get_path_from_schema );
 use Yancy::Util qw( currym );
 
 has zapp_task => sub( $self ) {
-    ; $self->app->log->debug( "Looking up zapp task for minion job " . $self->id );
     my ( $task ) = $self->app->yancy->list( zapp_run_tasks => { job_id => $self->id } );
     return $task;
 };
@@ -189,7 +188,6 @@ sub finish( $self, $output=undef ) {
 
     # XXX: Run output through task_output
 
-    ; $self->app->log->debug( 'Output: ' . $self->app->dumper( $output ) );
     $self->app->yancy->backend->set(
         zapp_run_tasks => $task_id,
         { output => encode_json( $output ) },

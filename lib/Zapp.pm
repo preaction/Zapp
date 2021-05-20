@@ -351,7 +351,7 @@ sub get_tasks( $self, $table, $search ) {
             map { $_->{parent_task_id} }
             $self->yancy->list( $parents_table => { $task->%{'task_id'} } )
         ];
-        ; $self->log->debug( 'Got parents for task ' . $task->{task_id} . ': ' . join ', ', @{ $task->{parents} } );
+        #; $self->log->debug( 'Got parents for task ' . $task->{task_id} . ': ' . join ', ', @{ $task->{parents} } );
     }
 
     # Put the tasks in an order they can be created so all parent tasks
@@ -401,7 +401,7 @@ sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
     }
 
     if ( my $start_task_id = $opt{task_id} ) {
-        ; $self->log->debug( "Starting from task: $start_task_id" );
+        #; $self->log->debug( "Starting from task: $start_task_id" );
         # Mark which jobs should be re-run and which should be copied.
         # Since we know @tasks is ordered with parents before children,
         # we can reverse it to make sure we hit children before their
@@ -412,14 +412,14 @@ sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
             grep { $_->{task_id} eq $start_task_id }
             @tasks
         );
-        ; $self->log->debug( "Copying " . %to_copy );
+        #; $self->log->debug( "Copying " . %to_copy );
         for my $task ( reverse @tasks ) {
             # Remove parents that we aren't creating from the list we give
             # to Minion
             $task->{parents} = [ grep { !$to_copy{ $_ } } @{ $task->{parents} // [] } ];
 
             next unless $to_copy{ $task->{task_id} };
-            ; $self->log->debug( "Copying $task->{task_id}" );
+            #; $self->log->debug( "Copying $task->{task_id}" );
             $task->{state} = 'copied';
             $to_copy{ $_ }++ for @{ $task->{parents} // [] };
         }
@@ -452,7 +452,7 @@ sub enqueue_run( $self, $old_run_id, $input=[], %opt ) {
         my ( $task ) = grep { $_->{task_id} eq $job->{task_id} } $new_run->{tasks}->@*;
         $task->{$_} = $job->{$_} for keys %$job;
 
-        ; $self->log->debug( "Setting job id for task $job->{task_id} -> $job->{job_id}" );
+        #; $self->log->debug( "Setting job id for task $job->{task_id} -> $job->{job_id}" );
         $self->yancy->backend->set( zapp_run_tasks => $job->{task_id}, $job );
     }
 
@@ -477,7 +477,7 @@ sub enqueue_tasks( $self, $input, @tasks ) {
         for my $task ( grep !$task_jobs{ $_->{task_id} }, @tasks ) {
             my $task_id = $task->{task_id};
             # Skip if we haven't created all parents
-            ; $self->log->debug( "Task $task_id has parents @{ $task->{parents} // [] }" );
+            #; $self->log->debug( "Task $task_id has parents @{ $task->{parents} // [] }" );
             next if @{ $task->{parents} // [] } && grep { !$task_jobs{ $_ } } $task->{parents}->@*;
 
             # XXX: Expose more Minion job configuration

@@ -36,7 +36,6 @@ subtest 'config_field' => sub {
         my $config_value = undef;
         my $c = $t->app->build_controller;
         my $html = $type->config_field( $c, $config_value );
-        diag $html;
         my $dom = Mojo::DOM->new( $html );
         ok $dom->at( '[name="config.options[0].label"]' ), 'blank label field exists';
         ok $dom->at( '[name="config.options[0].value"]' ), 'blank value field exists';
@@ -47,7 +46,6 @@ subtest 'config_field' => sub {
         my $config_value = undef;
         my $c = $t->app->build_controller;
         my $html = $type->config_field( $c, $config_value );
-        diag $html;
         my $dom = Mojo::DOM->new( $html );
         my @rows = $dom->find( ':not(template) > [data-zapp-array-row]' )->each;
         ok $rows[0]->at( '[name="config.options[0].label"]' ), 'first label field exists';

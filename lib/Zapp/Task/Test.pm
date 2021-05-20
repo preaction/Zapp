@@ -83,10 +83,10 @@ __DATA__
         </div>
         <div class="col-auto align-self-end">
             <select name="tests[<%= $i %>].op" class="form-control">
-                <option value="==" <%= $test->{op} eq '==' ? 'selected' : '' %>>==</option>
-                <option value="!=" <%= $test->{op} eq '!=' ? 'selected' : '' %>>!=</option>
-                <option value="&gt;" <%= $test->{op} eq '>' ? 'selected' : '' %>>&gt;</option>
-                <option value="&lt;" <%= $test->{op} eq '<' ? 'selected' : '' %>>&lt;</option>
+                <option value="==" <%= ($test->{op}//'') eq '==' ? 'selected' : '' %>>==</option>
+                <option value="!=" <%= ($test->{op}//'') eq '!=' ? 'selected' : '' %>>!=</option>
+                <option value="&gt;" <%= ($test->{op}//'') eq '>' ? 'selected' : '' %>>&gt;</option>
+                <option value="&lt;" <%= ($test->{op}//'') eq '<' ? 'selected' : '' %>>&lt;</option>
             </select>
         </div>
         <div class="col">

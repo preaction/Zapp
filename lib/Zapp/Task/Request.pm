@@ -194,8 +194,8 @@ __DATA__
         <%= select_field 'content_type' =>
             [
                 [ 'None' => '' ],
-                [ 'File' => 'application/octet-stream', $input->{content_type} eq 'application/octet-stream' ? ( selected => 'selected' ) : () ],
-                [ 'JSON' => 'application/json', $input->{content_type} eq 'application/json' ? ( selected => 'selected' ) : () ],
+                [ 'File' => 'application/octet-stream', ($input->{content_type}//'') eq 'application/octet-stream' ? ( selected => 'selected' ) : () ],
+                [ 'JSON' => 'application/json', ($input->{content_type}//'') eq 'application/json' ? ( selected => 'selected' ) : () ],
             ],
             class => 'form-control',
         %>

@@ -63,7 +63,6 @@ __DATA__
             $config->{options} // $self->default_options // [ {} ]
         }
     );
-    $c->log->debug( 'Rendering options: ' . $c->dumper( \@options ) );
     my $selected_index = $config->{selected_index} // 0;
 %>
 % my $selectbox_tmpl = begin
