@@ -3,7 +3,7 @@
 
 # NAME
 
-Zapp - Write a sentence about what it does
+Zapp - Plan building, job creating web app
 
 # VERSION
 
@@ -11,25 +11,74 @@ version 0.001
 
 # SYNOPSIS
 
+    # Start the web application
+    zapp daemon
+
+    # Start the task runner
+    zapp minion worker
+
 # DESCRIPTION
 
+Zapp is a graphical workflow builder that provides a UI to build and
+execute jobs.
+
+For documentation on running and using Zapp, see [Zapp::Guides](https://metacpan.org/pod/Zapp::Guides).
+
+This file documents the main application class, [Zapp](https://metacpan.org/pod/Zapp). This class can
+be used to [embed Zapp into an existing Mojolicious application](https://docs.mojolicious.org/Mojolicious/Guides/Routing#Embed-applications), or
+can be extended to add customizations.
+
+# ATTRIBUTES
+
+## formula
+
+The formula interpreter. Usually a [Zapp::Formula](https://metacpan.org/pod/Zapp::Formula) object.
+
 # METHODS
+
+## startup
+
+Initialize the application. Called automatically by [Mojolicious](https://metacpan.org/pod/Mojolicious).
 
 ## create\_plan
 
 Create a new plan and all related data.
 
-## enqueue
+## get\_plan
+
+Get a plan and all related data (tasks, inputs).
+
+## enqueue\_plan
 
 Enqueue a plan.
 
+## get\_tasks
+
+Get the tasks for a plan/run from the given table.
+
+## enqueue\_run
+
+Re-enqueue a run.
+
+## 
+
+Create [Minion](https://metacpan.org/pod/Minion) jobs for a run using ["enqueue" in Minion](https://metacpan.org/pod/Minion#enqueue).
+
+## list\_tasks
+
+List tasks for a run.
+
 # SEE ALSO
 
-[Minion](https://metacpan.org/pod/Minion), [Mojolicious::Plugin::Minion::Admin](https://metacpan.org/pod/Mojolicious::Plugin::Minion::Admin)
+[Yancy](https://metacpan.org/pod/Yancy), [Mojolicious](https://metacpan.org/pod/Mojolicious)
 
 # AUTHOR
 
 Doug Bell <preaction@cpan.org>
+
+# CONTRIBUTOR
+
+Doug Bell <doug.bell@grantstreet.com>
 
 # COPYRIGHT AND LICENSE
 

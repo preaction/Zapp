@@ -7,7 +7,7 @@ use 5.028;
 use ExtUtils::MakeMaker;
 
 my %WriteMakefileArgs = (
-  "ABSTRACT" => "Write a sentence about what it does",
+  "ABSTRACT" => "Plan building, job creating web app",
   "AUTHOR" => "Doug Bell <preaction\@cpan.org>",
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0
@@ -17,9 +17,19 @@ my %WriteMakefileArgs = (
   "MIN_PERL_VERSION" => "5.028",
   "NAME" => "Zapp",
   "PREREQ_PM" => {
+    "Cwd" => 0,
+    "Digest" => 0,
+    "IPC::Open3" => 0,
+    "List::Util" => 0,
     "Minion" => "10.14",
     "Minion::Backend::SQLite" => "5.0.3",
+    "Mojo::SQLite" => 0,
     "Mojolicious" => "8.65",
+    "Scalar::Util" => 0,
+    "Symbol" => 0,
+    "Test::More" => 0,
+    "Text::Balanced" => 0,
+    "Time::Piece" => 0,
     "Yancy" => "1.067"
   },
   "TEST_REQUIRES" => {
@@ -27,28 +37,32 @@ my %WriteMakefileArgs = (
     "File::Spec" => 0,
     "IO::Handle" => 0,
     "IPC::Open3" => 0,
-    "Minion::Backend::mysql" => "0.21",
-    "Test::More" => 0,
-    "Test::mysqld" => "1.0013"
+    "Test::More" => 0
   },
   "VERSION" => "0.001",
   "test" => {
-    "TESTS" => "t/*.t t/controller/*.t t/task/*.t"
+    "TESTS" => "t/*.t t/controller/*.t t/integration/*.t t/task/*.t t/task/action/*.t t/trigger/*.t t/type/*.t"
   }
 );
 
 
 my %FallbackPrereqs = (
+  "Cwd" => 0,
+  "Digest" => 0,
   "ExtUtils::MakeMaker" => 0,
   "File::Spec" => 0,
   "IO::Handle" => 0,
   "IPC::Open3" => 0,
+  "List::Util" => 0,
   "Minion" => "10.14",
   "Minion::Backend::SQLite" => "5.0.3",
-  "Minion::Backend::mysql" => "0.21",
+  "Mojo::SQLite" => 0,
   "Mojolicious" => "8.65",
+  "Scalar::Util" => 0,
+  "Symbol" => 0,
   "Test::More" => 0,
-  "Test::mysqld" => "1.0013",
+  "Text::Balanced" => 0,
+  "Time::Piece" => 0,
   "Yancy" => "1.067"
 );
 

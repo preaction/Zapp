@@ -1,6 +1,16 @@
+requires "Cwd" => "0";
+requires "Digest" => "0";
+requires "IPC::Open3" => "0";
+requires "List::Util" => "0";
 requires "Minion" => "10.14";
 requires "Minion::Backend::SQLite" => "v5.0.3";
+requires "Mojo::SQLite" => "0";
 requires "Mojolicious" => "8.65";
+requires "Scalar::Util" => "0";
+requires "Symbol" => "0";
+requires "Test::More" => "0";
+requires "Text::Balanced" => "0";
+requires "Time::Piece" => "0";
 requires "Yancy" => "1.067";
 requires "perl" => "5.028";
 
@@ -9,9 +19,7 @@ on 'test' => sub {
   requires "File::Spec" => "0";
   requires "IO::Handle" => "0";
   requires "IPC::Open3" => "0";
-  requires "Minion::Backend::mysql" => "0.21";
   requires "Test::More" => "0";
-  requires "Test::mysqld" => "1.0013";
 };
 
 on 'test' => sub {
