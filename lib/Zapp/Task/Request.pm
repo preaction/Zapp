@@ -46,31 +46,25 @@ sub schema( $class ) {
         output => {
             type => 'object',
             properties => {
-                res => {
+                is_success => {
+                    type => 'boolean',
+                },
+                code => {
+                    type => 'integer',
+                    minValue => 100,
+                    maxValue => 599,
+                },
+                message => {
+                    type => 'string',
+                },
+                body => {
+                    type => 'string',
+                },
+                headers => {
                     type => 'object',
                     properties => {
-                        is_success => {
-                            type => 'boolean',
-                        },
-                        code => {
-                            type => 'integer',
-                            minValue => 100,
-                            maxValue => 599,
-                        },
-                        message => {
+                        content_type => {
                             type => 'string',
-                        },
-                        body => {
-                            type => 'string',
-                        },
-                        headers => {
-                            type => 'object',
-                            properties => {
-                                content_type => {
-                                    type => 'string',
-                                },
-                            },
-                            additionalProperties => false,
                         },
                     },
                     additionalProperties => false,
@@ -136,18 +130,16 @@ sub run( $self, $input ) {
     }
 
     $self->$method({
-        res => {
-            (
-                map { $_ => $tx->res->$_ }
-                qw( is_success code message )
-            ),
-            headers => {
-                map { $_ => $tx->res->headers->$_ }
-                grep { $tx->res->headers->$_ }
-                qw( content_type )
-            },
-            @res_body,
+        (
+            map { $_ => $tx->res->$_ }
+            qw( is_success code message )
+        ),
+        headers => {
+            map { $_ => $tx->res->headers->$_ }
+            grep { $tx->res->headers->$_ }
+            qw( content_type )
         },
+        @res_body,
     });
 }
 
@@ -229,17 +221,17 @@ __DATA__
     <h4>Response</h4>
     <dl>
         <dt>Code</dt>
-        <dd><%= $task->{output}{res}{code} %> <%= $task->{output}{res}{message} %></dd>
+        <dd><%= $task->{output}{code} %> <%= $task->{output}{message} %></dd>
         <dt>Content-Type</dt>
-        <dd><%= $task->{output}{res}{headers}{content_type} // '' %></dd>
+        <dd><%= $task->{output}{headers}{content_type} // '' %></dd>
     </dl>
-    % if ( my $data = $task->{output}{res}{json} ) {
+    % if ( my $data = $task->{output}{json} ) {
         <pre data-output class="bg-light border border-secondary p-1"><%= dumper $data %></pre>
     % }
-    % elsif ( my $file = $task->{output}{res}{file} ) {
+    % elsif ( my $file = $task->{output}{file} ) {
         <a class="btn btn-outline-primary" href="<%= $file %>">Download File</a>
     % }
-    % elsif ( my $body = $task->{output}{res}{body} ) {
+    % elsif ( my $body = $task->{output}{body} ) {
         <pre class="bg-light border border-secondary p-1"><%= $body %></pre>
     % }
 % }

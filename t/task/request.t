@@ -59,14 +59,12 @@ subtest 'run' => sub {
     );
     $t->task_info_is( state => 'finished' );
     $t->task_output_is({
-        res => {
-            is_success => 1,
-            code => 200,
-            message => 'OK',
-            body => 'Success',
-            headers => {
-                content_type => 'text/plain',
-            },
+        is_success => 1,
+        code => 200,
+        message => 'OK',
+        body => 'Success',
+        headers => {
+            content_type => 'text/plain',
         },
     });
 };
@@ -81,14 +79,12 @@ subtest 'json response' => sub {
     );
     $t->task_info_is( state => 'finished' );
     $t->task_output_is({
-        res => {
-            is_success => 1,
-            code => 200,
-            message => 'OK',
-            json => { status => 'Success' },
-            headers => {
-                content_type => 'application/json',
-            },
+        is_success => 1,
+        code => 200,
+        message => 'OK',
+        json => { status => 'Success' },
+        headers => {
+            content_type => 'application/json',
         },
     });
 };
@@ -104,14 +100,12 @@ subtest 'file response' => sub {
     my $job_id = $t->{zapp}{job}->id;
     $t->task_info_is( state => 'finished' );
     $t->task_output_is({
-        res => {
-            is_success => 1,
-            code => 200,
-            message => 'OK',
-            file => "/task/request/$job_id/file",
-            headers => {
-                content_type => 'application/octet-stream',
-            },
+        is_success => 1,
+        code => 200,
+        message => 'OK',
+        file => "/task/request/$job_id/file",
+        headers => {
+            content_type => 'application/octet-stream',
         },
     });
 
@@ -126,14 +120,12 @@ subtest 'file response' => sub {
         my $job_id = $t->{zapp}{job}->id;
         $t->task_info_is( state => 'finished' );
         $t->task_output_is({
-            res => {
-                is_success => 1,
-                code => 200,
-                message => 'OK',
-                file => "/task/request/$job_id/test-file-filename.txt",
-                headers => {
-                    content_type => 'application/octet-stream',
-                },
+            is_success => 1,
+            code => 200,
+            message => 'OK',
+            file => "/task/request/$job_id/test-file-filename.txt",
+            headers => {
+                content_type => 'application/octet-stream',
             },
         });
     };
@@ -185,14 +177,12 @@ subtest 'auth' => sub {
             );
             $t->task_info_is( state => 'finished', 'job finished' );
             $t->task_output_is({
-                res => {
-                    is_success => 1,
-                    code => 200,
-                    message => 'OK',
-                    body => 'Success',
-                    headers => {
-                        content_type => 'text/plain',
-                    },
+                is_success => 1,
+                code => 200,
+                message => 'OK',
+                body => 'Success',
+                headers => {
+                    content_type => 'text/plain',
                 },
             });
 
@@ -215,14 +205,12 @@ subtest 'auth' => sub {
             );
             $t->task_info_is( state => 'failed', 'job failed' );
             $t->task_output_is({
-                res => {
-                    is_success => '',
-                    code => 401,
-                    message => 'Unauthorized',
-                    body => 'You are not authorized',
-                    headers => {
-                        content_type => 'text/plain',
-                    },
+                is_success => '',
+                code => 401,
+                message => 'Unauthorized',
+                body => 'You are not authorized',
+                headers => {
+                    content_type => 'text/plain',
                 },
             });
 
@@ -364,12 +352,10 @@ subtest 'output view' => sub {
                     url => 'http://example.com',
                 },
                 output => {
-                    res => {
-                        code => 200,
-                        message => 'Ok',
-                        body => '{"hello":"world"}',
-                        json => { hello => 'world' },
-                    },
+                    code => 200,
+                    message => 'Ok',
+                    body => '{"hello":"world"}',
+                    json => { hello => 'world' },
                 },
             },
         );
@@ -395,14 +381,12 @@ subtest 'output view' => sub {
                     url => 'http://example.com',
                 },
                 output => {
-                    res => {
-                        code => 200,
-                        message => 'Ok',
-                        body => '{"hello":"world"}',
-                        file => "/output.txt",
-                        headers => {
-                            content_type => 'application/octet-stream',
-                        },
+                    code => 200,
+                    message => 'Ok',
+                    body => '{"hello":"world"}',
+                    file => "/output.txt",
+                    headers => {
+                        content_type => 'application/octet-stream',
                     },
                 },
             },
