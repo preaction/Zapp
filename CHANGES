@@ -2,6 +2,12 @@ Changelog for Zapp
 
 {{ $NEXT }}
 
+    [Fixed]
+
+    - Fixed 'Add Plan' button 404
+    - Removed additional debugging logs
+    - Fixed Run screen to have link back to Plan
+
 0.001     2021-05-20 10:38:06-05:00 America/Chicago
 
     Initial release
