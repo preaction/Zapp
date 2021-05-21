@@ -29,7 +29,7 @@ sub _save_upload( $self, $c, $upload ) {
     return undef if !defined $upload->filename || $upload->filename eq '';
     my $dir = $self->_digest_dir( $upload->asset );
     my $file = $dir->child( $upload->filename );
-    ; $c->log->debug( "Saving file: $file" );
+    #; $c->log->debug( "Saving file: $file" );
     $upload->move_to( $file );
     return $file->to_rel( $self->path );
 }

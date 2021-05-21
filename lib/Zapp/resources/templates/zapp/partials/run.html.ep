@@ -11,7 +11,6 @@
     my $since = sub {
         my ( $dt ) = @_;
         my $since = time - Time::Piece->strptime( $dt, '%Y-%m-%d %H:%M:%S' )->epoch;
-        $c->log->debug( sprintf '%d - %s = %d', time, $dt, $since );
         return $since < 30 ? 'a few seconds ago'
             : $since < 90 ? 'a minute ago'
             : $since < 300 ? 'a few minutes ago'
