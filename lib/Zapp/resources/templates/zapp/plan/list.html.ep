@@ -35,6 +35,6 @@
     </section>
 % }
 % if ( !@{ $plans // [] } ) {
-    <p>No plans found. <%= link_to 'Create a new Plan' => 'zapp.edit_plan' %>.</p>
+    <p>No plans found. <%= link_to 'Create a new Plan' => 'zapp.create_plan' %>.</p>
 % }
 </div>
