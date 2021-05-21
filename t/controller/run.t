@@ -455,80 +455,87 @@ subtest 'view run status' => sub {
         },
     );
 
-    subtest 'before execution' => sub {
-        $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
-            ->element_exists( '[href=/]', 'link back to plans exists' )
-            ->attr_like( '.task-tabs .active', id => qr/tab-info-label/, 'info tab is selected for inactive tasks' )
-            ->text_is( '[data-run=state]', 'inactive', 'run state is correct' )
-            ->text_is( '[data-run=started]', 'N/A', 'run started is correct' )
-            ->text_is( '[data-run=finished]', 'N/A', 'run finished is correct' )
-            ->attr_like( "#tab-task-$run->{tasks}[0]{task_id}-label", class => qr/disabled/, 'first task is disabled' )
-            ->text_like( "[data-task-output=$run->{tasks}[0]{task_id}] dd", qr/^=Character/, 'first task input are not yet interpolated' )
-            ->attr_like( "#tab-task-$run->{tasks}[1]{task_id}-label", class => qr/disabled/, 'second task is disabled' )
-            ->text_like( "[data-task-output=$run->{tasks}[1]{task_id}] dd", qr/^=Character/, 'second task input are not yet interpolated' )
-            ->or( sub { diag $t->tx->res->dom( "[data-task=$run->{tasks}[1]{task_id}]" )->each } )
-            ;
+    subtest 'from plan' => sub {
 
-        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
-            ->status_is( 200 )
-            ->element_exists_not( 'body', 'not inside layout' )
-            ->text_like( "dd", qr/^=Character/, 'first task input are not yet interpolated' )
-            ;
+        subtest 'before execution' => sub {
+            $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
+                ->element_exists( "[href=/plan/$plan_id]", 'link back to plan exists' )
+                ->element_exists_not( "main [href=/run]", 'link back to run list does not exist' )
+                ->or(sub { diag shift->tx->res->dom->at( '[href=/run]' ) })
+                ->attr_like( '.task-tabs .active', id => qr/tab-info-label/, 'info tab is selected for inactive tasks' )
+                ->text_is( '[data-run=state]', 'inactive', 'run state is correct' )
+                ->text_is( '[data-run=started]', 'N/A', 'run started is correct' )
+                ->text_is( '[data-run=finished]', 'N/A', 'run finished is correct' )
+                ->attr_like( "#tab-task-$run->{tasks}[0]{task_id}-label", class => qr/disabled/, 'first task is disabled' )
+                ->text_like( "[data-task-output=$run->{tasks}[0]{task_id}] dd", qr/^=Character/, 'first task input are not yet interpolated' )
+                ->attr_like( "#tab-task-$run->{tasks}[1]{task_id}-label", class => qr/disabled/, 'second task is disabled' )
+                ->text_like( "[data-task-output=$run->{tasks}[1]{task_id}] dd", qr/^=Character/, 'second task input are not yet interpolated' )
+                ->or( sub { diag $t->tx->res->dom( "[data-task=$run->{tasks}[1]{task_id}]" )->each } )
+                ;
 
-        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )
-            ->status_is( 200 )
-            ->element_exists_not( 'body', 'not inside layout' )
-            ->text_like( "dd", qr/^=Character/, 'second task input are not interpolated' )
-            ;
+            $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
+                ->status_is( 200 )
+                ->element_exists_not( 'body', 'not inside layout' )
+                ->text_like( "dd", qr/^=Character/, 'first task input are not yet interpolated' )
+                ;
+
+            $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )
+                ->status_is( 200 )
+                ->element_exists_not( 'body', 'not inside layout' )
+                ->text_like( "dd", qr/^=Character/, 'second task input are not interpolated' )
+                ;
+        };
+
+        # Subscribe to websocket feed
+        $t->websocket_ok( '/run/' . $run->{run_id} . '/feed?interval=1' )
+            # Initial message
+            ->message_ok;
+
+        $t->run_queue;
+
+        subtest 'feed message with deltas' => sub {
+            $t->message_ok
+                ->json_message_is( '/state' => 'finished' )
+                ->json_message_has( '/started' )
+                ->json_message_has( '/finished' )
+                ->json_message_hasnt( '/created', 'created did not change' )
+                ->json_message_has( '/tasks', 'tasks changed' )
+                ->json_message_is( '/tasks/0/state' => 'finished' )
+                ->json_message_is( '/tasks/1/state' => 'finished' )
+                ->finished_ok(1000)
+                ;
+        };
+
+        subtest 'after execution' => sub {
+            $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
+                ->element_exists( "[href=/plan/$plan_id]", 'link back to plan exists' )
+                ->element_exists_not( "main [href=/run]", 'link back to run list does not exist' )
+                ->text_like( '.task-tabs .active', qr/Experience Ironic Consequences/, 'final tab is selected for finished tasks' )
+                ->text_is( '[data-run=state]', 'finished', 'run state is correct' )
+                ->text_like( '[data-run=started]', qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run started is formatted correctly' )
+                ->text_like( '[data-run=finished]',  qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run finished is formatted correctly' )
+                ->attr_unlike( "#tab-task-$run->{tasks}[0]{task_id}-label", class => qr/disabled/, 'first task is not disabled' )
+                ->attr_unlike( "#tab-task-$run->{tasks}[1]{task_id}-label", class => qr/disabled/, 'second task is not disabled' )
+                ->attr_like( "#tab-task-$run->{tasks}[0]{task_id}-label", class => qr/success/, 'first task is success' )
+                ->attr_like( "#tab-task-$run->{tasks}[1]{task_id}-label", class => qr/success/, 'second task is success' )
+                ->text_like( "[data-task-output=$run->{tasks}[0]{task_id}] dd", qr/Zanthor/, 'first task input are interpolated' )
+                ->text_like( "[data-task-output=$run->{tasks}[1]{task_id}] dd", qr/Zanthor/, 'second task input are interpolated' )
+                ;
+
+            $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
+                ->status_is( 200 )
+                ->element_exists_not( 'body', 'not inside layout' )
+                ->text_like( "dd", qr/Zanthor/, 'first task input are interpolated' )
+                ;
+
+            $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )
+                ->status_is( 200 )
+                ->element_exists_not( 'body', 'not inside layout' )
+                ->text_like( "dd", qr/Zanthor/, 'second task input are interpolated' )
+                ;
+        };
     };
 
-    # Subscribe to websocket feed
-    $t->websocket_ok( '/run/' . $run->{run_id} . '/feed?interval=1' )
-        # Initial message
-        ->message_ok;
-
-    $t->run_queue;
-
-    subtest 'feed message with deltas' => sub {
-        $t->message_ok
-            ->json_message_is( '/state' => 'finished' )
-            ->json_message_has( '/started' )
-            ->json_message_has( '/finished' )
-            ->json_message_hasnt( '/created', 'created did not change' )
-            ->json_message_has( '/tasks', 'tasks changed' )
-            ->json_message_is( '/tasks/0/state' => 'finished' )
-            ->json_message_is( '/tasks/1/state' => 'finished' )
-            ->finished_ok(1000)
-            ;
-    };
-
-    subtest 'after execution' => sub {
-        $t->get_ok( '/run/' . $run->{run_id} )->status_is( 200 )
-            ->element_exists( '[href=/]', 'link back to plans exists' )
-            ->text_like( '.task-tabs .active', qr/Experience Ironic Consequences/, 'final tab is selected for finished tasks' )
-            ->text_is( '[data-run=state]', 'finished', 'run state is correct' )
-            ->text_like( '[data-run=started]', qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run started is formatted correctly' )
-            ->text_like( '[data-run=finished]',  qr{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, 'run finished is formatted correctly' )
-            ->attr_unlike( "#tab-task-$run->{tasks}[0]{task_id}-label", class => qr/disabled/, 'first task is not disabled' )
-            ->attr_unlike( "#tab-task-$run->{tasks}[1]{task_id}-label", class => qr/disabled/, 'second task is not disabled' )
-            ->attr_like( "#tab-task-$run->{tasks}[0]{task_id}-label", class => qr/success/, 'first task is success' )
-            ->attr_like( "#tab-task-$run->{tasks}[1]{task_id}-label", class => qr/success/, 'second task is success' )
-            ->text_like( "[data-task-output=$run->{tasks}[0]{task_id}] dd", qr/Zanthor/, 'first task input are interpolated' )
-            ->text_like( "[data-task-output=$run->{tasks}[1]{task_id}] dd", qr/Zanthor/, 'second task input are interpolated' )
-            ;
-
-        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[0]{task_id} )
-            ->status_is( 200 )
-            ->element_exists_not( 'body', 'not inside layout' )
-            ->text_like( "dd", qr/Zanthor/, 'first task input are interpolated' )
-            ;
-
-        $t->get_ok( '/run/' . $run->{run_id} . '/task/' . $run->{tasks}[1]{task_id} )
-            ->status_is( 200 )
-            ->element_exists_not( 'body', 'not inside layout' )
-            ->text_like( "dd", qr/Zanthor/, 'second task input are interpolated' )
-            ;
-    };
 };
 
 subtest 'task actions' => sub {

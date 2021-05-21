@@ -25,12 +25,14 @@
 %>
 
 <div class="d-flex justify-content-between mt-2">
-    %= link_to 'zapp.list_runs', class => 'btn btn-secondary', begin
-        <i class="fa fa-arrow-left"></i> Back to Runs
-    % end
     % if ( my $plan_id = $run->{plan_id} ) {
         %= link_to 'zapp.get_plan', { plan_id => $plan_id }, class => 'btn btn-outline-secondary', begin
-            View Plan
+            <i class="fa fa-arrow-left"></i> Back to Plan
+        % end
+    % }
+    % else {
+        %= link_to 'zapp.list_runs', class => 'btn btn-secondary', begin
+            <i class="fa fa-arrow-left"></i> Back to Runs
         % end
     % }
 </div>
