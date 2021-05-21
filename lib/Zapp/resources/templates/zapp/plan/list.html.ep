@@ -4,7 +4,7 @@
 
 <header>
     <h1>Plans</h1>
-    %= link_to 'zapp.edit_plan', class => 'btn btn-secondary', begin
+    %= link_to 'zapp.create_plan', class => 'btn btn-outline-secondary', begin
         <i class="fa fa-plus"></i> Add Plan
     % end
 </header>

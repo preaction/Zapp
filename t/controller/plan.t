@@ -994,6 +994,7 @@ subtest 'list plans' => sub {
     );
 
     $t->get_ok( '/' )->status_is( 200 )
+        ->element_exists( 'a[href=/plan/create]', 'link to create plans exists' )
         ->text_like( '.plans-list > :nth-child(1) h2 a', qr{Deliver a package} )
         ->attr_is( '.plans-list > :nth-child(1) h2 a', href => "/plan/$plans[0]{plan_id}" )
         ->text_like( '.plans-list > :nth-child(1) .description', qr{To a dangerous place} )
