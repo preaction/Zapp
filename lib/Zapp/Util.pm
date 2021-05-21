@@ -302,8 +302,6 @@ output from a program that uses ANSI escape sequences.
 
 sub ansi_colorize( $text ) {
     my @parts = split /\e\[([\d;]*)m/, $text;
-    ; use Data::Dumper;
-    ; say Dumper \@parts;
     return $parts[0] if @parts == 1;
     my $output = shift @parts;
     my %context;
