@@ -39,7 +39,7 @@ my %WriteMakefileArgs = (
     "IPC::Open3" => 0,
     "Test::More" => 0
   },
-  "VERSION" => "0.002",
+  "VERSION" => "0.003",
   "test" => {
     "TESTS" => "t/*.t t/controller/*.t t/integration/*.t t/task/*.t t/task/action/*.t t/trigger/*.t t/type/*.t"
   }
