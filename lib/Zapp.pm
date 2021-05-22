@@ -1,5 +1,5 @@
 package Zapp;
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 # ABSTRACT: Plan building, job creating web app
 
 =head1 SYNOPSIS
