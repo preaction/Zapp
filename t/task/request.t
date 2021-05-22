@@ -15,7 +15,7 @@ use Mojo::DOM;
 my $t = Test::Zapp->new;
 
 # Add some test endpoints
-my $last_request;
+my ( $last_request, $redirect_request );
 $t->app->routes->any( '/test/success' )
   ->to( cb => sub( $c ) {
     $last_request = $c->tx->req;
@@ -47,6 +47,11 @@ $t->app->routes->any( '/test/file/attachment' )
     $c->res->headers->content_type( 'application/octet-stream' );
     $c->res->headers->content_disposition( 'attachment; filename="test-file-filename.txt"' );
     $c->render( data => 'Success' );
+  } );
+$t->app->routes->any( '/test/redirect' )
+  ->to( cb => sub( $c ) {
+    $last_request = $redirect_request = $c->tx->req;
+    $c->redirect_to( '/test/success' );
   } );
 
 subtest 'run' => sub {
@@ -222,6 +227,49 @@ subtest 'auth' => sub {
 
 };
 
+subtest 'follow_redirects' => sub {
+    subtest 'follow: yes' => sub {
+        $t->run_task(
+            'Zapp::Task::Request' => {
+                method => 'GET',
+                url => $t->ua->server->url->path( '/test/redirect' ),
+                max_redirects => 10,
+            },
+            'Follow redirects: yes',
+        );
+        $t->task_info_is( state => 'finished', 'job finished' );
+        $t->task_output_is({
+            is_success => 1,
+            code => 200,
+            message => 'OK',
+            body => 'Success',
+            headers => {
+                content_type => 'text/plain',
+            },
+        });
+    };
+
+    subtest 'follow: no' => sub {
+        $t->run_task(
+            'Zapp::Task::Request' => {
+                method => 'GET',
+                url => $t->ua->server->url->path( '/test/redirect' ),
+                max_redirects => 0,
+            },
+            'Follow redirects: no',
+        );
+        $t->task_info_is( state => 'finished', 'job finished' );
+        $t->task_output_is({
+            is_success => 1,
+            code => 302,
+            message => 'Found',
+            headers => {
+                location => '/test/success',
+            },
+        });
+    };
+};
+
 subtest 'input form' => sub {
     my $tmpl = data_section 'Zapp::Task::Request', 'input.html.ep';
 
@@ -244,6 +292,22 @@ subtest 'input form' => sub {
                 '[name="url"]',
                 value => '',
                 'url correct value',
+            )
+            ->element_exists(
+                '[name="max_redirects"][value=10]',
+                'max_redirects input exists (yes: 10)',
+            )
+            ->element_exists(
+                '[name="max_redirects"][value=10][checked]',
+                'max_redirects yes is checked by default',
+            )
+            ->element_exists(
+                '[name="max_redirects"][value=0]',
+                'max_redirects input exists (no: 0)',
+            )
+            ->element_exists_not(
+                '[name="max_redirects"][value=0][checked]',
+                'max_redirects no is not checked by default',
             )
             ->element_exists(
                 '[name="auth.type"]',
@@ -319,6 +383,32 @@ subtest 'input form' => sub {
             ;
     };
 
+    subtest 'follow redirects: no' => sub {
+        my $input = {
+            method => 'POST',
+            url => '/foo/bar',
+            max_redirects => 0,
+        };
+
+        $t->render_ok( inline => $tmpl, input => $input )
+            ->element_exists(
+                '[name="max_redirects"][value=10]',
+                'max_redirects input exists (yes: 10)',
+            )
+            ->element_exists_not(
+                '[name="max_redirects"][value=10][checked]',
+                'max_redirects yes is not checked',
+            )
+            ->element_exists(
+                '[name="max_redirects"][value=0]',
+                'max_redirects input exists (no: 0)',
+            )
+            ->element_exists(
+                '[name="max_redirects"][value=0][checked]',
+                'max_redirects no is checked',
+            )
+            ;
+    };
 };
 
 subtest 'output view' => sub {

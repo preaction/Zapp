@@ -13,8 +13,9 @@ This task makes an HTTP request for a web site.
     json                - If the response was JSON, the decoded JSON structure
     file                - If the response was a file, the path to the file
     body                - If the response was anything else, the response body
-    headers             - The headers from the response
+    headers             - The headers from the response as a hash
         content_type    - The Content-Type header
+        location        - The Location header
 
 =head1 SEE ALSO
 
@@ -110,7 +111,7 @@ sub run( $self, $input ) {
     }
 
     my $ua = $self->app->ua;
-    $ua->max_redirects( 5 );
+    $ua->max_redirects( $input->{max_redirects} // 10 );
     #; $self->app->log->debug( 'input: ' . $self->app->dumper( $input ) );
     my %headers;
     if ( $input->{auth} && $input->{auth}{type} eq 'bearer' ) {
@@ -125,8 +126,10 @@ sub run( $self, $input ) {
         \%headers,
         $input->{content_type} ? ( $body ) : (),
     );
-    $ua->start( $tx );
-    my $method = $tx->res->is_success ? 'finish' : 'fail';
+    $tx = $ua->start( $tx );
+    # ; use Data::Dumper;
+    # ; say Dumper $tx->res;
+    my $method = !$tx->res->error ? 'finish' : 'fail';
 
     my @res_body;
     if ( $tx->res->headers->content_type eq 'application/octet-stream' ) {
@@ -151,14 +154,17 @@ sub run( $self, $input ) {
     }
 
     $self->$method({
+        is_success => !defined $tx->res->error,
         (
             map { $_ => $tx->res->$_ }
-            qw( is_success code message )
+            qw( code message )
         ),
+        # XXX: Use $tx->res->headers->to_hash after Formula has a way to
+        # look up hash keys with special characters
         headers => {
             map { $_ => $tx->res->headers->$_ }
             grep { $tx->res->headers->$_ }
-            qw( content_type )
+            qw( content_type location )
         },
         @res_body,
     });
@@ -186,6 +192,14 @@ __DATA__
         <label for="url">URL</label>
         %= text_field 'url', value => $input->{url}, class => 'form-control'
     </div>
+</div>
+
+<div class="form-group">
+    <label for="max_redirects">Follow Redirects?</label>
+    <%= include 'zapp/partials/yes_no_field', name => 'max_redirects',
+        yes_value => 10, no_value => 0,
+        value => $input->{max_redirects} // 10,
+    %>
 </div>
 
 <div class="form-row">
