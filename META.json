@@ -64,91 +64,91 @@
    "provides" : {
       "Test::Zapp" : {
          "file" : "lib/Test/Zapp.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp" : {
          "file" : "lib/Zapp.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Controller::Plan" : {
          "file" : "lib/Zapp/Controller/Plan.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Controller::Run" : {
          "file" : "lib/Zapp/Controller/Run.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Controller::Trigger" : {
          "file" : "lib/Zapp/Controller/Trigger.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Formula" : {
          "file" : "lib/Zapp/Formula.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task" : {
          "file" : "lib/Zapp/Task.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task::Action" : {
          "file" : "lib/Zapp/Task/Action.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task::Action::Confirm" : {
          "file" : "lib/Zapp/Task/Action/Confirm.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task::GetOAuth2Token" : {
          "file" : "lib/Zapp/Task/GetOAuth2Token.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task::Request" : {
          "file" : "lib/Zapp/Task/Request.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task::SQL" : {
          "file" : "lib/Zapp/Task/SQL.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task::Script" : {
          "file" : "lib/Zapp/Task/Script.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Task::Test" : {
          "file" : "lib/Zapp/Task/Test.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Trigger" : {
          "file" : "lib/Zapp/Trigger.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Trigger::Webhook" : {
          "file" : "lib/Zapp/Trigger/Webhook.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Type" : {
          "file" : "lib/Zapp/Type.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Type::File" : {
          "file" : "lib/Zapp/Type/File.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Type::SelectBox" : {
          "file" : "lib/Zapp/Type/SelectBox.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Type::Text" : {
          "file" : "lib/Zapp/Type/Text.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Type::Textarea" : {
          "file" : "lib/Zapp/Type/Textarea.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Zapp::Util" : {
          "file" : "lib/Zapp/Util.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       }
    },
    "release_status" : "stable",
@@ -163,11 +163,8 @@
          "web" : "https://github.com/preaction/Zapp"
       }
    },
-   "version" : "0.002",
+   "version" : "0.003",
    "x_authority" : "cpan:PREACTION",
-   "x_contributors" : [
-      "Doug Bell <doug.bell@grantstreet.com>"
-   ],
    "x_generated_by_perl" : "v5.28.0",
    "x_serialization_backend" : "Cpanel::JSON::XS version 4.06"
 }
