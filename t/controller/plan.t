@@ -1185,6 +1185,7 @@ subtest 'view plan' => sub {
         ->element_exists( form => 'run form exists' )
         ->attr_is( form => action => '/run' )
         ->element_exists( '[name="input[0].value"]', 'Color input exists' )
+        ->attr_is( '[name="input[0].value"]', value => 'White', 'Color input has default value' )
         ->or(sub { diag shift->tx->res->dom->at( 'form' ) } )
         ->element_exists( 'form button', 'submit button exists' )
         ->element_exists( qq{a[href="/plan/$plan_id/trigger/?type=Webhook"]}, 'add trigger link exists' )

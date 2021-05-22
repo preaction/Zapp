@@ -266,6 +266,9 @@ sub get_plan( $self, $plan_id ) {
             if ( my $config = $input->{config} ) {
                 $input->{config} = decode_json( $config );
             }
+            if ( my $value = $input->{value} ) {
+                $input->{value} = decode_json( $value );
+            }
         }
     }
     return $plan;

@@ -1,5 +1,5 @@
 <%
-    use Mojo::JSON qw( encode_json );
+    use Mojo::JSON qw( encode_json decode_json );
     use Zapp::Util qw( prefix_field );
 %>
 %= form_for 'zapp.save_run', enctype => 'multipart/form-data' => begin
