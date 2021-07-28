@@ -28,7 +28,7 @@ L<Yancy>, L<Mojolicious>
 =cut
 
 use v5.28;
-use Mojo::Base 'Mojolicious', -signatures;
+use Mojo::Base 'Yancy', -signatures;
 use Scalar::Util qw( blessed );
 use Yancy::Util qw( load_backend );
 use Mojo::JSON qw( encode_json decode_json );
@@ -59,6 +59,16 @@ sub startup( $self ) {
     $self->plugin( Config => { default => {
         backend => 'sqlite:' . $self->home->child( 'zapp.db' ),
         minion => { SQLite => 'sqlite:' . $self->home->child( 'zapp.db' ) },
+        schema => {
+            zapp_plan_inputs => {
+                # XXX: Fix read_schema to detect compound primary keys
+                'x-id-field' => [qw( plan_id name )],
+            },
+            zapp_plan_task_parents => {
+                # XXX: Fix read_schema to detect compound primary keys
+                'x-id-field' => [qw( task_id parent_task_id )],
+            },
+        },
     } } );
 
     # XXX: Add migrate() method to Yancy app base class, varying by
@@ -73,6 +83,8 @@ sub startup( $self ) {
         ->from_data( __PACKAGE__, 'migrations.' . lc $db_type . '.sql' )
         ->migrate;
 
+    $self->SUPER::startup;
+
     $self->plugin( Minion => $self->config->{ minion }->%* );
 
     # XXX: Allow additional task namespaces
@@ -85,20 +97,6 @@ sub startup( $self ) {
         #; say "Adding task class: $class";
         $self->minion->add_task( $class, $class );
     }
-
-    $self->plugin( Yancy =>
-        $self->config->%{qw( backend )},
-        schema => {
-            zapp_plan_inputs => {
-                # XXX: Fix read_schema to detect compound primary keys
-                'x-id-field' => [qw( plan_id name )],
-            },
-            zapp_plan_task_parents => {
-                # XXX: Fix read_schema to detect compound primary keys
-                'x-id-field' => [qw( task_id parent_task_id )],
-            },
-        },
-    );
 
     # Add basic types
     my %base_types = (
