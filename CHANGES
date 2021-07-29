@@ -2,6 +2,8 @@ Changelog for Zapp
 
 {{ $NEXT }}
 
+0.005     2021-07-28 19:27:11-05:00 America/Chicago
+
     - Updated Yancy dependency to get default authentication
       and authorization.
 
