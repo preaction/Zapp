@@ -30,7 +30,7 @@ my %WriteMakefileArgs = (
     "Test::More" => 0,
     "Text::Balanced" => 0,
     "Time::Piece" => 0,
-    "Yancy" => "1.067"
+    "Yancy" => "1.074"
   },
   "TEST_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0,
@@ -63,7 +63,7 @@ my %FallbackPrereqs = (
   "Test::More" => 0,
   "Text::Balanced" => 0,
   "Time::Piece" => 0,
-  "Yancy" => "1.067"
+  "Yancy" => "1.074"
 );
 
 
