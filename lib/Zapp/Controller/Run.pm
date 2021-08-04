@@ -303,8 +303,9 @@ sub get_run_task( $self ) {
     my $task_id = $self->stash( 'task_id' );
     my ( $run_task ) = grep { $_->{task_id} eq $task_id } $self->_get_run_tasks( $run_id )->@*
         or return $self->reply->not_found;
-    my $template = data_section( $run_task->{class}, 'output.html.ep' );
-    return $self->render( inline => $template, task => $run_task );
+    my $template = data_section( $run_task->{class}, 'output.html.ep' )
+        // 'No output template found for task ' . $run_task->{class};
+    return $self->render( handler => 'ep', inline => $template, task => $run_task );
 }
 
 sub list_runs( $self ) {

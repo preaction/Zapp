@@ -139,3 +139,20 @@ __DATA__
     %= text_field 'scope', value => $input->{scope}, class => 'form-control'
 </div>
 
+@@ output.html.ep
+% if ( $task->{output} && !ref $task->{output} ) {
+    <h4>Error</h4>
+    <div data-error class="alert alert-danger"><%= $task->{output} %></div>
+% } elsif ( $task->{output}{error} ) {
+    <h4>Error: <%= $task->{output}{error} %></h4>
+    <p><%= $task->{output}{error_description} %></p>
+    % if ( my $url = $task->{output}{error_uri} ) {
+        %= link_to 'More Info' => $task->{output}{error_uri}
+    % }
+% } elsif ( $task->{output} ) {
+    <h4>Token</h4>
+    %= link_to 'See Token Content' => 'https://jwt.io/#debugger-io?token=' . $task->{output}{access_token}
+    %= include 'zapp/more_info', content => begin
+        <p><code><%= $task->{output}{access_token} %></code></p>
+    % end
+% }
