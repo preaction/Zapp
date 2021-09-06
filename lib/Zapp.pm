@@ -35,6 +35,7 @@ use Mojo::JSON qw( encode_json decode_json );
 use Mojo::Loader qw( find_modules load_class );
 use Mojo::File qw( curfile );
 use Zapp::Formula;
+use Zapp::Model;
 
 =attr formula
 
@@ -43,6 +44,22 @@ The formula interpreter. Usually a L<Zapp::Formula> object.
 =cut
 
 has formula => sub { Zapp::Formula->new };
+
+=attr model
+
+The L<Zapp::Model> object.
+
+=cut
+
+has model => sub {
+    my ( $self ) = @_;
+    my $model = Zapp::Model->new(
+        backend => $self->yancy->backend,
+        minion => $self->minion,
+    );
+    unshift @{ $model->namespaces }, 'Zapp';
+    return $model;
+};
 
 =method startup
 
@@ -78,7 +95,7 @@ sub startup( $self ) {
     # by Yancy::Plugins or other plugins
     my $backend = load_backend( $self->config->{backend} );
     my ( $db_type ) = blessed( $backend ) =~ m/([^:]+)$/;
-    $backend->mojodb->migrations
+    $backend->driver->migrations
         ->name( 'zapp' )
         ->from_data( __PACKAGE__, 'migrations.' . lc $db_type . '.sql' )
         ->migrate;
@@ -210,35 +227,7 @@ Create a new plan and all related data.
 
 # XXX: Make Yancy automatically handle relationships like this
 sub create_plan( $self, $plan ) {
-    my @inputs = @{ delete $plan->{inputs} // [] };
-    my @tasks = @{ delete $plan->{tasks} // [] };
-    my $plan_id = $self->yancy->create( zapp_plans => $plan );
-
-    for my $i ( 0..$#inputs ) {
-        $inputs[$i]{plan_id} = $plan_id;
-        my $input = { %{ $inputs[$i] }, rank => $i };
-        $self->yancy->create( zapp_plan_inputs => $input );
-    }
-
-    my $prev_task_id;
-    for my $task ( @tasks ) {
-        $task->{plan_id} = $plan_id;
-        my $task_id = $self->yancy->create( zapp_plan_tasks => $task );
-        if ( $prev_task_id ) {
-            $self->yancy->create( zapp_plan_task_parents => {
-                task_id => $task_id,
-                parent_task_id => $prev_task_id,
-            });
-        }
-        $prev_task_id = $task_id;
-        $task->{ task_id } = $task_id;
-    }
-
-    $plan->{plan_id} = $plan_id;
-    $plan->{tasks} = \@tasks;
-    $plan->{inputs} = \@inputs;
-
-    return $plan;
+    $self->model->schema( 'plans' )->create( $plan );
 }
 
 =method get_plan
@@ -248,28 +237,7 @@ Get a plan and all related data (tasks, inputs).
 =cut
 
 sub get_plan( $self, $plan_id ) {
-    my $plan = $self->yancy->get( zapp_plans => $plan_id ) || {};
-    if ( my $plan_id = $plan->{plan_id} ) {
-        my $tasks = $plan->{tasks} = [
-            $self->yancy->list( zapp_plan_tasks => { plan_id => $plan_id }, { order_by => 'task_id' } ),
-        ];
-        for my $task ( @$tasks ) {
-            $task->{input} = decode_json( $task->{input} );
-        }
-
-        my $inputs = $plan->{inputs} = [
-            $self->yancy->list( zapp_plan_inputs => { plan_id => $plan_id }, { order_by => 'rank' } ),
-        ];
-        for my $input ( @$inputs ) {
-            if ( my $config = $input->{config} ) {
-                $input->{config} = decode_json( $config );
-            }
-            if ( my $value = $input->{value} ) {
-                $input->{value} = decode_json( $value );
-            }
-        }
-    }
-    return $plan;
+    $self->model->schema( 'plans' )->get( $plan_id );
 }
 
 =method enqueue_plan
